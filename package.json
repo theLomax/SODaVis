@@ -12,7 +12,8 @@
     "validate:palette": "node scripts/validate_palette.js",
     "commit": "node scripts/commit-all.mjs",
     "fixture": "node scripts/make-fixture.mjs && vite-node scripts/write-expected-example.mjs",
-    "expected": "vite-node scripts/write-expected.mjs"
+    "expected": "vite-node scripts/write-expected.mjs",
+    "publish:app": "node scripts/publish.mjs"
   },
   "dependencies": {
     "@tanstack/react-table": "^8.21.3",
