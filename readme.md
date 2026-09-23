@@ -72,8 +72,24 @@ built app in Chrome against the real file. Without them it runs 153 and nothing 
 
 ```bash
 npm run validate:palette -- "#2a78d6,#eb6834,#1baf7a,#4a3aa7" --mode light
-npm run commit -- "message"   # commits app + submodules in order
+npm run commit -- "message"        # commits app + submodules in order
+npm run publish:app -- "message"   # copies the clean tree to the public repo
 ```
+
+### Publishing is a copy, not a push
+
+The development repository's history contains commits that carried real data in test
+assertions, from before that was fixed. A working tree can be cleaned; a history
+cannot, short of rewriting it — and a clone fetches every commit. So the public
+repository has its own history, beginning from a tree verified clean, and
+`npm run publish:app` copies the current tracked files into it rather than pushing
+this branch.
+
+The push URL on `origin` is deliberately set to an invalid value, so a reflexive
+`git push` fails loudly instead of republishing eleven commits of real data. The
+script also scans every file it is about to publish and refuses if it finds a partner
+name, venue, league or income figure — because a scan is only worth as much as the
+last time someone remembered to run one.
 
 ## The four layers
 
