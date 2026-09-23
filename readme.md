@@ -11,20 +11,22 @@ a JSON export keeps it portable.
 Node 20 or newer, and a Chromium browser if you want to run the end-to-end checks.
 
 ```bash
-git clone --recurse-submodules https://github.com/theLomax/SODaVis.git
+git clone https://github.com/theLomax/SODaVis.git
 cd SODaVis
+git submodule update --init test/sample   # public: the sample data
 npm install
 npm run dev          # http://localhost:5173
 ```
 
-If you have already cloned without `--recurse-submodules`:
+Fetch the sample explicitly rather than with `--recurse-submodules`. Two of the three
+submodules are private, and a recursive clone **aborts** on the first one it cannot
+read — taking the public sample down with it. Naming it avoids that entirely.
+
+If you do have access to the private repositories:
 
 ```bash
-git submodule update --init --recursive
+git submodule update --init --recursive   # all three
 ```
-
-That works whether or not you have access to the private repositories — git fetches
-what it can and reports the rest, and the app does not need them.
 
 ### Where the sample data comes from
 
