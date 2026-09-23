@@ -1,0 +1,63 @@
+# Dependencies & build output
+node_modules/
+dist/
+.vite/
+coverage/
+tsconfig.tsbuildinfo
+
+# OS noise
+.DS_Store
+*.local
+
+# ---------------------------------------------------------------
+# USER DATA — never commit. Stored separately (cloud / data repo).
+# Officiating exports contain income, partner names, venues, and
+# toll statements with account + license-plate numbers.
+# ---------------------------------------------------------------
+# `data/` is a submodule (SODaVis-Data, private), so git must be allowed to record
+# the gitlink. Its *contents* are still never committed here: they live in that
+# repository, and the extension rules below keep a stray export out of this one.
+!data/
+*.csv
+*.ods
+*.xlsx
+*.xls
+
+# Screenshots render real income and partner names
+screenshots/
+
+# Exception: the anonymized test fixture is safe to commit
+!test/fixtures/
+!test/fixtures/**
+
+# Local app-state backups exported from the browser
+*-backup.json
+so-dataviz-export*.json
+
+# ---------------------------------------------------------------
+# Credentials. Nothing here is ever committed, anywhere in the tree.
+# The planned Assignr/RefTown integration needs a client secret, and a
+# secret in git history stays there even after the file is deleted.
+# ---------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*-token.json
+*-credentials.json
+
+# ---------------------------------------------------------------
+# Officiating data outside data/, by extension.
+#
+# `data/` covers anything inside it whatever the format, but the original
+# export arrived in src/ — so the formats an export or a statement actually
+# comes in are ignored tree-wide too. A toll statement is a PDF, and it
+# carries a transponder account number and a licence plate.
+# ---------------------------------------------------------------
+*.tsv
+*.numbers
+*.pdf
+*.sqlite
+*.sqlite3
+*.db
