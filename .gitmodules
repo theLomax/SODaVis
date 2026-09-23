@@ -1,0 +1,12 @@
+[submodule "tests"]
+	path = test/private
+	url = https://github.com/theLomax/SODaVis-Tests.git
+	branch = main
+[submodule "data"]
+	path = data
+	url = https://github.com/theLomax/SODaVis-Data.git
+	branch = main
+[submodule "sample"]
+	path = test/sample
+	url = https://github.com/theLomax/SODaVis-SampleData.git
+	branch = main
