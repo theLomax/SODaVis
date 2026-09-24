@@ -1,10 +1,10 @@
 {
   "name": "SODaVis",
-  "install": "git submodule update --init test/sample && (git submodule update --init data test/private || echo 'SODaVis: private submodules unavailable, continuing with the public sample only') && npm ci",
+  "install": "corepack enable && git submodule update --init test/sample && (git submodule update --init data test/private || echo 'SODaVis: private submodules unavailable, continuing with the public sample only') && pnpm ci",
   "terminals": [
     {
       "name": "dev",
-      "command": "npm run dev -- --host 0.0.0.0 --port 5173",
+      "command": "pnpm run dev -- --host 0.0.0.0 --port 5173",
       "description": "Vite dev server for SODaVis on http://localhost:5173"
     }
   ],
