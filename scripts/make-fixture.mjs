@@ -20,6 +20,8 @@
  *   - a multi-park day, and a day with a single park visited twice
  *   - two assignors, one of which leaves the sport code blank
  *   - a Notes field using the ':::' separator
+ *   - one of each fee anomaly: an active game at $0, a cancellation that paid,
+ *     and a game with no scheduled fee
  *
  * Run: node scripts/make-fixture.mjs
  */
@@ -214,6 +216,37 @@ rows.push(game({
   sport: 'C-BB', gameType: 'RVL Baseball', pattern: '1 umpire',
   scheduled: '$45.00', actual: '$0.00', status: 'Cancelled - No Pay',
   partner: null,
+}))
+
+// --- Fee anomalies: one of each kind the app raises -----------------------
+// The real export happens to carry none, so without these the anomaly panel has
+// nothing to show end to end. Each is plausible rather than an error, which is the
+// case acknowledgement exists for.
+
+// An active game paying nothing: an unpaid preseason scrimmage. Scheduled at $0
+// too, so it is an anomaly without also being a variance.
+rows.push(game({
+  date: '2025-10-11', time: '10:00 AM', venue: 'Summit Fields-Field 4',
+  ageGroup: 'SUM-9U-Premier (90 min)', league: 'Summit Baseball Club',
+  sport: 'C-BB', gameType: 'Scrimmage',
+  scheduled: '$0.00', actual: '$0.00', partner: 'Chen, Wei',
+  notes: 'Preseason scrimmage, unpaid',
+}))
+// A cancellation that paid: a rainout at half rate.
+rows.push(game({
+  date: '2026-05-20', time: '6:00 PM', venue: 'Cedar Ridge Softball / Field B',
+  ageGroup: 'CRS-Softball-10U-Modified Kid Pitch (65 min)',
+  league: 'Cedar Ridge Softball Association',
+  sport: 'C-FP', gameType: 'Fastpitch Softball', pattern: '1 umpire',
+  scheduled: '$45.00', actual: '$22.50', status: 'Cancelled - Paid',
+  partner: null, notes: 'Rained out after one inning; half fee',
+}))
+// No scheduled fee: a tournament add-on whose rate was set after the game.
+rows.push(game({
+  date: '2026-07-18', time: '9:00 AM', venue: 'Lakeview Park: Red Field',
+  ageGroup: 'Adult Kickball League', league: 'Lakeview Kickball Association',
+  sport: 'C-KB', gameType: 'Tournament', pattern: '1 umpire',
+  scheduled: '', actual: '$50.00', partner: null,
 }))
 
 // --- Trailing junk rows the parser must drop -----------------------------

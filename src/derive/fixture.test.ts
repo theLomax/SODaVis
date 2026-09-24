@@ -38,6 +38,7 @@ import {
 import { buildTrips, workDays, type Trip } from './trips'
 import { totalMoney, totalMiles, feeVariances } from './money'
 import { byPartner, cancellationSummary } from './metrics'
+import { feeAnomalies, groupAnomalies } from './anomalies'
 import type { TimeContext } from './time'
 
 import { durationKeyLabel } from './ageGroup'
@@ -123,7 +124,7 @@ describe('fixture parse', () => {
     expect(best?.confidence).toBe(1)
   })
 
-  it('yields 19 games, dropping the blank and TOTALS rows', () => {
+  it('yields every game, dropping the blank and TOTALS rows', () => {
     expect(games).toHaveLength(expectedFigures.games.total)
     // The all-blank row is dropped by the parser's greedy skipEmptyLines, so
     // only the TOTALS: trailer reaches mapRows and fails isDataRow there.
@@ -142,7 +143,7 @@ describe('fixture parse', () => {
   })
 
   it('never lets the TOTALS row become a game', () => {
-    expect(games.some((g) => g.fees.scheduled === 805)).toBe(false)
+    expect(games.some((g) => g.fees.scheduled === expectedFigures.money.grossScheduled)).toBe(false)
     expect(games.every((g) => g.date !== '')).toBe(true)
   })
 })
@@ -221,11 +222,26 @@ describe('fixture money', () => {
     )
   })
 
-  it('holds no active game at $0 and no cancellation with pay', () => {
-    for (const g of games) {
-      if (isCancelled(g.status)) expect(g.fees.actual).toBe(0)
-      else expect(g.fees.actual).toBeGreaterThan(0)
-    }
+  it('raises one fee anomaly of each kind', () => {
+    // The real export carries none, so the sample is the only data that exercises
+    // the anomaly panel end to end.
+    const groups = new Map(
+      groupAnomalies(feeAnomalies(games, new Map())).map((g) => [g.code, g.outstanding]),
+    )
+    expect(groups.get('zero-fee-active')).toBe(expectedFigures.anomalies.zeroFeeActive)
+    expect(groups.get('paid-cancellation')).toBe(expectedFigures.anomalies.paidCancellation)
+    expect(groups.get('no-scheduled-fee')).toBe(expectedFigures.anomalies.noScheduledFee)
+    expect([...groups.values()].every((n) => n === 1)).toBe(true)
+  })
+
+  it('keeps a paid cancellation out of gross, though it paid', () => {
+    const paid = games.find((g) => isCancelled(g.status) && (g.fees.actual ?? 0) > 0)!
+    const totals = totalMoney(resolved, trips, tripAnnotations, SEED_SETTINGS)
+    const activeGross = games
+      .filter((g) => !isCancelled(g.status))
+      .reduce((n, g) => n + (g.fees.actual ?? 0), 0)
+    expect(paid).toBeDefined()
+    expect(totals.gross).toBeCloseTo(activeGross, 2)
   })
 })
 

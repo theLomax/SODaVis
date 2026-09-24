@@ -32,6 +32,8 @@ export type ExpectedFigures = {
   durations: { extracted: number; scopesNeedingFigure: number; gamesWithoutDuration: number }
   ageGroups: { rawStrings: number; competitions: number }
   parks: { withGames: number; withoutMileage: number }
+  /** Sample only: the real export carries none, so its file omits the section. */
+  anomalies: { zeroFeeActive: number; paidCancellation: number; noScheduledFee: number }
 }
 
 const ROOT = resolve(import.meta.dirname, '..')

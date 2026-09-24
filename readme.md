@@ -31,7 +31,7 @@ git submodule update --init --recursive   # all three
 ### Where the sample data comes from
 
 `test/sample/` is a **public** submodule,
-[SODaVis-SampleData](https://github.com/theLomax/SODaVis-SampleData): 24 invented
+[SODaVis-SampleData](https://github.com/theLomax/SODaVis-SampleData): 27 invented
 games reproducing every structural oddity a real Assignr export has, plus the figures
 they produce. Nothing in it describes a real person, league or payment.
 
@@ -41,7 +41,7 @@ fills with plausible data — which is also the fastest way to see what the app 
 before feeding it your own export.
 
 ```bash
-npm test             # 153 with the public sample alone; 314 with the private data too
+npm test             # 156 with the public sample alone; 317 with the private data too
 npm run build        # static bundle in dist/
 ```
 
@@ -66,8 +66,8 @@ Two are private and neither is needed to run, build, or meaningfully test the ap
 | `data/` | SODaVis-Data | One real export, a reference seed, and the figures derived from them. |
 | `test/private/` | SODaVis-Tests | Suites that assert that season's actual totals. |
 
-With them checked out, `npm test` runs 314 and `node test/private/e2e.mjs` drives the
-built app in Chrome against the real file. Without them it runs 153 and nothing fails
+With them checked out, `npm test` runs 317 and `node test/private/e2e.mjs` drives the
+built app in Chrome against the real file. Without them it runs 156 and nothing fails
 — the sample covers the same code.
 
 ```bash
