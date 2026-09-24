@@ -20,6 +20,7 @@ import { isCancelled } from '../src/model/game.ts'
 import { resolveGames, seedAgeGroupDurations } from '../src/derive/resolve.ts'
 import { buildTrips, workDays } from '../src/derive/trips.ts'
 import { durationKey, parseAgeGroup } from '../src/derive/ageGroup.ts'
+import { anomalyCodesFor } from '../src/derive/anomalies.ts'
 import { SEED_SETTINGS, SEED_SPORT_PROFILES } from '../src/model/reference.ts'
 import { FIXTURE_PARKS } from '../test/sample/parks.ts'
 
@@ -108,6 +109,15 @@ const out = {
     withGames: new Set(resolved.map((r) => r.parkId).filter(Boolean)).size,
     withoutMileage: FIXTURE_PARKS.filter((p) => p.oneWayMiles == null).length,
   },
+  anomalies: {
+    zeroFeeActive: anomalyCount('zero-fee-active'),
+    paidCancellation: anomalyCount('paid-cancellation'),
+    noScheduledFee: anomalyCount('no-scheduled-fee'),
+  },
+}
+
+function anomalyCount(code) {
+  return games.filter((g) => anomalyCodesFor(g).includes(code)).length
 }
 
 writeFileSync(OUT, JSON.stringify(out, null, 2) + '\n')
