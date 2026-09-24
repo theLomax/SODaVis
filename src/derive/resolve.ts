@@ -366,6 +366,8 @@ export type ResolvedGame = {
   droveToCancelled?: boolean
   /** Whether weather or field conditions were the cause. `undefined` if unrecorded. */
   weatherRelated?: boolean
+  /** Rare calls tagged on this game. Empty when none have been recorded. */
+  calls: string[]
   /** Import flags plus any raised during resolution. */
   flags: DataQualityFlag[]
 }
@@ -457,6 +459,7 @@ export function resolveGame(stored: Game, ctx: ResolveContext): ResolvedGame {
     ...(annotation?.weatherRelated != null
       ? { weatherRelated: annotation.weatherRelated }
       : {}),
+    calls: annotation?.calls ?? [],
     flags,
   }
 }

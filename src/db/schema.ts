@@ -8,6 +8,7 @@ import Dexie, { type EntityTable } from 'dexie'
 import type { Game, ImportRun } from '../model/game'
 import type {
   AgeGroupDuration,
+  CallType,
   GearLevel,
   GearModifier,
   Identity,
@@ -43,6 +44,7 @@ export class AppDatabase extends Dexie {
   gameAnnotations!: EntityTable<GameAnnotation, 'dedupeKey'>
   tripAnnotations!: EntityTable<TripAnnotation, 'key'>
   gearModifiers!: EntityTable<GearModifier, 'id'>
+  callTypes!: EntityTable<CallType, 'id'>
   customProfiles!: EntityTable<StoredProfile, 'id'>
 
   constructor(name = 'so-datavisualizer') {

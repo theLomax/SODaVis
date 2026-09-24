@@ -247,6 +247,33 @@ export const SEED_SPORT_PROFILES: SportProfile[] = [
  */
 export const SPORT_ORDER = ['C-BB', 'C-FP', 'C-SP', 'C-KB'] as const
 
+/**
+ * A rare call worth tagging on a game — Infield Fly, Fourth Out, and the rest.
+ * User-owned: the seed is a starting list, and Reference data can add or rename.
+ */
+export type CallType = {
+  id: string
+  label: string
+}
+
+/** Stable ids so a rename does not orphan tags already on games. */
+export const SEED_CALL_TYPES: CallType[] = [
+  { id: 'infield-fly', label: 'Infield Fly' },
+  { id: 'fourth-out', label: 'Fourth Out' },
+  { id: 'batters-interference', label: "Batter's Interference" },
+  { id: 'catchers-balk', label: "Catcher's Balk" },
+]
+
+/** Slug used as the id when the user adds a call type. */
+export function callTypeId(label: string): string {
+  return label
+    .trim()
+    .toLowerCase()
+    .replace(/['’]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
 /** The key a game with no sport code is grouped under. */
 export const UNSPECIFIED_SPORT = '(none)'
 

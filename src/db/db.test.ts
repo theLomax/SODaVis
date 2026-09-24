@@ -14,7 +14,13 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import 'fake-indexeddb/auto'
 
 import { AppDatabase, seedReferenceData } from './schema'
-import { acknowledgeAnomaly, loadSnapshot, patchGameAnnotation, saveGameAnnotation } from './repo'
+import {
+  acknowledgeAnomaly,
+  deleteCallType,
+  loadSnapshot,
+  patchGameAnnotation,
+  saveGameAnnotation,
+} from './repo'
 import { exportBackup, restoreBackup, validateBackup } from './backup'
 import { SEED_SETTINGS } from '../model/reference'
 
@@ -297,5 +303,40 @@ describe('anomaly acknowledgement', () => {
     expect(stored!.durationMinutesOverride).toBe(80)
     expect(stored!.notes).toBe('ran long')
     expect(stored!.acknowledgedAnomalies).toEqual(['zero-fee-active'])
+  })
+})
+
+describe('call types', () => {
+  it('seeds the four starting calls on a fresh database', async () => {
+    expect((await db.callTypes.toArray()).map((t) => t.id).sort()).toEqual([
+      'batters-interference',
+      'catchers-balk',
+      'fourth-out',
+      'infield-fly',
+    ])
+  })
+
+  it('keeps a calls-only annotation, and drops it once the last tag is cleared', async () => {
+    await patchGameAnnotation('g1', { calls: ['infield-fly'] }, db)
+    expect((await db.gameAnnotations.get('g1'))!.calls).toEqual(['infield-fly'])
+    await patchGameAnnotation('g1', { calls: undefined }, db)
+    expect(await db.gameAnnotations.get('g1')).toBeUndefined()
+  })
+
+  it('strips a deleted type from every game that tagged it', async () => {
+    await patchGameAnnotation('g2', { calls: ['infield-fly', 'fourth-out'], notes: 'kept' }, db)
+    await deleteCallType('infield-fly', db)
+    expect(await db.callTypes.get('infield-fly')).toBeUndefined()
+    const stored = await db.gameAnnotations.get('g2')
+    expect(stored!.calls).toEqual(['fourth-out'])
+    expect(stored!.notes).toBe('kept')
+  })
+
+  it('re-seeds rather than restoring emptiness from a pre-calls backup', async () => {
+    const backup = await exportBackup(db)
+    delete (backup.data as { callTypes?: unknown }).callTypes
+    expect(validateBackup(backup).ok).toBe(true)
+    await restoreBackup(backup, 'replace', db)
+    expect((await db.callTypes.toArray()).map((t) => t.id)).toContain('infield-fly')
   })
 })

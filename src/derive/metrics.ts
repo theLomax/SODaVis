@@ -247,6 +247,32 @@ export function bySport(ctx: BreakdownContext, sportLabel: (code: string) => str
   }, false)
 }
 
+export type CallCount = { key: string; label: string; games: number }
+
+/**
+ * How often each call type was tagged. Count only — a game's fee does not
+ * belong to the Infield Fly — and a game with two tags counts toward both.
+ * Known types with no tags stay in the list at zero, so a call never made is
+ * visible the same way a day never worked is.
+ */
+export function byCall(
+  ctx: BreakdownContext,
+  types: { id: string; label: string }[],
+): CallCount[] {
+  const acc = new Map<string, CallCount>()
+  for (const t of types) acc.set(t.id, { key: t.id, label: t.label, games: 0 })
+  for (const trip of ctx.trips) {
+    for (const g of trip.games) {
+      for (const id of g.calls) {
+        const row = acc.get(id) ?? { key: id, label: id, games: 0 }
+        row.games++
+        acc.set(id, row)
+      }
+    }
+  }
+  return [...acc.values()].sort((a, b) => b.games - a.games || a.label.localeCompare(b.label))
+}
+
 // ---------------------------------------------------------------------------
 // Time series
 // ---------------------------------------------------------------------------

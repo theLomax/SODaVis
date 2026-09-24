@@ -6,6 +6,7 @@
 import type { Game, ImportRun } from '../model/game'
 import type {
   AgeGroupDuration,
+  CallType,
   GearLevel,
   GearModifier,
   Identity,
@@ -38,6 +39,7 @@ export type AppSnapshot = {
   sports: SportProfile[]
   gearLevels: GearLevel[]
   gearModifiers: GearModifier[]
+  callTypes: CallType[]
   identity: Identity
   settings: Settings
   gameAnnotations: GameAnnotation[]
@@ -338,6 +340,25 @@ export async function saveSettings(settings: Settings, database: AppDatabase = d
   await database.settings.put(settings)
 }
 
+export async function saveCallTypes(types: CallType[], database: AppDatabase = db): Promise<void> {
+  await database.callTypes.bulkPut(types)
+}
+
+/**
+ * Removes a call type and strips its id from every game that tagged it, so a
+ * delete cannot leave orphan chips that resolve to a raw slug.
+ */
+export async function deleteCallType(id: string, database: AppDatabase = db): Promise<void> {
+  await database.transaction('rw', [database.callTypes, database.gameAnnotations], async () => {
+    await database.callTypes.delete(id)
+    const tagged = (await database.gameAnnotations.toArray()).filter((a) => a.calls?.includes(id))
+    for (const annotation of tagged) {
+      const calls = annotation.calls!.filter((c) => c !== id)
+      await saveGameAnnotation({ ...annotation, calls: calls.length ? calls : undefined }, database)
+    }
+  })
+}
+
 // ---------------------------------------------------------------------------
 // Annotation writes
 // ---------------------------------------------------------------------------
@@ -365,6 +386,7 @@ export async function saveGameAnnotation(
     annotation.weatherRelated == null &&
     !annotation.acknowledgedAnomalies?.length &&
     !Object.keys(annotation.anomalyNotes ?? {}).length &&
+    !annotation.calls?.length &&
     !annotation.notes?.trim()
   if (isEmpty) await database.gameAnnotations.delete(annotation.dedupeKey)
   else await database.gameAnnotations.put(annotation)
