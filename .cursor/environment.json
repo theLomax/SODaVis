@@ -1,0 +1,22 @@
+{
+  "name": "SODaVis",
+  "install": "git submodule update --init test/sample && (git submodule update --init data test/private || echo 'SODaVis: private submodules unavailable, continuing with the public sample only') && npm ci",
+  "terminals": [
+    {
+      "name": "dev",
+      "command": "npm run dev -- --host 0.0.0.0 --port 5173",
+      "description": "Vite dev server for SODaVis on http://localhost:5173"
+    }
+  ],
+  "ports": [
+    {
+      "name": "web",
+      "port": 5173
+    }
+  ],
+  "repositoryDependencies": [
+    "github.com/theLomax/SODaVis-SampleData",
+    "github.com/theLomax/SODaVis-Data",
+    "github.com/theLomax/SODaVis-Tests"
+  ]
+}
