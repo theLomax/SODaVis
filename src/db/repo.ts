@@ -22,7 +22,14 @@ import {
   sortGearModifiers,
 } from '../model/reference'
 import type { SourceProfile } from '../import/profiles'
-import { db, dehydrateProfile, rehydrateProfile, type AppDatabase } from './schema'
+import {
+  db,
+  dehydrateProfile,
+  rehydrateProfile,
+  type AppDatabase,
+  type StoredProfile,
+} from './schema'
+import { TABLES, type TableSpec } from './tables'
 
 export type AppSnapshot = {
   games: Game[]
@@ -40,52 +47,33 @@ export type AppSnapshot = {
 }
 
 export async function loadSnapshot(database: AppDatabase = db): Promise<AppSnapshot> {
-  const [
-    games,
-    parks,
-    durations,
-    sports,
-    gearLevels,
-    gearModifiers,
-    identityRows,
-    settingsRows,
-    gameAnnotations,
-    tripAnnotations,
-    imports,
-    storedProfiles,
-  ] = await Promise.all([
-    database.games.toArray(),
-    database.parks.toArray(),
-    database.durations.toArray(),
-    database.sports.toArray(),
-    database.gearLevels.toArray(),
-    database.gearModifiers.toArray(),
-    database.identity.toArray(),
-    database.settings.toArray(),
-    database.gameAnnotations.toArray(),
-    database.tripAnnotations.toArray(),
-    database.imports.orderBy('importedAt').reverse().toArray(),
-    database.customProfiles.toArray(),
-  ])
+  const entries = await Promise.all(
+    TABLES.map(async (spec) => [spec.name, await readSnapshotTable(spec, database)] as const),
+  )
+  return Object.fromEntries(entries) as unknown as AppSnapshot
+}
 
-  return {
-    games,
-    parks,
-    durations,
-    sports,
-    // Dexie returns primary-key order; these need their ladder order instead.
-    gearLevels: sortGearLevels(gearLevels),
-    gearModifiers: sortGearModifiers(gearModifiers),
-    identity: identityRows[0] ?? SEED_IDENTITY,
-    // Settings gains fields over time, and a row written by an earlier version
-    // lacks them. Filling from the seed here means every consumer sees a complete
-    // object rather than each one guarding for itself — `rushHour` in particular is
-    // read as `s.rushHour.startMinutes` by the editor, which would throw.
-    settings: { ...SEED_SETTINGS, ...settingsRows[0] },
-    gameAnnotations,
-    tripAnnotations,
-    imports,
-    customProfiles: storedProfiles.map(rehydrateProfile),
+async function readSnapshotTable(spec: TableSpec, database: AppDatabase): Promise<unknown> {
+  const table = database.table(spec.name)
+  switch (spec.kind) {
+    case 'imports':
+      return database.imports.orderBy('importedAt').reverse().toArray()
+    case 'identity':
+      return ((await table.toArray())[0] as Identity | undefined) ?? SEED_IDENTITY
+    case 'settings':
+      // Settings gains fields over time, and a row written by an earlier version
+      // lacks them. Filling from the seed here means every consumer sees a complete
+      // object rather than each one guarding for itself — `rushHour` in particular is
+      // read as `s.rushHour.startMinutes` by the editor, which would throw.
+      return { ...SEED_SETTINGS, ...((await table.toArray())[0] as Settings | undefined) }
+    case 'profiles':
+      return (await table.toArray()).map((row) => rehydrateProfile(row as StoredProfile))
+    case 'gearLevels':
+      return sortGearLevels(await table.toArray())
+    case 'gearModifiers':
+      return sortGearModifiers(await table.toArray())
+    default:
+      return table.toArray()
   }
 }
 

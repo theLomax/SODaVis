@@ -17,14 +17,7 @@ import type {
 } from '../model/reference'
 import type { GameAnnotation, TripAnnotation } from '../model/annotation'
 import type { SourceProfile } from '../import/profiles'
-import {
-  GEAR_LEVELS,
-  GEAR_MODIFIERS,
-  SEED_IDENTITY,
-  SEED_PARKS,
-  SEED_SETTINGS,
-  SEED_SPORT_PROFILES,
-} from '../model/reference'
+import { TABLES, schemaVersions, storesAddedIn } from './tables'
 
 /**
  * A custom profile as stored. `isDataRow` and `transforms` are functions and
@@ -54,28 +47,12 @@ export class AppDatabase extends Dexie {
 
   constructor(name = 'so-datavisualizer') {
     super(name)
-
-    this.version(1).stores({
-      // dedupeKey is unique: it is what makes re-import idempotent.
-      games: 'id, &source.dedupeKey, date, status, venueRaw, source.importId, league, assignor, sportCode',
-      imports: 'id, importedAt',
-      parks: 'id, name',
-      durations: 'key',
-      sports: 'code',
-      gearLevels: 'id',
-      identity: 'id',
-      settings: 'id',
-      gameAnnotations: 'dedupeKey',
-      tripAnnotations: 'key',
-      customProfiles: 'id',
-    })
-
-    // v2 adds gear modifiers — conditions layered on the role (shield, dressed
-    // down, cold, rain). Purely additive: a v1 database upgrades by gaining an
-    // empty table, which seedReferenceData then fills.
-    this.version(2).stores({
-      gearModifiers: 'id',
-    })
+    // Each version's `stores()` is only the tables added in that version, so an
+    // existing database upgrades by gaining empty tables rather than being rebuilt.
+    // The list itself lives in `tables.ts`.
+    for (const version of schemaVersions()) {
+      this.version(version).stores(storesAddedIn(version))
+    }
   }
 }
 
@@ -86,34 +63,14 @@ export const db = new AppDatabase()
  * never overwritten, because the user may have corrected it.
  */
 export async function seedReferenceData(database: AppDatabase = db): Promise<void> {
+  const seeded = TABLES.filter((t) => t.seedRows && t.seedRows.length > 0)
   await database.transaction(
     'rw',
-    [
-      database.parks,
-      database.sports,
-      database.gearLevels,
-      database.gearModifiers,
-      database.identity,
-      database.settings,
-    ],
+    seeded.map((t) => database.table(t.name)),
     async () => {
-      if ((await database.settings.count()) === 0) {
-        await database.settings.put(SEED_SETTINGS)
-      }
-      if ((await database.identity.count()) === 0) {
-        await database.identity.put(SEED_IDENTITY)
-      }
-      if ((await database.gearLevels.count()) === 0) {
-        await database.gearLevels.bulkPut(GEAR_LEVELS)
-      }
-      if ((await database.gearModifiers.count()) === 0) {
-        await database.gearModifiers.bulkPut(GEAR_MODIFIERS)
-      }
-      if ((await database.sports.count()) === 0) {
-        await database.sports.bulkPut(SEED_SPORT_PROFILES)
-      }
-      if ((await database.parks.count()) === 0) {
-        await database.parks.bulkPut(SEED_PARKS)
+      for (const spec of seeded) {
+        const table = database.table(spec.name)
+        if ((await table.count()) === 0) await table.bulkPut(spec.seedRows!)
       }
     },
   )
