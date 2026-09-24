@@ -891,13 +891,14 @@ function CallCell({
   onSaved: () => Promise<void>
 }) {
   const [saving, setSaving] = useState(false)
-  const active = new Set(game.calls)
+  const [active, setActive] = useState(() => new Set(game.calls))
   const types = [...callTypes].sort((a, b) => a.label.localeCompare(b.label))
 
   async function toggle(id: string, on: boolean) {
     const next = new Set(active)
     if (on) next.add(id)
     else next.delete(id)
+    setActive(next)
     setSaving(true)
     try {
       await patchGameAnnotation(game.game.source.dedupeKey, {
