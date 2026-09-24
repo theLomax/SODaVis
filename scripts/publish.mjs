@@ -20,26 +20,19 @@ import { execFileSync } from 'node:child_process'
 import { cpSync, existsSync, mkdirSync, rmSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { tmpdir } from 'node:os'
+import { DEFAULT_DENYLIST_PATH, DenylistError, findForbidden, loadDenylist } from './denylist.mjs'
 
 const PUBLIC_REMOTE = 'https://github.com/theLomax/SODaVis.git'
 /** Paths that are submodules here: recorded as gitlinks, never copied as files. */
 const SUBMODULES = ['data', 'test/private', 'test/sample']
 
 /**
- * Anything matching these must never reach the public repo. Checked against every
- * file about to be committed, because a scan of the working tree is only as good as
- * the last time someone remembered to run it.
+ * Anything matching the denylist must never reach the public repo. Checked against
+ * every file about to be committed, because a scan of the working tree is only as
+ * good as the last time someone remembered to run it. The list itself is private —
+ * see `scripts/denylist.mjs` — so this file is scanned like any other.
  */
-const FORBIDDEN =
-  /\bfein\b|mccarter|S&J|mbsatx|wyliesports|dfwinterlock|\b8990\b|\b9336\b|gabe.nesbitt|mcinnish|carroll?ton|mckinney|\bwylie\b|coppell|lewisville|prestonwood|NTWKA|\bspirit\b|foster.village|andrew.brown|little.elm|oran.good|\bpepper\b|texas.star|allen.station|JZM5750|13761487/i
-
-/**
- * This file necessarily contains the forbidden words, since it defines them. Scanning
- * itself would fail every time, so it is exempt — the one file where a match is
- * expected rather than a leak. Kept as an explicit list rather than a pattern, so
- * adding an exemption is a deliberate act.
- */
-const SELF_EXEMPT = new Set(['scripts/publish.mjs'])
+const DENYLIST_PATH = process.env.SODAVIS_DENYLIST || DEFAULT_DENYLIST_PATH
 
 const args = process.argv.slice(2)
 const dryRun = args.includes('--dry-run')
@@ -58,9 +51,17 @@ const tracked = git(here, 'ls-files').split('\n').filter(Boolean)
 const files = tracked.filter((f) => !SUBMODULES.includes(f))
 
 // --- the gate: scan what is about to be published, not what was published before ---
+let forbidden
+try {
+  forbidden = loadDenylist(DENYLIST_PATH)
+} catch (e) {
+  if (!(e instanceof DenylistError)) throw e
+  console.error(`✗ refusing to publish — no usable denylist: ${e.message}`)
+  process.exit(1)
+}
+
 const offenders = []
 for (const f of files) {
-  if (SELF_EXEMPT.has(f)) continue
   if (/\.(png|jpg|jpeg|ico|svg|woff2?|lock)$/i.test(f)) continue
   let text
   try {
@@ -68,16 +69,14 @@ for (const f of files) {
   } catch {
     continue
   }
-  // The repo URLs contain the owner's username, which is unavoidable and not data.
-  const withoutUrls = text.replace(/https:\/\/github\.com\/[^\s"')]+/g, '')
-  const hit = FORBIDDEN.exec(withoutUrls)
-  if (hit) offenders.push(`${f}: ${hit[0]}`)
+  const hit = findForbidden(text, forbidden)
+  if (hit) offenders.push(`${f}: ${hit}`)
 }
 
 if (offenders.length > 0) {
   console.error('✗ refusing to publish — real data found in:')
   for (const o of offenders) console.error(`    ${o}`)
-  console.error('\nRemove it, or widen the allowance in scripts/publish.mjs if it is a false positive.')
+  console.error('\nRemove it, or narrow the pattern in the private denylist if it is a false positive.')
   process.exit(1)
 }
 console.log(`✓ scanned ${files.length} files, no real data`)

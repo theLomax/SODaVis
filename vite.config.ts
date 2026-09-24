@@ -10,6 +10,6 @@ export default defineConfig({
     // `test/private` is the SODaVis-Tests submodule: the suites that assert the real
     // export's figures. Included when checked out, absent otherwise — so a clone
     // without access to it runs the public suites and reports nothing missing.
-    include: ['src/**/*.test.ts', 'test/private/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'scripts/**/*.test.ts', 'test/private/**/*.test.ts'],
   },
 })
