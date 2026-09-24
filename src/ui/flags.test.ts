@@ -18,7 +18,8 @@ import type { DataQualityFlagCode } from '../model/game'
  */
 function declaredCodes(): string[] {
   const src = readFileSync(resolve(__dirname, '../model/game.ts'), 'utf8')
-  const block = /export type DataQualityFlagCode =([\s\S]*?)\n\nexport type DataQualityFlag/.exec(src)
+  // `\r?` because a Windows checkout with autocrlf gives the file CRLF endings.
+  const block = /export type DataQualityFlagCode =([\s\S]*?)\r?\n\r?\nexport type DataQualityFlag/.exec(src)
   expect(block, 'DataQualityFlagCode union not found in model/game.ts').toBeTruthy()
   return [...block![1]!.matchAll(/'([a-z-]+)'/g)].map((m) => m[1]!)
 }
