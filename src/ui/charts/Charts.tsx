@@ -505,7 +505,14 @@ export function TrendLine({
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={rows} margin={{ ...CHART_MARGIN, right: 52 }}>
           <CartesianGrid vertical={false} stroke="var(--gridline)" />
-          <XAxis dataKey="label" stroke="var(--baseline)" interval="preserveStartEnd" />
+          {/* Unlike a bar, a line's first point sits on the y-axis unless padded,
+              centring the first period label where it collides with the lowest tick. */}
+          <XAxis
+            dataKey="label"
+            stroke="var(--baseline)"
+            interval="preserveStartEnd"
+            padding={{ left: 16 }}
+          />
           <YAxis tickFormatter={format} stroke="var(--baseline)" width={56} />
           <Tooltip
             // Crosshair on lines.
