@@ -204,6 +204,29 @@ describe('settings forward compatibility', () => {
 })
 
 /**
+ * A fresh install seeds a blank identity, so merging a reference file into it is the
+ * documented way to bring a real identity back — and must not be blocked by the blank.
+ */
+describe('identity on restore', () => {
+  const reference = async (patterns: string[]) => {
+    const backup = await exportBackup(db)
+    backup.data.identity = { id: 'self', patterns, displayName: 'Self' }
+    return backup
+  }
+
+  it('merge fills the blank identity seeded on first run', async () => {
+    await restoreBackup(await reference(['^Rivera \\(']), 'merge', db)
+    expect((await db.identity.get('self'))!.patterns).toEqual(['^Rivera \\('])
+  })
+
+  it('merge keeps an identity that is already set', async () => {
+    await db.identity.put({ id: 'self', patterns: ['^Mine'], displayName: 'Me' })
+    await restoreBackup(await reference(['^Theirs']), 'merge', db)
+    expect((await db.identity.get('self'))!.patterns).toEqual(['^Mine'])
+  })
+})
+
+/**
  * Acknowledging a fee anomaly.
  *
  * The acknowledgement is the only record that an oddity was examined and found

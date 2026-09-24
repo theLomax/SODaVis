@@ -227,7 +227,10 @@ export async function restoreBackup(
     if (mode === 'replace' || (await database.settings.count()) === 0) {
       await database.settings.put(d.settings)
     }
-    if (mode === 'replace' || (await database.identity.count()) === 0) {
+    // An identity with no patterns is the blank one seeded on first run, not a
+    // choice to preserve — keeping it would leave self undetectable on every game.
+    const identity = await database.identity.get('self')
+    if (mode === 'replace' || !identity?.patterns.length) {
       await database.identity.put(d.identity)
     }
   })

@@ -332,8 +332,9 @@ checked; the numbers themselves stay in the private repo.
 | Untimed | With durations filled, the trips still untimed for want of mileage — each named individually rather than only counted |
 | Re-import | The same file inserting nothing; one edited fee raising exactly one conflict, annotations intact |
 
-`test/private/e2e.mjs` then drives the real app in Chrome — imports the sample, checks the
-Overview reads the export total, fills in durations, adds a trip expense, re-imports to confirm
+`test/private/e2e.mjs` then drives the real app in Chrome — restores the parks and identity
+from `data/reference.local.json` (the app ships neither, so without them no trip forms),
+imports the export, checks the Overview reads the export total, fills in durations, adds a trip expense, re-imports to confirm
 nothing is lost — and gates on console errors, horizontal overflow, overlapping chart
 labels, value labels drawn inside their bars, and charts that drew axes but no marks.
 It also drives the flag dialog: that the chip is a button announcing `aria-haspopup`,
