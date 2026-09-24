@@ -2,13 +2,19 @@
  * JSON export/import. The point is that the data is portable rather than trapped
  * in IndexedDB — a backup file is plain, readable JSON that a future version, or
  * a different tool entirely, can read.
+ *
+ * Which tables are copied, validated and restored is decided by `tables.ts`. A
+ * table that is not in the registry cannot reach a backup, and a `replace`
+ * restore cannot silently empty one that is.
  */
 
 import { z } from 'zod'
-import { GEAR_MODIFIERS } from '../model/reference'
+import type { Game } from '../model/game'
+import type { Identity, Settings } from '../model/reference'
 import type { AppSnapshot } from './repo'
 import { loadSnapshot } from './repo'
-import { db, dehydrateProfile, rehydrateProfile, type AppDatabase, type StoredProfile } from './schema'
+import { db, type AppDatabase, type StoredProfile } from './schema'
+import { TABLES, backupDataSchema, type TableSpec } from './tables'
 
 export const BACKUP_VERSION = 1
 
@@ -23,20 +29,21 @@ export type BackupFile = {
 export async function exportBackup(database: AppDatabase = db): Promise<BackupFile> {
   const snapshot = await loadSnapshot(database)
   const storedProfiles = await database.customProfiles.toArray()
+  const data = { ...snapshot, customProfiles: storedProfiles }
+
+  const counts: Record<string, number> = {}
+  for (const spec of TABLES) {
+    if (!spec.inCounts) continue
+    const value = data[spec.name as keyof typeof data]
+    counts[spec.name] = Array.isArray(value) ? value.length : 0
+  }
 
   return {
     format: 'so-datavisualizer-backup',
     version: BACKUP_VERSION,
     exportedAt: new Date().toISOString(),
-    counts: {
-      games: snapshot.games.length,
-      parks: snapshot.parks.length,
-      durations: snapshot.durations.length,
-      gameAnnotations: snapshot.gameAnnotations.length,
-      tripAnnotations: snapshot.tripAnnotations.length,
-      imports: snapshot.imports.length,
-    },
-    data: { ...snapshot, customProfiles: storedProfiles },
+    counts,
+    data,
   }
 }
 
@@ -58,62 +65,14 @@ export function backupFileName(): string {
  * permissive about unknown extra keys so a file written by a newer version still
  * restores what this version understands.
  */
-const gameSchema = z.object({
-  id: z.string(),
-  source: z.object({
-    system: z.string(),
-    sourceId: z.string().optional(),
-    dedupeKey: z.string(),
-    importId: z.string(),
-    importedAt: z.string(),
-    rawRow: z.record(z.string(), z.string()),
-  }),
-  date: z.string(),
-  startTime: z.string(),
-  venueRaw: z.string(),
-  ageGroupRaw: z.string(),
-  status: z.string(),
-  fees: z.object({ currency: z.string() }).loose(),
-  assignments: z.array(
-    z.object({ position: z.string(), official: z.string(), isSelf: z.boolean() }),
-  ),
-  flags: z.array(z.object({ code: z.string(), message: z.string(), severity: z.string() }).loose()),
-}).loose()
-
-const parkSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  aliases: z.array(z.string()),
-  venuePatterns: z.array(z.string()),
-}).loose()
-
-const backupSchema = z.object({
-  format: z.literal('so-datavisualizer-backup'),
-  version: z.number().int().positive(),
-  exportedAt: z.string(),
-  data: z.object({
-    games: z.array(gameSchema),
-    parks: z.array(parkSchema),
-    durations: z.array(
-      z.object({ key: z.string(), durationMinutes: z.number(), origin: z.string() }).loose(),
-    ),
-    sports: z.array(z.object({ code: z.string(), label: z.string() }).loose()),
-    gearLevels: z.array(z.object({ id: z.string(), label: z.string() }).loose()),
-    // Optional: a backup taken before gear modifiers existed has no such key,
-    // and must still restore rather than being rejected as malformed.
-    gearModifiers: z
-      .array(z.object({ id: z.string(), label: z.string() }).loose())
-      .optional(),
-    identity: z.object({ id: z.literal('self'), patterns: z.array(z.string()) }).loose(),
-    settings: z.object({ id: z.literal('settings') }).loose(),
-    gameAnnotations: z.array(z.object({ dedupeKey: z.string() }).loose()),
-    tripAnnotations: z.array(
-      z.object({ key: z.string(), expenses: z.array(z.object({ id: z.string(), amount: z.number() }).loose()) }).loose(),
-    ),
-    imports: z.array(z.object({ id: z.string(), importedAt: z.string() }).loose()),
-    customProfiles: z.array(z.object({ id: z.string(), label: z.string() }).loose()),
-  }),
-}).loose()
+const backupSchema = z
+  .object({
+    format: z.literal('so-datavisualizer-backup'),
+    version: z.number().int().positive(),
+    exportedAt: z.string(),
+    data: backupDataSchema(),
+  })
+  .loose()
 
 export type ValidationResult =
   | { ok: true; backup: BackupFile }
@@ -157,13 +116,18 @@ export type RestoreReport = {
  * `replace` wipes first, giving an exact copy of the backup.
  * `merge` adds what is missing and leaves every existing row alone, so restoring
  * an older backup over newer work cannot undo it.
+ *
+ * Every registered table is visited. After the writes, any seeded table that is
+ * still empty is refilled — that is what keeps a pre-modifier backup from
+ * leaving the app with no gear modifiers, and what a new table with a seed gets
+ * for free.
  */
 export async function restoreBackup(
   backup: BackupFile,
   mode: RestoreMode,
   database: AppDatabase = db,
 ): Promise<RestoreReport> {
-  const d = backup.data
+  const d = backup.data as Record<string, unknown>
   const report: RestoreReport = {
     mode,
     games: { inserted: 0, skipped: 0 },
@@ -180,62 +144,72 @@ export async function restoreBackup(
       await Promise.all(database.tables.map((t) => t.clear()))
     }
 
-    if (mode === 'replace') {
-      await database.games.bulkPut(d.games)
-      report.games.inserted = d.games.length
-    } else {
-      const existing = new Set((await database.games.toArray()).map((g) => g.source.dedupeKey))
-      const fresh = d.games.filter((g) => !existing.has(g.source.dedupeKey))
-      if (fresh.length) await database.games.bulkPut(fresh)
-      report.games.inserted = fresh.length
-      report.games.skipped = d.games.length - fresh.length
+    for (const spec of TABLES) {
+      const written = await restoreTable(spec, d[spec.name], mode, database)
+      if (spec.name === 'games' && written && typeof written !== 'number') {
+        report.games = written
+      } else if (spec.name !== 'games' && typeof written === 'number' && spec.name in report) {
+        ;(report as unknown as Record<string, number>)[spec.name] = written
+      }
     }
 
-    report.parks = await mergeTable(database.parks, d.parks, (p) => p.id, mode)
-    report.durations = await mergeTable(database.durations, d.durations, (x) => x.key, mode)
-    await mergeTable(database.sports, d.sports, (x) => x.code, mode)
-    await mergeTable(database.gearLevels, d.gearLevels, (x) => x.id, mode)
-    // A backup predating gear modifiers carries none. In `replace` mode every
-    // table was just cleared, so accepting that silently would leave the app with
-    // no modifiers at all — re-seed the defaults instead of restoring emptiness.
-    if (d.gearModifiers?.length) {
-      await mergeTable(database.gearModifiers, d.gearModifiers, (x) => x.id, mode)
-    } else if ((await database.gearModifiers.count()) === 0) {
-      await database.gearModifiers.bulkPut(GEAR_MODIFIERS)
-    }
-    report.gameAnnotations = await mergeTable(
-      database.gameAnnotations,
-      d.gameAnnotations,
-      (x) => x.dedupeKey,
-      mode,
-    )
-    report.tripAnnotations = await mergeTable(
-      database.tripAnnotations,
-      d.tripAnnotations,
-      (x) => x.key,
-      mode,
-    )
-    report.imports = await mergeTable(database.imports, d.imports, (x) => x.id, mode)
-    report.customProfiles = await mergeTable(
-      database.customProfiles,
-      d.customProfiles,
-      (x) => x.id,
-      mode,
-    )
-
-    // Settings and identity are single rows; a merge keeps what is already set.
-    if (mode === 'replace' || (await database.settings.count()) === 0) {
-      await database.settings.put(d.settings)
-    }
-    // An identity with no patterns is the blank one seeded on first run, not a
-    // choice to preserve — keeping it would leave self undetectable on every game.
-    const identity = await database.identity.get('self')
-    if (mode === 'replace' || !identity?.patterns.length) {
-      await database.identity.put(d.identity)
-    }
+    await refillEmptySeeds(database)
   })
 
   return report
+}
+
+async function restoreTable(
+  spec: TableSpec,
+  raw: unknown,
+  mode: RestoreMode,
+  database: AppDatabase,
+): Promise<number | { inserted: number; skipped: number } | undefined> {
+  const table = database.table(spec.name)
+
+  if (spec.merge === 'dedupe') {
+    const games = (Array.isArray(raw) ? raw : []) as Game[]
+    if (mode === 'replace') {
+      if (games.length) await table.bulkPut(games)
+      return { inserted: games.length, skipped: 0 }
+    }
+    const existing = new Set((await table.toArray()).map((g: Game) => g.source.dedupeKey))
+    const fresh = games.filter((g) => !existing.has(g.source.dedupeKey))
+    if (fresh.length) await table.bulkPut(fresh)
+    return { inserted: fresh.length, skipped: games.length - fresh.length }
+  }
+
+  if (spec.merge === 'settings') {
+    const settings = raw as Settings | undefined
+    if (settings && (mode === 'replace' || (await table.count()) === 0)) {
+      await table.put(settings)
+    }
+    return undefined
+  }
+
+  if (spec.merge === 'identity') {
+    const incoming = raw as Identity | undefined
+    if (!incoming) return undefined
+    // An identity with no patterns is the blank one seeded on first run, not a
+    // choice to preserve — keeping it would leave self undetectable on every game.
+    const identity = (await table.get('self')) as Identity | undefined
+    if (mode === 'replace' || !identity?.patterns.length) {
+      await table.put(incoming)
+    }
+    return undefined
+  }
+
+  const rows = Array.isArray(raw) ? raw : []
+  if (spec.optionalInBackup && rows.length === 0) return 0
+  return mergeTable(table, rows, spec.keyOf ?? ((r) => r.id as string | undefined), mode)
+}
+
+async function refillEmptySeeds(database: AppDatabase): Promise<void> {
+  for (const spec of TABLES) {
+    if (!spec.seedRows?.length) continue
+    const table = database.table(spec.name)
+    if ((await table.count()) === 0) await table.bulkPut(spec.seedRows)
+  }
 }
 
 async function mergeTable<T>(
@@ -254,4 +228,4 @@ async function mergeTable<T>(
   return fresh.length
 }
 
-export { dehydrateProfile, rehydrateProfile }
+export { dehydrateProfile, rehydrateProfile } from './schema'
