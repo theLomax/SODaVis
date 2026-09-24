@@ -15,14 +15,17 @@ import {
   ImportUndoBlockedError,
   mergeParks,
   reattachTripAnnotation,
+  saveIdentity,
   saveParks,
+  saveSettings,
   undoBlockers,
   undoImport,
   type CommitPlan,
 } from './repo'
+import { exportBackup, restoreBackup } from './backup'
 import type { Game } from '../model/game'
 import { orphanedTripAnnotations } from '../derive/trips'
-import type { Park } from '../model/reference'
+import { SEED_SETTINGS, type Park } from '../model/reference'
 
 let db: AppDatabase
 let counter = 0
@@ -200,5 +203,35 @@ describe('undoing an import', () => {
     const third = await commitImport(plan([], [game(1, 60)]), db)
 
     expect(undoBlockers(second.id, await db.imports.toArray()).map((r) => r.id)).toEqual([third.id])
+  })
+})
+
+/**
+ * Replace wipes every table first. What it puts back has to be the backup, not
+ * leftover seed rows — and settings / identity are single-row tables that an
+ * earlier merge-restore used to skip because a seed already occupied the slot.
+ */
+describe('replace restore', () => {
+  it('refills games, settings and identity after the wipe', async () => {
+    await commitImport(plan([game(1, 40)]), db)
+    await saveIdentity({ id: 'self', patterns: ['^Rivera'], displayName: 'Rivera' }, db)
+    await saveSettings(
+      { ...SEED_SETTINGS, irsMileageRateByYear: { 2026: 0.7 }, arrivalFloorMinutes: 20 },
+      db,
+    )
+    const backup = await exportBackup(db)
+
+    // A different live state, so a restore that skipped a table would leave this behind.
+    await commitImport(plan([game(2, 99)]), db)
+    await saveIdentity({ id: 'self', patterns: ['^Other'], displayName: 'Other' }, db)
+    await saveSettings({ ...SEED_SETTINGS, arrivalFloorMinutes: 99 }, db)
+
+    await restoreBackup(backup, 'replace', db)
+
+    expect((await db.games.toArray()).map((g) => g.id).sort()).toEqual(['game_test:1'])
+    expect((await db.identity.get('self'))!.patterns).toEqual(['^Rivera'])
+    expect((await db.settings.get('settings'))!.arrivalFloorMinutes).toBe(20)
+    expect((await db.settings.get('settings'))!.irsMileageRateByYear).toEqual({ 2026: 0.7 })
+    expect(await db.games.get('game_test:2')).toBeUndefined()
   })
 })
