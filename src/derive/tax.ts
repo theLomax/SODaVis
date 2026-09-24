@@ -9,7 +9,7 @@
  * will differ — the view says so rather than implying the two must match.
  */
 
-import { isCancelled } from '../model/game'
+import { isActive, isCancelled } from '../model/game'
 import type { Settings } from '../model/reference'
 import type { Expense, ExpenseCategory, TripAnnotation } from '../model/annotation'
 import type { ResolvedGame } from './resolve'
@@ -84,6 +84,7 @@ export function taxYear(
       cancelledGames++
       continue
     }
+    if (!isActive(game.status)) continue
     activeGames++
     const amount = game.fees.actual ?? 0
     const tv = game.fees.travel ?? 0

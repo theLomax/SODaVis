@@ -74,6 +74,11 @@ export type DerivedState = {
   /** Resolved games inside the current filter. */
   resolved: ResolvedGame[]
   trips: Trip[]
+  /**
+   * Trips from every resolved game, ignoring the current filter. The Tax view
+   * hides the filter bar but still has to count a full year's mileage.
+   */
+  allTrips: Trip[]
   unplaceable: ResolvedGame[]
   cancelled: ResolvedGame[]
   /**
@@ -249,11 +254,13 @@ export function derive(snapshot: AppSnapshot, filter: Filter): DerivedState {
 
   const tripAnnotations = new Map(snapshot.tripAnnotations.map((a) => [a.key, a]))
 
-  const { trips, unplaceable, cancelled, uncountedDrives } = buildTrips(resolved, {
+  const tripCtx = {
     parks: new Map(snapshot.parks.map((p) => [p.id, p])),
     tripAnnotations,
     settings: snapshot.settings,
-  })
+  }
+  const { trips, unplaceable, cancelled, uncountedDrives } = buildTrips(resolved, tripCtx)
+  const { trips: allTrips } = buildTrips(allResolved, tripCtx)
 
   const timeCtx: TimeContext = {
     sports: new Map(snapshot.sports.map((s) => [s.code, s])),
@@ -282,6 +289,7 @@ export function derive(snapshot: AppSnapshot, filter: Filter): DerivedState {
     allResolved,
     resolved,
     trips,
+    allTrips,
     unplaceable,
     cancelled,
     uncountedDrives,

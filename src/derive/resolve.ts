@@ -6,7 +6,7 @@
  */
 
 import type { DataQualityFlag, Game } from '../model/game'
-import { isCancelled } from '../model/game'
+import { isActive } from '../model/game'
 import type {
   AgeGroupDuration,
   GearLevelId,
@@ -426,7 +426,7 @@ export function resolveGame(stored: Game, ctx: ResolveContext): ResolvedGame {
   // A cancelled game was never played, so it needs no duration: it contributes
   // no minutes to any model and asking for one is a gap that cannot be closed
   // usefully. The age group is still reported if an active game shares it.
-  if (duration.minutes == null && !isCancelled(game.status)) {
+  if (duration.minutes == null && isActive(game.status)) {
     flags.push({
       code: 'missing-duration',
       severity: 'warning',

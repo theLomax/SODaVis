@@ -20,7 +20,7 @@
  */
 
 import type { DataQualityFlag } from '../model/game'
-import { isCancelled } from '../model/game'
+import { isActive, isCancelled } from '../model/game'
 import type { Park, Settings } from '../model/reference'
 import type { TripAnnotation } from '../model/annotation'
 import { parseTripKey, tripKey } from '../model/annotation'
@@ -107,7 +107,7 @@ export type TripResult = {
 
 export function buildTrips(resolved: ResolvedGame[], ctx: TripContext): TripResult {
   const cancelled = resolved.filter((r) => isCancelled(r.game.status))
-  const active = resolved.filter((r) => !isCancelled(r.game.status))
+  const active = resolved.filter((r) => isActive(r.game.status))
 
   // A cancellation earns nothing and takes no game time, but it may still have
   // cost a drive — and the export cannot say whether it did. So it joins the
@@ -166,7 +166,7 @@ function buildTrip(
   // A cancelled game was never played, so it contributes no minutes and its
   // unknown duration is not a gap to report — only the games that went ahead
   // are asked for a duration.
-  const played = games.filter((g) => !isCancelled(g.game.status))
+  const played = games.filter((g) => isActive(g.game.status))
   const gamesMissingDuration = played.filter((g) => g.duration.minutes == null).length
   const gameMinutes =
     gamesMissingDuration > 0
