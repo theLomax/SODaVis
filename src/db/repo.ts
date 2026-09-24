@@ -157,14 +157,55 @@ export async function commitImport(
   return run
 }
 
+/** The game ids a run wrote: the ones it inserted and the ones it overwrote. */
+function touchedBy(run: ImportRun): Set<string> {
+  return new Set([...run.insertedGameIds, ...run.replacedGames.map((g) => g.id)])
+}
+
+/**
+ * Later runs that wrote any game this run wrote, which make undoing it unsafe.
+ *
+ * Undo restores this run's pre-images and deletes its inserts. If a later run has
+ * since updated one of those games, the pre-image would silently overwrite the
+ * later run's values — and a later run's own undo would then resurrect a game this
+ * one deleted. Runs that touched other games are independent and do not block.
+ */
+export function undoBlockers(runId: string, imports: ImportRun[]): ImportRun[] {
+  const run = imports.find((r) => r.id === runId)
+  if (!run) return []
+  const mine = touchedBy(run)
+  return imports.filter(
+    (other) =>
+      other.id !== run.id &&
+      other.importedAt > run.importedAt &&
+      [...touchedBy(other)].some((id) => mine.has(id)),
+  )
+}
+
+export class ImportUndoBlockedError extends Error {
+  constructor(readonly blockers: ImportRun[]) {
+    super(
+      `A later import (${blockers.map((b) => b.fileName).join(', ')}) changed games this one wrote. Undo ${
+        blockers.length === 1 ? 'it' : 'those'
+      } first.`,
+    )
+  }
+}
+
 /**
  * Reverses an import: inserted games are removed, overwritten games restored.
  * Annotations are left alone, since they were never part of the import.
+ *
+ * Refuses, writing nothing, while a later run has touched the same games — see
+ * `undoBlockers`.
  */
 export async function undoImport(importId: string, database: AppDatabase = db): Promise<void> {
   await database.transaction('rw', [database.games, database.imports], async () => {
     const run = await database.imports.get(importId)
     if (!run) throw new Error(`No import with id ${importId}`)
+
+    const blockers = undoBlockers(importId, await database.imports.toArray())
+    if (blockers.length) throw new ImportUndoBlockedError(blockers)
 
     if (run.insertedGameIds.length) await database.games.bulkDelete(run.insertedGameIds)
     if (run.replacedGames.length) await database.games.bulkPut(run.replacedGames)
