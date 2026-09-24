@@ -24,7 +24,7 @@ import { readFixtureSample } from '../../test/sample-data'
 import { fixtureFigures as expected } from '../../test/expected'
 import { resolveGames, reresolveIdentity } from './resolve'
 
-const FIXTURE_IDENTITY: Identity = { id: 'self', patterns: ['^Rivera.*Sam$'] }
+const FIXTURE_IDENTITY: Identity = { id: 'self', patterns: ['^Rivera.*Sam$'], displayName: 'Sam Rivera' }
 const BLANK: Identity = { ...SEED_IDENTITY, patterns: [] }
 
 function importWith(identity: Identity): Game[] {
