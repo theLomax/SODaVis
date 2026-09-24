@@ -139,10 +139,13 @@ export function parseStatus(
 
   if (/postpon|reschedul/.test(lower)) return 'postponed'
   if (/cancel/.test(lower)) {
-    if (/no\s*pay|unpaid|\bnp\b/.test(lower)) return 'cancelled-nopay'
+    // "Not Paid" must win over the substring "Paid": otherwise
+    // "Cancelled - Not Paid" is classified as a paid cancellation.
+    if (/no\s*pay|unpaid|\bnp\b|not[\s-]*paid?/.test(lower)) return 'cancelled-nopay'
     if (/paid|pay/.test(lower)) return 'cancelled-paid'
     return 'cancelled-nopay'
   }
+  if (/forfeit/.test(lower)) return 'cancelled-nopay'
   if (/active|accepted|assigned|confirm|played|complete/.test(lower)) return 'active'
   return 'unknown'
 }

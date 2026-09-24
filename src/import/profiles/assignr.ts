@@ -67,8 +67,11 @@ export const assignrProfile: SourceProfile = {
   statusVocabulary: {
     Active: 'active',
     'Cancelled - No Pay': 'cancelled-nopay',
+    'Cancelled - Not Paid': 'cancelled-nopay',
     'Cancelled - Pay': 'cancelled-paid',
     'Cancelled - Paid': 'cancelled-paid',
+    Forfeit: 'cancelled-nopay',
+    Forfeited: 'cancelled-nopay',
     Postponed: 'postponed',
     Rescheduled: 'postponed',
   },

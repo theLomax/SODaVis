@@ -50,6 +50,11 @@ export function isCancelled(status: GameStatus): boolean {
   return CANCELLED_STATUSES.includes(status)
 }
 
+/** Work that happened. `unknown` is neither this nor a cancellation. */
+export function isActive(status: GameStatus): boolean {
+  return status === 'active'
+}
+
 export type DataQualityFlagCode =
   | 'unmatched-venue'
   | 'missing-duration'
@@ -63,6 +68,7 @@ export type DataQualityFlagCode =
   | 'missing-drive-time'
   | 'unparsed-date'
   | 'unparsed-time'
+  | 'unrecognised-status'
   | 'duplicate-dedupe-key'
 
 export type DataQualityFlag = {

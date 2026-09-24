@@ -29,7 +29,7 @@ export function Tax() {
     return taxYear(
       activeYear,
       derived.allResolved,
-      derived.trips,
+      derived.allTrips,
       new Map(derived.snapshot.tripAnnotations.map((a) => [a.key, a])),
       derived.snapshot.settings,
     )

@@ -131,9 +131,17 @@ export const FLAG_INFO: Record<DataQualityFlagCode, FlagPresentation> = {
   'unparsed-time': {
     title: 'Unreadable start time',
     groupTitle: 'Unreadable start times',
-    what: 'The start time in the source could not be read, so it is stored as midnight.',
+    what: 'The start time in the source was blank or could not be read, so it is stored as midnight.',
     why: 'Trip ordering and committed time are wrong for this trip, since committed time runs from the first start to the last end.',
     fix: 'Correct the time at the source and re-import.',
+  },
+  'unrecognised-status': {
+    title: 'Unrecognised status',
+    groupTitle: 'Games with an unrecognised status',
+    what: 'The source status is blank or is not one the importer knows, so the game is stored as unknown.',
+    why: 'An unknown status is not counted as worked — it adds no income, forms no trip, and is not treated as a cancellation. Leaving it unreviewed silently drops the game from every total.',
+    fix: 'Correct the status at the source and re-import, or map the wording in the source profile.',
+    fixTarget: { view: 'import', label: 'Import → Review column mapping' },
   },
   'unparsed-date': {
     title: 'Unreadable date',

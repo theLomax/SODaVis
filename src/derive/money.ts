@@ -4,7 +4,7 @@
  */
 
 import type { Game } from '../model/game'
-import { isCancelled } from '../model/game'
+import { isActive, isCancelled } from '../model/game'
 import type { Expense, TripAnnotation } from '../model/annotation'
 import type { Settings, TimeModelId } from '../model/reference'
 import type { ResolvedGame } from './resolve'
@@ -77,6 +77,7 @@ export function totalMoney(
       forfeited += Math.max(scheduled - actual, 0)
       continue
     }
+    if (!isActive(game.status)) continue
 
     activeGames++
     gross += actual

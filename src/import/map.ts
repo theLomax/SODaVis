@@ -84,19 +84,29 @@ export function mapRow(
 
   const rawStart = pick(row, profile.fieldMap, 'startTime')
   const startTime = parseTime(rawStart)
-  if (!startTime && rawStart) {
+  if (!startTime) {
     flags.push({
       code: 'unparsed-time',
       severity: 'warning',
-      message: 'Start time could not be read and is shown as midnight.',
-      context: rawStart,
+      message: rawStart
+        ? 'Start time could not be read and is shown as midnight.'
+        : 'No start time in the source, so it is shown as midnight.',
+      ...(rawStart ? { context: rawStart } : {}),
     })
   }
 
-  const status = parseStatus(
-    pick(row, profile.fieldMap, 'status'),
-    profile.statusVocabulary,
-  )
+  const rawStatus = pick(row, profile.fieldMap, 'status')
+  const status = parseStatus(rawStatus, profile.statusVocabulary)
+  if (status === 'unknown') {
+    flags.push({
+      code: 'unrecognised-status',
+      severity: 'warning',
+      message: rawStatus
+        ? 'This status is not recognised, so the game is not counted as worked.'
+        : 'No status in the source, so the game is not counted as worked.',
+      ...(rawStatus ? { context: rawStatus } : {}),
+    })
+  }
 
   // No flag raised here: whether a blank sport code still matters depends on
   // whether it has since been tagged by hand, which is a resolve-time question.
