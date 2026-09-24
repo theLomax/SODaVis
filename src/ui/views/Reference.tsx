@@ -31,7 +31,7 @@ import {
   durationKeyScope,
   parseAgeGroup,
 } from '../../derive/ageGroup'
-import { minutesToTime, timeToMinutes } from '../../import/transforms'
+import { matchesIdentity, minutesToTime, timeToMinutes } from '../../import/transforms'
 
 type Tab = 'parks' | 'durations' | 'sports' | 'identity' | 'settings' | 'backup'
 
@@ -871,14 +871,7 @@ function IdentityEditor() {
 
   const preview = useMemo(() => {
     if (!derived) return { matched: 0, total: 0, unmatchedSamples: [] as string[] }
-    const test = (name: string) =>
-      patterns.some((p) => {
-        try {
-          return new RegExp(p, 'i').test(name.trim())
-        } catch {
-          return false
-        }
-      })
+    const test = (name: string) => matchesIdentity(name, patterns)
     let matched = 0
     const unmatched = new Set<string>()
     for (const r of derived.allResolved) {
@@ -977,8 +970,9 @@ function IdentityEditor() {
           </Button>
         </div>
         <p className="m-0 text-xs" style={{ color: 'var(--text-muted)' }}>
-          Changing these patterns affects how partners are derived on the next import. Games already
-          stored keep the resolution they were imported with — re-import the file to re-resolve them.
+          Saving re-resolves every stored game at once: which slot is yours, and so who your
+          partners were, is worked out from these patterns each time the data is read. No
+          re-import is needed.
         </p>
       </div>
     </Card>

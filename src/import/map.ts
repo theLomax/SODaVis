@@ -17,6 +17,7 @@ import { discoverOfficialColumns } from './detect'
 import {
   cleanString,
   fingerprint,
+  matchesIdentity,
   parseDate,
   parseMoney,
   parseStatus,
@@ -51,17 +52,6 @@ function pick(
     if (v != null && v.trim() !== '') return v
   }
   return undefined
-}
-
-function matchesIdentity(name: string, identity: Identity): boolean {
-  return identity.patterns.some((p) => {
-    try {
-      return new RegExp(p, 'i').test(name.trim())
-    } catch {
-      // A malformed user-entered pattern must not break the import.
-      return false
-    }
-  })
 }
 
 export function mapRow(
@@ -115,7 +105,7 @@ export function mapRow(
     assignments.push({
       position: cleanString(pair.position ? row[pair.position] : undefined) ?? '',
       official,
-      isSelf: matchesIdentity(official, identity),
+      isSelf: matchesIdentity(official, identity.patterns),
     })
   }
 

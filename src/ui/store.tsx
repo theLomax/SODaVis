@@ -241,6 +241,7 @@ export function derive(snapshot: AppSnapshot, filter: Filter): DerivedState {
     durations: new Map(snapshot.durations.map((d) => [d.key, d])),
     sports: new Map(snapshot.sports.map((s) => [s.code, s])),
     annotations: new Map(snapshot.gameAnnotations.map((a) => [a.dedupeKey, a])),
+    identity: snapshot.identity,
   }
 
   const allResolved = resolveGames(snapshot.games, resolveCtx)

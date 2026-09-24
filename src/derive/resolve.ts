@@ -16,7 +16,11 @@ import type {
   SportProfile,
 } from '../model/reference'
 import type { CancelStage, GameAnnotation } from '../model/annotation'
-import { extractDurationMinutes, normalizeOfficialName } from '../import/transforms'
+import {
+  extractDurationMinutes,
+  matchesIdentity,
+  normalizeOfficialName,
+} from '../import/transforms'
 import { durationKey, durationKeyLabel, durationKeyScope, parseAgeGroup } from './ageGroup'
 
 // ---------------------------------------------------------------------------
@@ -241,20 +245,24 @@ export function isSolo(game: Game): boolean {
   return partnersOf(game).length === 0
 }
 
-/** Re-resolves `isSelf` after the user edits their identity patterns. */
+/**
+ * Re-resolves `isSelf` against the current identity.
+ *
+ * `isSelf` is stamped at import with whatever identity existed then, which may have
+ * been none at all. Deriving it on read is what lets an identity saved later apply
+ * to every stored game without a re-import — which could not do it anyway, since a
+ * re-import of an unchanged row is reported as unchanged and never rewritten.
+ * Returns the same object when nothing changes.
+ */
 export function reresolveIdentity(game: Game, identity: Identity): Game {
-  const test = (name: string) =>
-    identity.patterns.some((p) => {
-      try {
-        return new RegExp(p, 'i').test(name.trim())
-      } catch {
-        return false
-      }
-    })
-  return {
-    ...game,
-    assignments: game.assignments.map((a) => ({ ...a, isSelf: test(a.official) })),
-  }
+  let changed = false
+  const assignments = game.assignments.map((a) => {
+    const isSelf = matchesIdentity(a.official, identity.patterns)
+    if (isSelf === a.isSelf) return a
+    changed = true
+    return { ...a, isSelf }
+  })
+  return changed ? { ...game, assignments } : game
 }
 
 // ---------------------------------------------------------------------------
@@ -367,13 +375,32 @@ export type ResolveContext = {
   durations: Map<string, AgeGroupDuration>
   sports: Map<string, SportProfile>
   annotations: Map<string, GameAnnotation>
+  /**
+   * The current identity. When given, `isSelf` and the `self-not-found` flag are
+   * derived from it rather than read from what was stamped at import. The app
+   * always passes it; omitting it trusts the stored values.
+   */
+  identity?: Identity
 }
 
-export function resolveGame(game: Game, ctx: ResolveContext): ResolvedGame {
+export function resolveGame(stored: Game, ctx: ResolveContext): ResolvedGame {
+  const game = ctx.identity ? reresolveIdentity(stored, ctx.identity) : stored
   const annotation = ctx.annotations.get(game.source.dedupeKey)
   const parkMatch = resolvePark(game.venueRaw, ctx.parks)
   const duration = resolveDuration(game, ctx.durations, annotation)
-  const flags: DataQualityFlag[] = [...game.flags]
+  const flags: DataQualityFlag[] = ctx.identity
+    ? game.flags.filter((f) => f.code !== 'self-not-found')
+    : [...game.flags]
+
+  if (ctx.identity && game.assignments.length && !game.assignments.some((a) => a.isSelf)) {
+    flags.push({
+      code: 'self-not-found',
+      severity: 'serious',
+      message:
+        'None of this game’s officials matched your identity patterns, so no partner could be derived.',
+      context: game.assignments.map((a) => a.official).join('; '),
+    })
+  }
 
   if (parkMatch.parkId === null) {
     flags.push({
