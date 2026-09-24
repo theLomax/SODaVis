@@ -209,6 +209,20 @@ export function normalizeOfficialName(raw: string): string {
     .trim()
 }
 
+/**
+ * Whether an official's name is you, by the identity patterns. Case-insensitive,
+ * and a malformed user-entered pattern matches nothing rather than throwing.
+ */
+export function matchesIdentity(name: string, patterns: readonly string[]): boolean {
+  return patterns.some((p) => {
+    try {
+      return new RegExp(p, 'i').test(name.trim())
+    } catch {
+      return false
+    }
+  })
+}
+
 /** `'Rivera, Sam'` -> `'Sam Rivera'` for display. */
 export function displayOfficialName(raw: string): string {
   const n = normalizeOfficialName(raw)

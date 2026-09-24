@@ -16,9 +16,20 @@ import type { DataQualityFlagCode } from '../../model/game'
 import { isCancelled } from '../../model/game'
 import { formatMoney } from '../../derive/money'
 import type { ResolvedGame } from '../../derive/resolve'
-import type { Trip } from '../../derive/trips'
-import { acknowledgeAnomaly, patchGameAnnotation } from '../../db/repo'
-import { CANCEL_STAGES, FEE_ANOMALIES, type CancelStage } from '../../model/annotation'
+import { orphanedTripAnnotations, type Trip } from '../../derive/trips'
+import {
+  acknowledgeAnomaly,
+  deleteTripAnnotation,
+  patchGameAnnotation,
+  reattachTripAnnotation,
+} from '../../db/repo'
+import {
+  CANCEL_STAGES,
+  FEE_ANOMALIES,
+  parseTripKey,
+  type CancelStage,
+  type TripAnnotation,
+} from '../../model/annotation'
 import { feeAnomalies, groupAnomalies, type FeeAnomaly } from '../../derive/anomalies'
 import { Button, TextInput, selectStyle } from '../components/Controls'
 import { FlagDialog } from '../components/FlagDialog'
@@ -99,7 +110,12 @@ export function DataQuality() {
   const serious = rows.filter((r) => r.severity === 'serious').length
   const warnings = rows.filter((r) => r.severity === 'warning').length
 
-  if (rows.length === 0) {
+  const orphans = orphanedTripAnnotations(
+    derived.snapshot.tripAnnotations,
+    derived.snapshot.parks,
+  )
+
+  if (rows.length === 0 && orphans.length === 0) {
     return (
       <EmptyState
         title="Nothing to flag"
@@ -195,6 +211,8 @@ export function DataQuality() {
           </div>
         </Card>
       ))}
+
+      <OrphanedTripAnnotations orphans={orphans} />
 
       <CancelledDrives />
 
@@ -791,6 +809,128 @@ function CancelledDrives() {
           : ''}
         Rulings are keyed to the game, so a re-import keeps them.
       </p>
+    </Card>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Orphaned trip annotations
+// ---------------------------------------------------------------------------
+
+/** What an orphaned annotation still holds, so discarding it is an informed act. */
+function describeTripAnnotation(a: TripAnnotation, currency: string): string {
+  const parts: string[] = []
+  if (a.milesOverride != null) parts.push(`${a.milesOverride} mi`)
+  if (a.tollsOverride != null) parts.push(`tolls ${formatMoney(a.tollsOverride, currency)}`)
+  if (a.driveMinutesOverride != null) parts.push(`drive ${a.driveMinutesOverride} min`)
+  if (a.prepMinutesOverride != null) parts.push(`prep ${a.prepMinutesOverride} min`)
+  if (a.wrapMinutesOverride != null) parts.push(`wrap ${a.wrapMinutesOverride} min`)
+  if (a.expenses.length) {
+    const total = a.expenses.reduce((s, e) => s + e.amount, 0)
+    parts.push(
+      `${a.expenses.length} expense${a.expenses.length === 1 ? '' : 's'} (${formatMoney(total, currency)})`,
+    )
+  }
+  if (a.notes?.trim()) parts.push('a note')
+  return parts.join(', ') || 'nothing'
+}
+
+/**
+ * Trip annotations keyed to a park that no longer exists. They cannot reach any
+ * trip, so what they record has stopped counting; each can be moved to a park that
+ * exists or discarded.
+ */
+function OrphanedTripAnnotations({ orphans }: { orphans: TripAnnotation[] }) {
+  const { derived, reload } = useStore()
+  const [saving, setSaving] = useState<string | null>(null)
+
+  if (!derived || orphans.length === 0) return null
+  const currency = derived.snapshot.settings.currency
+  const parks = [...derived.snapshot.parks].sort((a, b) => a.name.localeCompare(b.name))
+
+  async function act(key: string, run: () => Promise<void>) {
+    setSaving(key)
+    try {
+      await run()
+      await reload()
+    } finally {
+      setSaving(null)
+    }
+  }
+
+  return (
+    <Card
+      title={`Trip notes with no park (${orphans.length})`}
+      subtitle="These overrides and expenses belong to a park that was deleted, so they no longer count toward any trip. Move each to the park it belongs to, or discard it."
+      action={<StatusChip role="warning" label={`${orphans.length} detached`} />}
+    >
+      <div className="overflow-auto" style={{ maxHeight: 320 }}>
+        <table className="w-full border-collapse text-xs">
+          <thead>
+            <tr>
+              {['Date', 'Former park', 'Records', ''].map((h, i) => (
+                <th
+                  key={h || `sp-${i}`}
+                  scope="col"
+                  className="sticky top-0 px-2 py-1.5 text-left font-medium"
+                  style={{
+                    color: 'var(--text-secondary)',
+                    background: 'var(--surface-1)',
+                    borderBottom: '1px solid var(--gridline)',
+                  }}
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {orphans.map((a) => {
+              const { date, parkId } = parseTripKey(a.key)
+              return (
+                <tr key={a.key} style={{ borderBottom: '1px solid var(--gridline)' }}>
+                  <td className="px-2 py-1.5" style={{ color: 'var(--text-primary)' }}>
+                    {date}
+                  </td>
+                  <td className="px-2 py-1.5" style={{ color: 'var(--text-secondary)' }}>
+                    {parkId || '—'}
+                  </td>
+                  <td className="px-2 py-1.5" style={{ color: 'var(--text-secondary)' }}>
+                    {describeTripAnnotation(a, currency)}
+                  </td>
+                  <td className="px-2 py-1.5 text-right whitespace-nowrap">
+                    <select
+                      value=""
+                      disabled={saving === a.key || parks.length === 0}
+                      onChange={(e) => {
+                        const to = e.target.value
+                        if (to) void act(a.key, () => reattachTripAnnotation(a.key, to))
+                      }}
+                      aria-label={`Move the ${date} trip notes to a park`}
+                      className="mr-2 rounded-md px-1.5 py-0.5 text-xs"
+                      style={selectStyle}
+                    >
+                      <option value="">Move to…</option>
+                      {parks.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                    <Button
+                      variant="danger"
+                      disabled={saving === a.key}
+                      onClick={() => void act(a.key, () => deleteTripAnnotation(a.key))}
+                    >
+                      Discard
+                    </Button>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
     </Card>
   )
 }

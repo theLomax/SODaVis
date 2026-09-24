@@ -25,7 +25,7 @@ import type { DataQualityFlag } from '../model/game'
 import { isCancelled } from '../model/game'
 import type { Park, Settings } from '../model/reference'
 import type { TripAnnotation } from '../model/annotation'
-import { tripKey } from '../model/annotation'
+import { parseTripKey, tripKey } from '../model/annotation'
 import { minutesToTime, timeToMinutes } from '../import/transforms'
 import type { ResolvedGame } from './resolve'
 
@@ -332,4 +332,20 @@ const round1 = (n: number) => Math.round(n * 10) / 10
 /** Distinct dates on which any trip occurred. */
 export function workDays(trips: Trip[]): string[] {
   return [...new Set(trips.map((t) => t.date))].sort()
+}
+
+/**
+ * Trip annotations whose park no longer exists — left behind by deleting a park,
+ * or by a merge made before merges re-keyed them. Such an annotation can never
+ * attach to a trip again, so its mileage, tolls and expenses silently stop
+ * counting; listing them is the only way anyone finds out.
+ */
+export function orphanedTripAnnotations(
+  annotations: TripAnnotation[],
+  parks: Park[],
+): TripAnnotation[] {
+  const ids = new Set(parks.map((p) => p.id))
+  return annotations
+    .filter((a) => !ids.has(parseTripKey(a.key).parkId))
+    .sort((a, b) => a.key.localeCompare(b.key))
 }

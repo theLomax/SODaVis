@@ -17,7 +17,15 @@ import { mapRows, type MapResult } from '../../import/map'
 import { reconcile, resolveToIncoming, type Reconciliation } from '../../import/reconcile'
 import { BUILT_IN_PROFILES, genericProfile, type SourceProfile } from '../../import/profiles'
 import { CANONICAL_FIELDS, type CanonicalField } from '../../model/game'
-import { commitImport, saveCustomProfile, seedDurations, undoImport } from '../../db/repo'
+import {
+  commitImport,
+  saveCustomProfile,
+  seedDurations,
+  undoBlockers,
+  undoImport,
+} from '../../db/repo'
+import type { ImportRun } from '../../model/game'
+import { Dialog } from '../components/Dialog'
 import { seedAgeGroupDurations } from '../../derive/resolve'
 import { formatMoney } from '../../derive/money'
 
@@ -558,22 +566,31 @@ function ReconStep({
 function ImportLog({ onUndone }: { onUndone: () => Promise<void> }) {
   const { snapshot } = useImportContext()
   const [busy, setBusy] = useState<string | null>(null)
+  const [confirming, setConfirming] = useState<ImportRun | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const imports = snapshot?.imports ?? []
   if (imports.length === 0) return null
 
-  async function undo(id: string) {
-    setBusy(id)
+  async function undo(run: ImportRun) {
+    setConfirming(null)
+    setBusy(run.id)
+    setError(null)
     try {
-      await undoImport(id)
+      await undoImport(run.id)
       await onUndone()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
     } finally {
       setBusy(null)
     }
   }
 
   return (
-    <Card title="Import history" subtitle="Each run can be undone; annotations are never part of an import">
+    <Card
+      title="Import history"
+      subtitle="A run can be undone until a later run changes the same games; annotations are never part of an import"
+    >
       <table className="w-full border-collapse text-xs">
         <thead>
           <tr>
@@ -594,29 +611,82 @@ function ImportLog({ onUndone }: { onUndone: () => Promise<void> }) {
           </tr>
         </thead>
         <tbody>
-          {imports.map((run) => (
-            <tr key={run.id} style={{ borderBottom: '1px solid var(--gridline)' }}>
-              <td className="px-2 py-1.5" style={{ color: 'var(--text-secondary)' }}>
-                {new Date(run.importedAt).toLocaleString()}
-              </td>
-              <td className="px-2 py-1.5" style={{ color: 'var(--text-primary)' }}>
-                {run.fileName}
-              </td>
-              <td className="px-2 py-1.5" style={{ color: 'var(--text-secondary)' }}>
-                {run.profileLabel}
-              </td>
-              <td className="num-tabular px-2 py-1.5 text-right">{run.counts.inserted}</td>
-              <td className="num-tabular px-2 py-1.5 text-right">{run.counts.updated}</td>
-              <td className="num-tabular px-2 py-1.5 text-right">{run.counts.unchanged}</td>
-              <td className="px-2 py-1.5 text-right">
-                <Button variant="danger" onClick={() => void undo(run.id)} disabled={busy === run.id}>
-                  {busy === run.id ? 'Undoing…' : 'Undo'}
-                </Button>
-              </td>
-            </tr>
-          ))}
+          {imports.map((run) => {
+            const blockers = undoBlockers(run.id, imports)
+            // Named in full, since the row a reader must undo first is otherwise
+            // indistinguishable from this one when the same file was imported twice.
+            const blockedBy = blockers.length
+              ? `A later import changed these games. Undo ${blockers
+                  .map((b) => `${b.fileName} (${new Date(b.importedAt).toLocaleString()})`)
+                  .join(', ')} first.`
+              : undefined
+            return (
+              <tr key={run.id} style={{ borderBottom: '1px solid var(--gridline)' }}>
+                <td className="px-2 py-1.5" style={{ color: 'var(--text-secondary)' }}>
+                  {new Date(run.importedAt).toLocaleString()}
+                </td>
+                <td className="px-2 py-1.5" style={{ color: 'var(--text-primary)' }}>
+                  {run.fileName}
+                </td>
+                <td className="px-2 py-1.5" style={{ color: 'var(--text-secondary)' }}>
+                  {run.profileLabel}
+                </td>
+                <td className="num-tabular px-2 py-1.5 text-right">{run.counts.inserted}</td>
+                <td className="num-tabular px-2 py-1.5 text-right">{run.counts.updated}</td>
+                <td className="num-tabular px-2 py-1.5 text-right">{run.counts.unchanged}</td>
+                <td className="px-2 py-1.5 text-right">
+                  <Button
+                    variant="danger"
+                    onClick={() => setConfirming(run)}
+                    disabled={busy === run.id || blockers.length > 0}
+                  >
+                    {busy === run.id ? 'Undoing…' : 'Undo'}
+                  </Button>
+                  {blockedBy ? (
+                    <span
+                      className="mt-1 block max-w-64 text-left text-xs"
+                      style={{ color: 'var(--text-muted)', marginLeft: 'auto' }}
+                    >
+                      {blockedBy}
+                    </span>
+                  ) : null}
+                </td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
+      {error ? (
+        <p role="alert" className="m-0 mt-3 text-xs" style={{ color: 'var(--text-secondary)' }}>
+          {error}
+        </p>
+      ) : null}
+
+      {confirming ? (
+        <Dialog
+          open
+          onClose={() => setConfirming(null)}
+          title={`Undo the import of ${confirming.fileName}?`}
+          subtitle={`Imported ${new Date(confirming.importedAt).toLocaleString()}`}
+          labelledBy="undo-import-heading"
+          footer={
+            <>
+              <Button onClick={() => setConfirming(null)}>Cancel</Button>
+              <Button variant="danger" onClick={() => void undo(confirming)}>
+                Undo this import
+              </Button>
+            </>
+          }
+        >
+          <p className="m-0 text-xs" style={{ color: 'var(--text-secondary)' }}>
+            {confirming.insertedGameIds.length} game
+            {confirming.insertedGameIds.length === 1 ? '' : 's'} this run added will be removed,
+            and {confirming.replacedGames.length} game
+            {confirming.replacedGames.length === 1 ? '' : 's'} it updated will go back to what they
+            were before. Annotations are kept, and reattach if the games are imported again.
+          </p>
+        </Dialog>
+      ) : null}
     </Card>
   )
 }

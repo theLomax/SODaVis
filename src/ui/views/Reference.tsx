@@ -23,6 +23,7 @@ import {
   saveSports,
 } from '../../db/repo'
 import { exportBackup, backupToBlob, backupFileName, restoreBackup, validateBackup } from '../../db/backup'
+import { Dialog } from '../components/Dialog'
 import type { AgeGroupDuration, Park } from '../../model/reference'
 import { resolvePark, seedAgeGroupDurations, stripFieldDesignator } from '../../derive/resolve'
 import {
@@ -31,7 +32,7 @@ import {
   durationKeyScope,
   parseAgeGroup,
 } from '../../derive/ageGroup'
-import { minutesToTime, timeToMinutes } from '../../import/transforms'
+import { matchesIdentity, minutesToTime, timeToMinutes } from '../../import/transforms'
 
 type Tab = 'parks' | 'durations' | 'sports' | 'identity' | 'settings' | 'backup'
 
@@ -871,14 +872,7 @@ function IdentityEditor() {
 
   const preview = useMemo(() => {
     if (!derived) return { matched: 0, total: 0, unmatchedSamples: [] as string[] }
-    const test = (name: string) =>
-      patterns.some((p) => {
-        try {
-          return new RegExp(p, 'i').test(name.trim())
-        } catch {
-          return false
-        }
-      })
+    const test = (name: string) => matchesIdentity(name, patterns)
     let matched = 0
     const unmatched = new Set<string>()
     for (const r of derived.allResolved) {
@@ -977,8 +971,9 @@ function IdentityEditor() {
           </Button>
         </div>
         <p className="m-0 text-xs" style={{ color: 'var(--text-muted)' }}>
-          Changing these patterns affects how partners are derived on the next import. Games already
-          stored keep the resolution they were imported with — re-import the file to re-resolve them.
+          Saving re-resolves every stored game at once: which slot is yours, and so who your
+          partners were, is worked out from these patterns each time the data is read. No
+          re-import is needed.
         </p>
       </div>
     </Card>
@@ -1243,22 +1238,31 @@ function SettingsEditor() {
 // Backup
 // ---------------------------------------------------------------------------
 
+/** Saves the current database as a JSON file in the browser's download folder. */
+async function downloadBackupFile(): Promise<{ games: number }> {
+  const backup = await exportBackup()
+  const url = URL.createObjectURL(backupToBlob(backup))
+  const a = document.createElement('a')
+  a.href = url
+  a.download = backupFileName()
+  a.click()
+  URL.revokeObjectURL(url)
+  return { games: backup.counts['games'] ?? 0 }
+}
+
 function BackupPanel() {
-  const { reload } = useStore()
+  const { derived, reload } = useStore()
   const [status, setStatus] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [replacing, setReplacing] = useState<File | null>(null)
+
+  const storedGames = derived?.snapshot.games.length ?? 0
 
   async function download() {
     setBusy(true)
     try {
-      const backup = await exportBackup()
-      const url = URL.createObjectURL(backupToBlob(backup))
-      const a = document.createElement('a')
-      a.href = url
-      a.download = backupFileName()
-      a.click()
-      URL.revokeObjectURL(url)
-      setStatus(`Exported ${backup.counts['games']} games and all reference data.`)
+      const { games } = await downloadBackupFile()
+      setStatus(`Exported ${games} games and all reference data.`)
     } finally {
       setBusy(false)
     }
@@ -1273,6 +1277,10 @@ function BackupPanel() {
         setStatus(`That file is not a valid backup: ${validated.errors.join('; ')}`)
         return
       }
+      if (mode === 'replace') {
+        // A snapshot of what is about to be wiped, so a mistaken replace is recoverable.
+        await downloadBackupFile()
+      }
       const report = await restoreBackup(validated.backup, mode)
       await reload()
       setStatus(
@@ -1284,6 +1292,7 @@ function BackupPanel() {
       setStatus(e instanceof Error ? e.message : String(e))
     } finally {
       setBusy(false)
+      setReplacing(null)
     }
   }
 
@@ -1303,10 +1312,15 @@ function BackupPanel() {
           <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
             Restore from a backup file
           </span>
-          <RestoreControl onRestore={restore} busy={busy} />
+          <RestoreControl
+            onMerge={(file) => void restore(file, 'merge')}
+            onReplace={(file) => setReplacing(file)}
+            busy={busy}
+          />
           <p className="m-0 text-xs" style={{ color: 'var(--text-muted)' }}>
             Merge adds what is missing and never overwrites what is already here. Replace wipes
-            everything first and gives you an exact copy of the backup.
+            everything first and gives you an exact copy of the backup — a copy of what is here
+            now is downloaded first, so a mistaken replace can be undone.
           </p>
         </div>
 
@@ -1316,15 +1330,41 @@ function BackupPanel() {
           </p>
         ) : null}
       </div>
+
+      {replacing ? (
+        <Dialog
+          open
+          onClose={() => setReplacing(null)}
+          title="Replace everything with this backup?"
+          subtitle="This cannot be undone except from the backup that is about to download."
+          labelledBy="replace-everything-heading"
+          footer={
+            <>
+              <Button onClick={() => setReplacing(null)}>Cancel</Button>
+              <Button variant="danger" onClick={() => void restore(replacing, 'replace')}>
+                Replace everything
+              </Button>
+            </>
+          }
+        >
+          <p className="m-0 text-xs" style={{ color: 'var(--text-secondary)' }}>
+            {storedGames === 0
+              ? 'There is nothing stored yet, so replacing is just a restore. A copy of the current (empty) state is still downloaded first.'
+              : `${storedGames} game${storedGames === 1 ? '' : 's'} and all parks, identity, settings and annotations currently in this browser will be deleted. A JSON backup of them will download first.`}
+          </p>
+        </Dialog>
+      ) : null}
     </Card>
   )
 }
 
 function RestoreControl({
-  onRestore,
+  onMerge,
+  onReplace,
   busy,
 }: {
-  onRestore: (file: File, mode: 'replace' | 'merge') => Promise<void>
+  onMerge: (file: File) => void
+  onReplace: (file: File) => void
   busy: boolean
 }) {
   const [file, setFile] = useState<File | null>(null)
@@ -1337,10 +1377,10 @@ function RestoreControl({
         className="text-xs"
         style={{ color: 'var(--text-secondary)' }}
       />
-      <Button disabled={!file || busy} onClick={() => file && void onRestore(file, 'merge')}>
+      <Button disabled={!file || busy} onClick={() => file && onMerge(file)}>
         Merge
       </Button>
-      <Button variant="danger" disabled={!file || busy} onClick={() => file && void onRestore(file, 'replace')}>
+      <Button variant="danger" disabled={!file || busy} onClick={() => file && onReplace(file)}>
         Replace everything
       </Button>
     </div>

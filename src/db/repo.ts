@@ -14,6 +14,7 @@ import type {
   SportProfile,
 } from '../model/reference'
 import type { FeeAnomalyCode, GameAnnotation, TripAnnotation } from '../model/annotation'
+import { mergeTripAnnotations, parseTripKey, tripKey } from '../model/annotation'
 import {
   SEED_IDENTITY,
   SEED_SETTINGS,
@@ -156,14 +157,55 @@ export async function commitImport(
   return run
 }
 
+/** The game ids a run wrote: the ones it inserted and the ones it overwrote. */
+function touchedBy(run: ImportRun): Set<string> {
+  return new Set([...run.insertedGameIds, ...run.replacedGames.map((g) => g.id)])
+}
+
+/**
+ * Later runs that wrote any game this run wrote, which make undoing it unsafe.
+ *
+ * Undo restores this run's pre-images and deletes its inserts. If a later run has
+ * since updated one of those games, the pre-image would silently overwrite the
+ * later run's values — and a later run's own undo would then resurrect a game this
+ * one deleted. Runs that touched other games are independent and do not block.
+ */
+export function undoBlockers(runId: string, imports: ImportRun[]): ImportRun[] {
+  const run = imports.find((r) => r.id === runId)
+  if (!run) return []
+  const mine = touchedBy(run)
+  return imports.filter(
+    (other) =>
+      other.id !== run.id &&
+      other.importedAt > run.importedAt &&
+      [...touchedBy(other)].some((id) => mine.has(id)),
+  )
+}
+
+export class ImportUndoBlockedError extends Error {
+  constructor(readonly blockers: ImportRun[]) {
+    super(
+      `A later import (${blockers.map((b) => b.fileName).join(', ')}) changed games this one wrote. Undo ${
+        blockers.length === 1 ? 'it' : 'those'
+      } first.`,
+    )
+  }
+}
+
 /**
  * Reverses an import: inserted games are removed, overwritten games restored.
  * Annotations are left alone, since they were never part of the import.
+ *
+ * Refuses, writing nothing, while a later run has touched the same games — see
+ * `undoBlockers`.
  */
 export async function undoImport(importId: string, database: AppDatabase = db): Promise<void> {
   await database.transaction('rw', [database.games, database.imports], async () => {
     const run = await database.imports.get(importId)
     if (!run) throw new Error(`No import with id ${importId}`)
+
+    const blockers = undoBlockers(importId, await database.imports.toArray())
+    if (blockers.length) throw new ImportUndoBlockedError(blockers)
 
     if (run.insertedGameIds.length) await database.games.bulkDelete(run.insertedGameIds)
     if (run.replacedGames.length) await database.games.bulkPut(run.replacedGames)
@@ -183,14 +225,21 @@ export async function deletePark(id: string, database: AppDatabase = db): Promis
   await database.parks.delete(id)
 }
 
-/** Folds one park's aliases and patterns into another, then deletes it. */
+/**
+ * Folds one park's aliases and patterns into another, then deletes it.
+ *
+ * Trip annotations are keyed `date|parkId`, so every one on the merged park is
+ * re-keyed to the survivor in the same transaction — otherwise a mileage override
+ * or a logged expense would silently detach from its trip. Where both parks were
+ * worked on one day the two trips become one, and their annotations are combined.
+ */
 export async function mergeParks(
   keepId: string,
   mergeId: string,
   database: AppDatabase = db,
 ): Promise<void> {
   if (keepId === mergeId) return
-  await database.transaction('rw', database.parks, async () => {
+  await database.transaction('rw', [database.parks, database.tripAnnotations], async () => {
     const keep = await database.parks.get(keepId)
     const merge = await database.parks.get(mergeId)
     if (!keep || !merge) throw new Error('Both parks must exist to merge them')
@@ -206,7 +255,49 @@ export async function mergeParks(
       notes: [keep.notes, merge.notes].filter(Boolean).join(' / ') || undefined,
     })
     await database.parks.delete(mergeId)
+
+    const moving = (await database.tripAnnotations.toArray()).filter(
+      (a) => parseTripKey(a.key).parkId === mergeId,
+    )
+    for (const annotation of moving) {
+      await moveTripAnnotation(annotation, keepId, database)
+    }
   })
+}
+
+/** Re-keys a trip annotation to another park on the same date, combining on collision. */
+async function moveTripAnnotation(
+  annotation: TripAnnotation,
+  toParkId: string,
+  database: AppDatabase,
+): Promise<void> {
+  const key = tripKey(parseTripKey(annotation.key).date, toParkId)
+  if (key === annotation.key) return
+  const existing = await database.tripAnnotations.get(key)
+  const rekeyed = { ...annotation, key }
+  await database.tripAnnotations.put(existing ? mergeTripAnnotations(existing, rekeyed) : rekeyed)
+  await database.tripAnnotations.delete(annotation.key)
+}
+
+/**
+ * Reattaches an orphaned trip annotation — one whose park no longer exists — to a
+ * park that does.
+ */
+export async function reattachTripAnnotation(
+  key: string,
+  toParkId: string,
+  database: AppDatabase = db,
+): Promise<void> {
+  await database.transaction('rw', [database.parks, database.tripAnnotations], async () => {
+    if (!(await database.parks.get(toParkId))) throw new Error(`No park with id ${toParkId}`)
+    const annotation = await database.tripAnnotations.get(key)
+    if (!annotation) throw new Error(`No trip annotation with key ${key}`)
+    await moveTripAnnotation(annotation, toParkId, database)
+  })
+}
+
+export async function deleteTripAnnotation(key: string, database: AppDatabase = db): Promise<void> {
+  await database.tripAnnotations.delete(key)
 }
 
 export async function saveDurations(

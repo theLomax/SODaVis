@@ -150,3 +150,41 @@ export type TripAnnotation = {
 export function tripKey(date: string, parkId: string): string {
   return `${date}|${parkId}`
 }
+
+/** Splits a trip key back into its date and park. The date never contains `|`. */
+export function parseTripKey(key: string): { date: string; parkId: string } {
+  const i = key.indexOf('|')
+  return i === -1 ? { date: key, parkId: '' } : { date: key.slice(0, i), parkId: key.slice(i + 1) }
+}
+
+/**
+ * Folds two annotations for what has become one trip — a park merge on a day both
+ * parks were worked. Nothing entered is dropped: expenses are concatenated, notes
+ * joined, and where both set the same override the surviving park's figure wins,
+ * as it does for the park's own figures.
+ */
+export function mergeTripAnnotations(
+  keep: TripAnnotation,
+  merge: TripAnnotation,
+): TripAnnotation {
+  const notes = [keep.notes, merge.notes].filter((n) => n?.trim()).join(' / ')
+  const out: TripAnnotation = {
+    ...merge,
+    ...keep,
+    expenses: [...keep.expenses, ...merge.expenses],
+  }
+  for (const k of [
+    'milesOverride',
+    'tollsOverride',
+    'driveMinutesOverride',
+    'prepMinutesOverride',
+    'wrapMinutesOverride',
+  ] as const) {
+    const v = keep[k] ?? merge[k]
+    if (v != null) out[k] = v
+    else delete out[k]
+  }
+  if (notes) out.notes = notes
+  else delete out.notes
+  return out
+}
