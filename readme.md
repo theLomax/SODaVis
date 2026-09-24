@@ -137,8 +137,8 @@ and one is selected for display:
 
 A trip missing an input is **excluded from that model, along with its income** — the
 rate is computed over what the model can actually time, and the view says how many
-trips that is. Counting an unknown duration as zero minutes is what produced a
-$722/hr month in an early build.
+trips that is. Counting an unknown duration as zero minutes is what produced an
+absurd hourly rate for one month in an early build.
 
 That count is a control, not a footnote. **Click "N trips not timed"** and the dialog
 names every one: the park, the date, the income held outside the rate with the time,
@@ -175,12 +175,11 @@ One trip's two legs routinely get different answers, and in both directions:
 
 - A weekday 6pm game drives **out** through rush hour, home on empty roads.
 - A Saturday 9am game that finishes at 15:45 does the reverse — out on clear
-  roads, then **home** straight into it. Seven weekend trips in the sample export
-  leave the field between 15:05 and 18:15.
+  roads, then **home** straight into it.
 
 The window is 15:00–19:00, every day, and is editable in *Reference data →
-Settings*. It was weekdays only at first, on the evidence that no weekday game
-finishes before 20:15 — true, but it silently charged a clear-road drive home to
+Settings*. It was weekdays only at first, on the evidence that weekday games finish
+after the window closes — true, but it silently charged a clear-road drive home to
 every weekend afternoon game.
 
 Because the window changes computed figures without changing any data, its effect
@@ -278,7 +277,7 @@ a detached commit, so editing one in place is safe.
 
 ### Expected figures are named, not hardcoded
 
-A test asserting `toBe(216)` needs a comment saying where 216 came from, and that
+A test asserting a bare `toBe(n)` needs a comment saying where `n` came from, and that
 comment is where venue names and income totals creep back into the repo — which is
 exactly how they got there the first time. So the figures live in a file and the tests
 read them by name:
@@ -367,8 +366,8 @@ labels; every chart has a table view; dark mode uses its own validated steps.
   small local helper; the profile abstraction means the API becomes one more profile.
 - **Toll reconciliation** — the workbook's `Tolls` sheet is a pasted toll-authority
   statement. Matching real gantry charges to trip dates is the follow-on; per-park
-  estimates are the fallback. (The 2026-05-04 statement sums to exactly $7.75, which is
-  how the one park conflict between sheets was settled in favour of `Park Details`.)
+  estimates are the fallback. (A statement total is also how a toll conflict between
+  the workbook's sheets was settled in favour of `Park Details`.)
 - **Park-to-park mileage** — a chained home→A→B→home model, if multi-park days become
   common. Flagged for manual entry now.
 - **Mileage for the four parks with none** — your knowledge, not the app's. The rows are

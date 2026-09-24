@@ -102,8 +102,8 @@ function emptyAcc(label: string): Accumulator {
  *
  * Returns `null` for a game whose time cannot be established, rather than 0.
  * Counting an unknown duration as zero would put that game's income over almost
- * no time and invent a rate — on the sample that produced a $722/hr month out of
- * 13 games with no duration on record.
+ * no time and invent a rate — an early build reported an absurd hourly rate for a
+ * month whose games had no duration on record.
  */
 function perGameMinutes(trip: Trip, model: TimeModelId, ctx: TimeContext): Map<string, number | null> {
   const t = tripTime(trip, ctx)

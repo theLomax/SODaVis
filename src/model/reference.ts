@@ -18,9 +18,8 @@ export type Park = {
   venuePatterns: string[]
   oneWayMiles?: number
   /**
-   * One-way drive in free-flowing traffic. The return leg always uses this: on
-   * the sample export every weekday trip leaves the field at 20:15 or later,
-   * median 21:00, so no return falls in a rush window.
+   * One-way drive in free-flowing traffic. The return leg of a weekday evening
+   * trip uses this, since those games let out after the rush window closes.
    */
   oneWayDriveMinutes?: number
   /**
@@ -141,9 +140,9 @@ export type TimeModelId = 'game' | 'game-drive' | 'committed'
  * When a drive is treated as rush hour.
  *
  * Applies to both legs, each judged on its own clock: the outbound leg by the
- * first pitch, the return by when you actually leave the field. On weekdays the
- * return is always clear — nothing finishes before 20:15 — but weekend afternoon
- * games do let out into traffic, so neither leg can be assumed either way.
+ * first pitch, the return by when you actually leave the field. A weekday evening
+ * return is usually clear, but weekend afternoon games do let out into traffic, so
+ * neither leg can be assumed either way.
  */
 export type RushHourWindow = {
   /** Minutes past midnight, inclusive. */

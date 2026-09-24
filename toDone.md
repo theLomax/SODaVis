@@ -20,21 +20,20 @@ lose and expensive to rediscover.
 
 - **Weekday vs Weekend split** now shows time above the bar and money below against
   one geometry, with 18px value labels. The comparison it exists to make is
-  immediately legible: weekday work takes 64% of the time for 58% of the money,
-  weekend 36% for 42% — so the weekend pays better per hour. The time follows the
+  immediately legible: when weekday work takes a larger share of the time than of
+  the money, the weekend pays better per hour. The time follows the
   global model selector rather than carrying its own, so the panel cannot disagree
   with the rate tiles about what an hour means.
 
 - **Long league names abbreviated.** A y-axis band fits about 20 characters and
-  these run to 46. `abbreviateLabel` drops the words every league shares
+  some run to more than twice that. `abbreviateLabel` drops the words every league shares
   ("Baseball Softball Association" separates nothing when they all have it), then
-  initialises what is left — which lands on `CFB`, the same abbreviation the source
+  initialises what is left — which tends to land on the same abbreviation the source
   data already uses in its venue strings. Collisions fall back to full names for
   every member of the clash. The full name stays in the tooltip and the table.
 
 - **Games by day of week.** One hue, more-is-taller, all seven days always shown —
-  a day never worked is a finding, and an absent row would hide it. Saturday carries
-  33% of the work.
+  a day never worked is a finding, and an absent row would hide it.
 
 - **Trips date tooltip** now names the weekday, parsed as UTC so the day never
   shifts with the viewer's timezone.
@@ -61,7 +60,7 @@ lose and expensive to rediscover.
 - **Age-group strings decomposed into their parts.** Every league writes its own, so
   the same competition appeared as `CFB / 9-10U DIV A / 90min`,
   `LBSA-DFW Interlock-10U (90 min)` and `MBSA-Softball-10U-Modified Kid Pitch`.
-  Treating the whole string as the unit meant 47 "age groups" for maybe a dozen real
+  Treating the whole string as the unit meant dozens of "age groups" for maybe a dozen real
   ones, a duration entered once per league rather than once per competition, and an
   "Age groups seen" figure that overcounted by construction.
 
@@ -69,14 +68,14 @@ lose and expensive to rediscover.
   tournament stage and adult cohort; `durationKey` then keys a duration at the
   broadest scope that is still honest — rule set plus band (`USSSA · 10U`) where a
   rule set is stated, league plus band otherwise, the raw string as a last resort so
-  a figure is always recordable. All 47 strings parse, collapsing to 37
-  competitions, and the 25 unfilled strings become **18 figures to enter**. One entry
-  against `ASA/USA · Adult` covers six adult slowpitch spellings across 25 games.
+  a figure is always recordable. Every string parses, the competitions number well
+  below the strings, and the unfilled strings collapse into **far fewer figures to
+  enter**. One rule-set entry can cover several league spellings of the same competition.
 
   Pitch style and tournament stage are part of the key because both change the clock:
-  TX Blowout runs 8U coach pitch for 60 minutes in pool play and 75 in bracket play,
-  and merging those would have averaged a real difference away. Division is parsed
-  but deliberately left out — CFB's DIV A and DIV AA keep the same time.
+  a tournament can run the same age band for a shorter clock in pool play than in
+  bracket play, and merging those would have averaged a real difference away. Division
+  is parsed but deliberately left out — two divisions of one league keep the same time.
 
   Nothing is migrated. A duration entered before the decomposition is keyed by raw
   string and still answers, reported as `reference-raw` so the UI can say it is
@@ -86,7 +85,7 @@ lose and expensive to rediscover.
 
 - **"Weekday vs Weekend" split into one bar per measure.** Time and money do not
   share proportions, and the previous version drew a single bar from the money split
-  while labelling it with both — putting "64% of the time" above a segment 58% wide.
+  while labelling it with both — putting the time share above a segment sized by the money share.
   The figures disagreed with the geometry, and the geometry is what a reader trusts.
   Each measure now has its own bar, so the finding is a difference in *length*:
   weekday work is visibly longer on time than on income.
@@ -102,7 +101,7 @@ lose and expensive to rediscover.
 - **"Scheduled vs actual fee" can include games paid as scheduled.** Split into two
   functions rather than one with a flag: `feeVariances` keeps only the games whose
   fee moved, and the diverging chart still uses it, because a bar of zero is not a
-  variance and 194 of them would drown the 22 that are. `feeReconciliation` returns
+  variance and a wall of them would drown the few that are. `feeReconciliation` returns
   every game, and the table can switch to it — where the question is "does this add
   up", a total cannot be checked against a list that omits most rows. The subtitle
   then states the total and names it as the Overview's gross figure (the export total). An
@@ -118,8 +117,8 @@ lose and expensive to rediscover.
   asked.
 
 - **"Rate per hour by month" basis toggle** — per hour, per game, or per game hour.
-  The three give genuinely different readings ($32/hr, $60/game, $100/game-hour on
-  the sample), the last being highest because it counts only time on the field. Per
+  The three give genuinely different readings, the per-game-hour figure being the
+  highest because it counts only time on the field. Per
   game needs no duration, so it can show a figure for a month the other two leave
   blank — and the untimed-trips caveat is suppressed on that basis, since it is not
   true there.
@@ -149,16 +148,16 @@ lose and expensive to rediscover.
 
 - **Graphs and tables did not reflect a custom time range.** Same root cause as
   above: one bound set meant a range spanning 1900–2999, which excluded nothing, so
-  every view looked unfiltered. Now March 2026 alone reads $1,020 across 24 games
-  against the export total across 202 unfiltered; a half-open "up to 2026-03-31" reads $4,411
-  across 107.
+  every view looked unfiltered. Now a single month reads only that month's income and
+  games against the unfiltered export total, and a half-open "up to" range reads
+  everything before its end date.
 
-- **`scripts/e2e.mjs` "the tagged game leaves the unspecified bucket" read $90, not
-  $45.** The check picked the first untagged row, which is a `cancelled-nopay` game
+- **`scripts/e2e.mjs` "the tagged game leaves the unspecified bucket" read the
+  untouched total.** The check picked the first untagged row, which is a `cancelled-nopay` game
   at $0 — tagging it moves no money, so the bucket never budged and a correct app
   looked broken. The selector now targets an active row explicitly, keeping the
   check meaningful: it proves tagging *relabels* income rather than losing it. The
-  expected `$45` was kept, not relaxed. The `aria-label` gained the start time,
+  expected figure was kept, not relaxed. The `aria-label` gained the start time,
   since two games at one venue on one date is the norm and several controls
   otherwise shared a name — which a screen reader could not separate either.
 
@@ -188,9 +187,9 @@ lose and expensive to rediscover.
 
 - **A cancelled game can carry the drive it cost.** Trips are keyed
   `(date, parkId)`, so a cancelled game formed no trip and therefore had no key for
-  an annotation — its mileage was not merely unrecorded but unrecordable. 11 of the
-  sample export's 14 cancellations fall on a date with no active game, forming 8
-  would-be trips and roughly the unrecorded mileage nothing else accounted for. A cancelled game
+  an annotation — its mileage was not merely unrecorded but unrecordable. Most of a
+  real season's cancellations fall on a date with no active game, forming would-be
+  trips and the unrecorded mileage nothing else accounted for. A cancelled game
   now joins a trip when, and only when, the drive is confirmed: mileage and tolls
   count and reach the tax view, while income and game time stay at zero.
   `droveToCancelled` is tri-state, because "I did not drive" is an answer and

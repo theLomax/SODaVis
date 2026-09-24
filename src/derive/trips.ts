@@ -10,10 +10,8 @@
  * ruled on is returned as an `uncountedDrive` to be asked about, never assumed
  * either way.
  *
- * On the sample export, 202 active games yield 80 trips over 76 work days, with
- * 4 days producing two trips each. 11 of the 14 cancellations fall on days with
- * no active game, so confirming those drives is the only way their mileage —
- * about 126 miles across 8 would-be trips — is ever counted.
+ * Most cancellations in a real season fall on days with no active game, so
+ * confirming those drives is the only way their mileage is ever counted.
  *
  * Drive time is computed per leg, each against its own clock, because the two
  * legs of one trip routinely differ: a weekday evening game drives out through

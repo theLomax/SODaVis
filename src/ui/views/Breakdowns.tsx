@@ -2,9 +2,9 @@
  * The dimension views: Venues, Partners, Leagues/Assignors.
  *
  * All three are horizontal bars in a single hue — nominal categories, so a value
- * ramp is wrong — paired with a table that carries the long tail. The partner
- * data is exactly the shape that makes this necessary: one partner at 74 games,
- * every other at 8 or fewer.
+ * ramp is wrong — paired with a table that carries the long tail. Partner data is
+ * typically exactly the shape that makes this necessary: one regular partner far
+ * ahead of a long tail of occasional ones.
  */
 
 import { useMemo } from 'react'
