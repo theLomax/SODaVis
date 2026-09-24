@@ -30,9 +30,15 @@ screenshots/
 !test/fixtures/
 !test/fixtures/**
 
-# Local app-state backups exported from the browser
+# Local app-state backups exported from the browser. `backupFileName()` stamps
+# the name after the word "backup", so `*-backup.json` alone never matches it.
 *-backup.json
 so-dataviz-export*.json
+so-datavisualizer-backup*.json
+# The Tax view's export (its CSV twin is covered by *.csv)
+officiating-tax-*.json
+# A restorable reference backup, e.g. reference.local.json
+*.local.json
 
 # ---------------------------------------------------------------
 # Credentials. Nothing here is ever committed, anywhere in the tree.
