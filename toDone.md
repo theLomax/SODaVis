@@ -4,6 +4,23 @@ Completed items moved out of `toDo.md`, newest first. Kept rather than deleted
 because several record *why* a thing is the way it is — the reasoning is easy to
 lose and expensive to rediscover.
 
+## Testing
+
+- **The public sample carries one fee anomaly of each kind.** The real export has
+  none, so the anomaly panel had only ever been exercised with constructed games. Three
+  rows were added, each plausible rather than an error — an unpaid scrimmage, a rainout
+  paid at half rate, a tournament game whose rate was set afterwards — because that is
+  the case acknowledgement exists for. The scrimmage is scheduled at `$0` as well as
+  paid `$0`, so it is an anomaly without also being a variance, and the test that the
+  negative variances are exactly the cancellations stays meaningful. The counts are
+  derived into `expected.json` like every other figure. The third row immediately
+  found a real bug, now listed under *Data errors* in `toDo.md`.
+
+- **`npm run fixture` ran again.** It calls `vite-node`, which only resolved because
+  npm hoists Vitest's dependencies onto the path. Under pnpm it does not, so the
+  command failed with `vite-node: not found`. Now a declared dev dependency, at the
+  version Vitest already pulled in.
+
 ## Quick wins
 
 - **"Net variance" showed no sign.** `netFeeVariance` is `scheduled - gross`, so it

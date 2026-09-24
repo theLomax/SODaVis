@@ -35,13 +35,18 @@ the data model.
   needs a local helper or a backend.
 
 ## Testing
-- 164 of 306 tests need the real export in `data/` and skip without it, so a fresh
-  clone runs 142 (measured, not estimated). If a second contributor joins, decide
-  whether the anonymized fixture should grow to cover more cases first.
-- The real export carries no fee anomaly — no active game at $0, no cancellation that
-  paid, no game without a scheduled fee — so `scripts/e2e.mjs` cannot exercise that
-  panel. Unit tests cover it with constructed games. Worth adding an anomaly to the
-  committed fixture if the panel changes again.
+- 161 of 317 tests need the private submodules and skip without them, so a fresh
+  clone runs 156 (measured, not estimated). If a second contributor joins, decide
+  whether the public sample should grow to cover more cases first.
+
+## Data errors
+- **A game with no scheduled fee counts its whole fee as "earned above rate".**
+  `totalMoney` reads a missing scheduled fee as `0`, so `bonus` gains the full actual
+  fee — yet the anomaly it raises says variance *cannot be computed* for that game.
+  Found by the sample's new `no-scheduled-fee` row; the real export has none, so no
+  figure shown so far is wrong. Not a one-line fix: `forfeited − bonus` is meant to
+  reconcile to `scheduledAll − gross`, so excluding the game from `bonus` needs a third
+  term — income with no rate to compare against — or the reconciliation breaks.
 
 ## Features
 - consider decoupling the game gear objects: allow users to create their own items and gear presets, including shirt colors.
