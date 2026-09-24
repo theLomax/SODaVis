@@ -89,7 +89,10 @@ The push URL on `origin` is deliberately set to an invalid value, so a reflexive
 `git push` fails loudly instead of republishing eleven commits of real data. The
 script also scans every file it is about to publish and refuses if it finds a partner
 name, venue, league or income figure — because a scan is only worth as much as the
-last time someone remembered to run one.
+last time someone remembered to run one. The list it scans for is itself personal, so
+it lives in the private data repository as `data/publish-denylist.txt` (or wherever
+`SODAVIS_DENYLIST` points); without it the script refuses to publish at all. With
+`data/` checked out, `npm test` runs the same scan over the tracked tree.
 
 ## The four layers
 
