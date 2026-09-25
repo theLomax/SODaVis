@@ -14,6 +14,8 @@ import {
   byDayOfWeek,
   byMonth,
   byMonthBySport,
+  drillPeriod,
+  monthLongLabel,
   weekdayWeekendSplit,
   type MonthPoint,
 } from '../../derive/metrics'
@@ -24,7 +26,7 @@ import { seriesVar, sportSlot, UNSPECIFIED_SPORT } from '../charts/palette'
 import type { SportProfile, TimeModelId } from '../../model/reference'
 
 export function Overview() {
-  const { derived, filter } = useStore()
+  const { derived, filter, drillDown } = useStore()
   const breakdownCtx = derived?.breakdownCtx
   const trips = derived?.trips
   /** Open when the reader asks which trips the selected model could not time. */
@@ -98,6 +100,23 @@ export function Overview() {
   const selectedModel = TIME_MODELS.find((m) => m.id === filter.model)!
   const perHour = rates.grossPerHourByModel[filter.model]
   const netPerHour = rates.netPerHourByModel[filter.model]
+
+  /**
+   * A month's column or point opens Trips for that month. Navigating rather than
+   * filtering in place: every chart here would redraw as a single month, which is
+   * not what clicking one column asks for. The sport and park filters carry over,
+   * since they shaped the column that was clicked.
+   */
+  const monthDrill = {
+    action: 'See trips',
+    hint: 'Click a month to see its trips.',
+    onSelect: (month: string) =>
+      drillDown({
+        view: 'trips',
+        filter: { period: drillPeriod(month, filter.period) },
+        label: monthLongLabel(month),
+      }),
+  }
   const incomplete = time.incompleteByModel[filter.model]
   const untimed = time.untimedByModel[filter.model]
 
@@ -215,6 +234,7 @@ export function Overview() {
               />
             }
             footnote="Each sport keeps its colour from the Sport filter above, so the key is the same in both places."
+            drill={monthDrill}
           />
         ) : (
           <ColumnChart
@@ -249,6 +269,7 @@ export function Overview() {
                     'Showing totals rather than the sport split: only income stacks meaningfully by sport.',
                 }
               : {})}
+            drill={monthDrill}
           />
         )}
 
@@ -280,6 +301,7 @@ export function Overview() {
           ]
             .filter(Boolean)
             .join(' ')}
+          drill={monthDrill}
         />
 
         <TimeModelComparison />

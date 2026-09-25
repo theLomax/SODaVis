@@ -47,7 +47,7 @@ function useBreakdownTable(currency: string): TableColumn<Breakdown>[] {
 }
 
 export function Venues() {
-  const { derived } = useStore()
+  const { derived, drillDown } = useStore()
   const ctx = derived?.breakdownCtx
   const rows = useMemo(() => (ctx ? byPark(ctx) : []), [ctx])
   const currency = derived?.money.currency ?? 'USD'
@@ -78,6 +78,19 @@ export function Venues() {
       align: 'right',
     },
   ]
+
+  // A park's bar opens its trips. Parks have no control in the filter bar, so the
+  // drill-down banner is the only place this filter is visible — and undone.
+  const parkDrill = {
+    action: 'See trips',
+    hint: 'Click a park to see its trips.',
+    onSelect: (parkId: string) =>
+      drillDown({
+        view: 'trips',
+        filter: { parkIds: [parkId] },
+        label: rows.find((r) => r.key === parkId)?.label ?? parkId,
+      }),
+  }
 
   const topRate = [...rows].filter((r) => r.perHour != null).sort((a, b) => b.perHour! - a.perHour!)[0]
   const mostMiles = [...rows].sort((a, b) => (b.miles ?? 0) - (a.miles ?? 0))[0]
@@ -115,6 +128,7 @@ export function Venues() {
           valueHeader="Income"
           slot={1}
           maxRows={16}
+          drill={parkDrill}
         />
         <HorizontalBar
           title="Rate per hour by park"
@@ -125,6 +139,7 @@ export function Venues() {
           slot={1}
           maxRows={16}
           footnote="Parks whose games have no known duration are omitted; enter durations in Reference data to include them."
+          drill={parkDrill}
         />
       </div>
 

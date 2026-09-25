@@ -6,6 +6,24 @@ lose and expensive to rediscover.
 
 ## Features
 
+- **A chart point opens the games behind it.** Clicking a month on any of the three
+  Overview month charts opens *Trips* filtered to that month; clicking a park's bar
+  on *Venues* opens its trips. It navigates rather than filtering in place, because
+  filtering in place would redraw every other chart on the page as one month. A
+  banner under the filter bar names the filter ("Filtered to March 2026") with a
+  *Back* button that restores the previous view and filter. It is the only place a
+  park filter is visible, since the filter bar has no park control. Any hand-made
+  filter change drops the banner, so *Back* can never undo the reader's own edit.
+
+  A clicked month is narrowed by the period already in force: a range starting on
+  the 15th drew its first column from half a month, so opening the whole month
+  would show games the column never counted. In table view each row gets a
+  *See trips* button, which is the keyboard path.
+
+  One trap, now guarded: Recharts applies hover state on the next animation frame,
+  so a click that beats it arrives with a `null` index — and `Number(null)` is 0,
+  which silently opened the first month whatever was clicked.
+
 - **Call tags.** An optional `calls` list on `GameAnnotation`, a Reference tab of
   call types seeded with Infield Fly, Fourth Out, Batter's Interference and
   Catcher's Balk, chips in the trip editor, and a count bar on Leagues. The
