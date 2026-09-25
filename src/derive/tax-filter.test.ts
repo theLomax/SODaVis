@@ -13,6 +13,7 @@ import { assignrProfile } from '../import/profiles'
 import {
   GEAR_LEVELS,
   GEAR_MODIFIERS,
+  SEED_CALL_TYPES,
   SEED_SETTINGS,
   SEED_SPORT_PROFILES,
   type Identity,
@@ -48,6 +49,7 @@ function fixtureSnapshot(): AppSnapshot {
     sports: SEED_SPORT_PROFILES,
     gearLevels: GEAR_LEVELS,
     gearModifiers: GEAR_MODIFIERS,
+    callTypes: SEED_CALL_TYPES,
     identity: FIXTURE_IDENTITY,
     settings: SEED_SETTINGS,
     gameAnnotations: [],

@@ -4,6 +4,15 @@ Completed items moved out of `toDo.md`, newest first. Kept rather than deleted
 because several record *why* a thing is the way it is — the reasoning is easy to
 lose and expensive to rediscover.
 
+## Features
+
+- **Call tags.** An optional `calls` list on `GameAnnotation`, a Reference tab of
+  call types seeded with Infield Fly, Fourth Out, Batter's Interference and
+  Catcher's Balk, chips in the trip editor, and a count bar on Leagues. The
+  editable list is a registered table (schema v3) so a replace restore cannot
+  empty it. Deleting a type strips its id from every game that tagged it. Local
+  counts are also the first dataset the anonymized-analytics idea would collect.
+
 ## Testing
 
 - **The public sample carries one fee anomaly of each kind.** The real export has

@@ -15,13 +15,15 @@ import { SportsEditor } from './reference/Sports'
 import { IdentityEditor } from './reference/Identity'
 import { SettingsEditor } from './reference/Settings'
 import { BackupPanel } from './reference/Backup'
+import { CallsEditor } from './reference/Calls'
 
-type Tab = 'parks' | 'durations' | 'sports' | 'identity' | 'settings' | 'backup'
+type Tab = 'parks' | 'durations' | 'sports' | 'calls' | 'identity' | 'settings' | 'backup'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'parks', label: 'Parks & mileage' },
   { id: 'durations', label: 'Game durations' },
   { id: 'sports', label: 'Sports & gear' },
+  { id: 'calls', label: 'Call types' },
   { id: 'identity', label: 'Identity' },
   { id: 'settings', label: 'Settings' },
   { id: 'backup', label: 'Backup' },
@@ -68,6 +70,7 @@ export function Reference() {
       {tab === 'parks' ? <ParksEditor /> : null}
       {tab === 'durations' ? <DurationsEditor /> : null}
       {tab === 'sports' ? <SportsEditor /> : null}
+      {tab === 'calls' ? <CallsEditor /> : null}
       {tab === 'identity' ? <IdentityEditor /> : null}
       {tab === 'settings' ? <SettingsEditor /> : null}
       {tab === 'backup' ? <BackupPanel /> : null}

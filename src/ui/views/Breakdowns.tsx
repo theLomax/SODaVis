@@ -12,7 +12,7 @@ import { useStore } from '../store'
 import { HorizontalBar } from '../charts/Charts'
 import { Card, EmptyState, StatTile } from '../components/Tiles'
 import { DataTable, type TableColumn } from '../charts/ChartFrame'
-import { byAssignor, byLeague, byPark, byPartner, bySport, type Breakdown } from '../../derive/metrics'
+import { byAssignor, byCall, byLeague, byPark, byPartner, bySport, type Breakdown } from '../../derive/metrics'
 import { formatMoney, formatMoneyCompact } from '../../derive/money'
 import { formatMinutes } from '../../derive/time'
 
@@ -222,6 +222,10 @@ export function Leagues() {
         : [],
     [ctx, derived],
   )
+  const calls = useMemo(
+    () => (ctx && derived ? byCall(ctx, derived.snapshot.callTypes) : []),
+    [ctx, derived],
+  )
   const currency = derived?.money.currency ?? 'USD'
   const columns = useBreakdownTable(currency)
 
@@ -251,6 +255,21 @@ export function Leagues() {
           maxRows={8}
         />
       </div>
+
+      <HorizontalBar
+        title="Calls recorded"
+        subtitle="Rare calls tagged on a game. A game with two tags counts toward both."
+        rows={calls.map((r) => ({ key: r.key, label: r.label, value: r.games }))}
+        format={(n) => n.toLocaleString()}
+        valueHeader="Games"
+        slot={1}
+        maxRows={12}
+        footnote={
+          calls.every((r) => r.games === 0)
+            ? 'None tagged yet. Open a trip and tick the calls that happened, or add types under Reference data → Call types.'
+            : undefined
+        }
+      />
 
       <Card title="Assignors" subtitle="Who assigned the work">
         <div className="overflow-auto">

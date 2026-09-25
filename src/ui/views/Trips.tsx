@@ -20,6 +20,7 @@ import { isCancelled } from '../../model/game'
 import type { Trip } from '../../derive/trips'
 import type { ResolvedGame } from '../../derive/resolve'
 import type {
+  CallType,
   GearLevel,
   GearLevelId,
   GearModifier,
@@ -178,6 +179,7 @@ export function Trips() {
                             sports={derived.snapshot.sports}
                             gearLevels={derived.snapshot.gearLevels}
                             gearModifiers={derived.snapshot.gearModifiers}
+                            callTypes={derived.snapshot.callTypes}
                             annotation={annotations.get(trip.key)}
                             committedMinutes={t.byModel['committed']}
                             prepMinutes={t.prepMinutes}
@@ -255,6 +257,7 @@ function TripDetail({
   sports,
   gearLevels,
   gearModifiers,
+  callTypes,
   annotation,
   committedMinutes,
   prepMinutes,
@@ -269,6 +272,7 @@ function TripDetail({
   sports: SportProfile[]
   gearLevels: GearLevel[]
   gearModifiers: GearModifier[]
+  callTypes: CallType[]
   annotation: TripAnnotation | undefined
   committedMinutes: number | null
   prepMinutes: number
@@ -396,6 +400,12 @@ function TripDetail({
                         gearModifiers={gearModifiers}
                         onSaved={onSaved}
                       />
+                    </td>
+                  </tr>
+                  <tr style={{ borderBottom: '1px solid var(--gridline)' }}>
+                    <Td>{''}</Td>
+                    <td className="px-2 py-1 align-middle" colSpan={5}>
+                      <CallCell game={g} callTypes={callTypes} onSaved={onSaved} />
                     </td>
                   </tr>
                 </Fragment>
@@ -862,6 +872,67 @@ function GearCell({
             <span style={{ color: 'var(--text-muted)' }}>{m.label}</span>
           </label>
         ))}
+    </span>
+  )
+}
+
+/**
+ * Rare-call chips for one game. Independent of position and gear: a Fourth Out
+ * is a fact about the play, not about what was worn. Hidden on cancellations —
+ * a game that never started has no calls.
+ */
+function CallCell({
+  game,
+  callTypes,
+  onSaved,
+}: {
+  game: ResolvedGame
+  callTypes: CallType[]
+  onSaved: () => Promise<void>
+}) {
+  const [saving, setSaving] = useState(false)
+  const [active, setActive] = useState(() => new Set(game.calls))
+  const types = [...callTypes].sort((a, b) => a.label.localeCompare(b.label))
+
+  async function toggle(id: string, on: boolean) {
+    const next = new Set(active)
+    if (on) next.add(id)
+    else next.delete(id)
+    setActive(next)
+    setSaving(true)
+    try {
+      await patchGameAnnotation(game.game.source.dedupeKey, {
+        calls: next.size ? [...next] : undefined,
+      })
+      await onSaved()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (isCancelled(game.game.status)) {
+    return <span style={{ color: 'var(--text-muted)' }}>—</span>
+  }
+
+  if (types.length === 0) {
+    return <span style={{ color: 'var(--text-muted)' }}>Add call types in Reference data</span>
+  }
+
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1.5">
+      <span style={{ color: 'var(--text-muted)' }}>Calls</span>
+      {types.map((t) => (
+        <label key={t.id} className="flex items-center gap-1">
+          <input
+            type="checkbox"
+            checked={active.has(t.id)}
+            disabled={saving}
+            onChange={(e) => void toggle(t.id, e.target.checked)}
+            aria-label={`${t.label} for the ${game.game.startTime} game`}
+          />
+          <span style={{ color: 'var(--text-muted)' }}>{t.label}</span>
+        </label>
+      ))}
     </span>
   )
 }

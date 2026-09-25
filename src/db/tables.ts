@@ -15,6 +15,7 @@ import { z, type ZodType } from 'zod'
 import {
   GEAR_LEVELS,
   GEAR_MODIFIERS,
+  SEED_CALL_TYPES,
   SEED_IDENTITY,
   SEED_PARKS,
   SEED_SETTINGS,
@@ -224,6 +225,18 @@ export const TABLES: readonly TableSpec[] = [
     keyOf: (row) => row.id as string,
     merge: 'key',
     seedRows: GEAR_MODIFIERS,
+  },
+  {
+    name: 'callTypes',
+    since: 3,
+    indexes: 'id',
+    kind: 'rows',
+    rowSchema: z.object({ id: z.string(), label: z.string() }).loose(),
+    backupShape: 'array',
+    optionalInBackup: true,
+    keyOf: (row) => row.id as string,
+    merge: 'key',
+    seedRows: SEED_CALL_TYPES,
   },
 ]
 

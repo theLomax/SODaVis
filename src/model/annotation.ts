@@ -79,6 +79,13 @@ export type GameAnnotation = {
   /** Why each was accepted. Optional — an acknowledgement without a reason is still one. */
   anomalyNotes?: Partial<Record<FeeAnomalyCode, string>>
 
+  /**
+   * Rare calls made in this game, as ids into the call-types reference list.
+   * Optional and unordered. An empty list is the same as unset — unlike gear,
+   * there is no assumed call that clearing would have to override.
+   */
+  calls?: string[]
+
   notes?: string
 }
 

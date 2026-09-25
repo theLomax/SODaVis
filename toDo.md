@@ -51,7 +51,6 @@ the data model.
 ## Features
 - consider decoupling the game gear objects: allow users to create their own items and gear presets, including shirt colors.
 - add individual item tracking (like shirt color, or mask 1 / mask 2) per game, for more data tracking and lifespan statistics for gear.
-- Consider additional tags for games - various rarer calls, like Infield Fly, Fourth Out, Batter's Interference, Catcher's Balk. It might be fun to track these.
 - Anonymized global data tracking: collect and track all metrics across all users, but anonymized to protect user privacy. This will allow us to track popular brands for gear, frequency of calls, contrast those frequencies by region, age, and other demographic factors.
 - consider other user metrics, like age, sex, years of experience. Offer users to opt-out, but reinforce that it's anonymized, and used for general analytics and trend tracking.
 - Demographic reviews: consider an option for officials to rate gear, brands, fields, leagues (with breakdowns for players, coaches, parents, boardmembers, surrounding neighborhoods, etc.), rulesets, concessions, facilities, and other elements.
