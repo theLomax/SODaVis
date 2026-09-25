@@ -92,8 +92,14 @@ const out = {
         .filter((g) => isCancelled(g.status))
         .reduce((n, g) => n + Math.max((g.fees.scheduled ?? 0) - (g.fees.actual ?? 0), 0), 0),
     ),
+    // Only games that had a rate: a game with none was not paid *above* anything.
     bonus: round2(
-      active.reduce((n, g) => n + Math.max((g.fees.actual ?? 0) - (g.fees.scheduled ?? 0), 0), 0),
+      active
+        .filter((g) => g.fees.scheduled != null)
+        .reduce((n, g) => n + Math.max((g.fees.actual ?? 0) - g.fees.scheduled, 0), 0),
+    ),
+    unscheduledIncome: round2(
+      active.filter((g) => g.fees.scheduled == null).reduce((n, g) => n + (g.fees.actual ?? 0), 0),
     ),
   },
   durations: {

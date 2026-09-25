@@ -211,6 +211,17 @@ describe('fixture money', () => {
     expect(totals.bonus).toBe(expectedFigures.money.bonus)
   })
 
+  it('keeps a game with no rate out of the bonus, as income of its own', () => {
+    // The tournament add-on paid $50 with no scheduled fee. Reading the missing
+    // rate as $0 used to add the whole $50 to "earned above rate".
+    const totals = totalMoney(resolved, trips, tripAnnotations, SEED_SETTINGS)
+    const noRate = games.filter((g) => !isCancelled(g.status) && g.fees.scheduled == null)
+    expect(noRate).toHaveLength(1)
+    expect(totals.unscheduledIncome).toBe(expectedFigures.money.unscheduledIncome)
+    expect(totals.unscheduledIncome).toBe(noRate[0]!.fees.actual)
+    expect(feeVariances(games).some((v) => v.game.fees.scheduled == null)).toBe(false)
+  })
+
   it('separates upward adjustments from shortfalls in the variance list', () => {
     const variances = feeVariances(games)
     // Sorted by delta: the two cancellations are the negatives, the $25->$30

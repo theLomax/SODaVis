@@ -1,0 +1,3 @@
+# Node scripts start with a shebang; a CRLF checkout on Windows leaves a stray
+# carriage return after it, and vite-node then fails to parse the file.
+*.mjs text eol=lf
