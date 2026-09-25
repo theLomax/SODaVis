@@ -8,9 +8,6 @@ the data model.
 
 ## Medium — needs a new mechanism, but a contained one
 
-- **Click a rate data point to see its games.** `ChartFrame` already owns a
-  table-view toggle, so the frame is the right place for a click-through; the work
-  is threading a handler through and deciding what the destination looks like.
 - **Multi-park day editor** — list every venue for that day together, so the mileage can be adjudicated across them rather than one field at a time.
 - **One-way leg entry for multi-park days.** Round trip is the wrong model when the
   day is home→A→B→home. Depends on the editor above, so they land together.

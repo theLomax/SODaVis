@@ -300,6 +300,41 @@ export function monthLabel(month: string): string {
   return `${MONTH_LABELS[idx] ?? m} ${String(y).slice(2)}`
 }
 
+/** 'March 2026' — for prose, where the axis form 'Mar 26' would be cryptic. */
+export function monthLongLabel(month: string): string {
+  const [y, m] = month.split('-').map(Number)
+  return new Date(Date.UTC(y!, m! - 1, 1)).toLocaleString('en-US', {
+    month: 'long',
+    year: 'numeric',
+    timeZone: 'UTC',
+  })
+}
+
+/** The first and last day of a 'YYYY-MM' month, as inclusive ISO dates. */
+export function monthPeriod(month: string): { start: string; end: string } {
+  const [y, m] = month.split('-').map(Number)
+  // Day 0 of the next month is the last day of this one; UTC so no timezone shifts it.
+  const last = new Date(Date.UTC(y!, m!, 0)).getUTCDate()
+  return { start: `${month}-01`, end: `${month}-${String(last).padStart(2, '0')}` }
+}
+
+/**
+ * The period a click on one month's column should open: that month, narrowed by
+ * any period already in force. A range starting on the 15th draws its first
+ * column from half a month, so widening to the 1st would show games the column
+ * never counted.
+ */
+export function drillPeriod(
+  month: string,
+  current: { start: string | null; end: string | null } | null,
+): { start: string; end: string } {
+  const { start, end } = monthPeriod(month)
+  return {
+    start: current?.start && current.start > start ? current.start : start,
+    end: current?.end && current.end < end ? current.end : end,
+  }
+}
+
 /**
  * Income per month, split by sport.
  *

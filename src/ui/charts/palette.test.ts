@@ -19,6 +19,7 @@ import {
   ALL_PAIRS_SLOT_CAP,
   CATEGORICAL_SLOTS,
   DIVERGING,
+  GAIN_LOSS,
   MARK,
   RELIEF_REQUIRED_SLOTS,
   STATUS,
@@ -166,6 +167,17 @@ describe('sequential and diverging scales', () => {
     // Blue vs red: cool vs warm, so the poles read as opposite.
     expect(css).toContain('--div-neg: #2a78d6;')
     expect(css).toContain('--div-pos: #e34948;')
+  })
+
+  it('aliases gain/loss to the validated orange and green, sharing the neutral midpoint', () => {
+    expect(GAIN_LOSS).toEqual({
+      negative: 'var(--loss)',
+      midpoint: DIVERGING.midpoint,
+      positive: 'var(--gain)',
+    })
+    // Aliases, not hexes: the dark blocks inherit through --series-2 / --series-3.
+    expect(css).toContain('--loss: var(--series-2);')
+    expect(css).toContain('--gain: var(--series-3);')
   })
 })
 

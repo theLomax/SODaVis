@@ -114,6 +114,18 @@ export const DIVERGING = {
 } as const
 
 /**
+ * Diverging variant for money: orange for lost, green for gained. Same shape as
+ * DIVERGING so it drops into DivergingBar's `colors` prop.
+ */
+export const GAIN_LOSS = {
+  negative: 'var(--loss)',
+  midpoint: 'var(--div-mid)',
+  positive: 'var(--gain)',
+} as const
+
+export type DivergingColors = { negative: string; midpoint: string; positive: string }
+
+/**
  * Status tokens. Reserved for data-quality state, never reused as a series
  * color, and always shipped with an icon and a label — hue never carries the
  * meaning alone.

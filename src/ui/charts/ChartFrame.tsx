@@ -21,6 +21,21 @@ export type TableColumn<T> = {
 
 export type LegendItem = { label: string; color: string }
 
+/**
+ * Makes each point of a chart a way into the games behind it. The chart handles
+ * the click; the frame supplies what a pointer cannot — a button per row in the
+ * table view, so the same action is reachable by keyboard — and says the chart
+ * is clickable, since nothing about a bar suggests it.
+ */
+export type ChartDrill = {
+  /** Receives the row's `key`. */
+  onSelect: (key: string) => void
+  /** Button text in the table view, e.g. "See trips". */
+  action: string
+  /** One line saying what a click does, appended to the footnote. */
+  hint: string
+}
+
 type Props<T> = {
   title: string
   subtitle?: string
@@ -35,9 +50,12 @@ type Props<T> = {
   footnote?: string
   /** Extra controls in the header, e.g. a sort toggle. */
   action?: ReactNode
+  drill?: ChartDrill
+  /** How to name a table row in its drill button's accessible label. */
+  rowLabel?: (row: T) => string
 }
 
-export function ChartFrame<T>({
+export function ChartFrame<T extends { key: string }>({
   title,
   subtitle,
   legend,
@@ -47,6 +65,8 @@ export function ChartFrame<T>({
   tableColumns,
   footnote,
   action,
+  drill,
+  rowLabel,
 }: Props<T>) {
   const [showTable, setShowTable] = useState(false)
   const tableId = useId()
@@ -113,16 +133,28 @@ export function ChartFrame<T>({
         </p>
       ) : showTable ? (
         <div id={tableId} className="overflow-auto" style={{ maxHeight: height + 60 }}>
-          <DataTable rows={tableRows} columns={tableColumns} />
+          <DataTable
+            rows={tableRows}
+            columns={tableColumns}
+            {...(drill
+              ? {
+                  rowAction: {
+                    label: drill.action,
+                    ariaLabel: (row: T) => `${drill.action}: ${rowLabel?.(row) ?? row.key}`,
+                    onSelect: (row: T) => drill.onSelect(row.key),
+                  },
+                }
+              : {})}
+          />
         </div>
       ) : (
         // Sized to include the x-axis band, so labels are never cut off.
-        <div style={{ height: height + 28 }}>{children}</div>
+        <div style={{ height: height + 28, cursor: drill ? 'pointer' : undefined }}>{children}</div>
       )}
 
-      {footnote ? (
+      {footnote || drill ? (
         <p className="m-0 mt-3 text-xs" style={{ color: 'var(--text-muted)' }}>
-          {footnote}
+          {[footnote, drill?.hint].filter(Boolean).join(' ')}
         </p>
       ) : null}
     </figure>
@@ -132,9 +164,12 @@ export function ChartFrame<T>({
 export function DataTable<T>({
   rows,
   columns,
+  rowAction,
 }: {
   rows: T[]
   columns: TableColumn<T>[]
+  /** A trailing button per row, e.g. to open the games behind it. */
+  rowAction?: { label: string; ariaLabel: (row: T) => string; onSelect: (row: T) => void }
 }) {
   return (
     <table className="w-full border-collapse text-xs">
@@ -155,6 +190,15 @@ export function DataTable<T>({
               {c.header}
             </th>
           ))}
+          {rowAction ? (
+            <th
+              scope="col"
+              className="sticky top-0 px-2 py-1.5"
+              style={{ background: 'var(--surface-1)', borderBottom: '1px solid var(--gridline)' }}
+            >
+              <span className="sr-only">Actions</span>
+            </th>
+          ) : null}
         </tr>
       </thead>
       <tbody>
@@ -174,6 +218,19 @@ export function DataTable<T>({
                 {c.cell(row)}
               </td>
             ))}
+            {rowAction ? (
+              <td className="px-2 py-1 text-right" style={{ borderBottom: '1px solid var(--gridline)' }}>
+                <button
+                  type="button"
+                  onClick={() => rowAction.onSelect(row)}
+                  aria-label={rowAction.ariaLabel(row)}
+                  className="rounded-md px-2 py-0.5 text-xs whitespace-nowrap"
+                  style={{ color: 'var(--text-secondary)', border: '1px solid var(--border-hairline)' }}
+                >
+                  {rowAction.label} →
+                </button>
+              </td>
+            ) : null}
           </tr>
         ))}
       </tbody>

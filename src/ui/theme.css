@@ -49,6 +49,21 @@
   --div-mid: #f0efec;
   --div-pos: #e34948;
 
+  /*
+   * Gain/loss: orange for money lost, green for money gained. Aliases of
+   * existing validated tokens rather than new hexes, so the dark blocks need no
+   * copy — each resolves against whichever --series-2 / --series-3 is in scope.
+   *
+   *   node scripts/validate_palette.js "#eb6834,#1baf7a" --mode light
+   *   node scripts/validate_palette.js "#d95926,#199e70" --mode dark
+   *   → ALL CHECKS PASS (CVD ΔE 9.2 light / 9.4 dark). One WARN: light green is
+   *     2.74:1 against the surface, legal only with secondary encoding, which
+   *     DivergingBar carries: side of the zero line, a direct value label on
+   *     every bar, a legend, and the table view.
+   */
+  --loss: var(--series-2);
+  --gain: var(--series-3);
+
   /* Status. Fixed, never themed, never used for a series. */
   --status-good: #0ca30c;
   --status-warning: #fab219;
