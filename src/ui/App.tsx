@@ -43,8 +43,9 @@ export function App() {
 function Shell() {
   // The view is store state, not local state: a warning on one view has to be
   // able to send the reader to the field on another that clears it.
-  const { loading, error, derived, view, setView } = useStore()
+  const { loading, error, derived, view, setView, drill, endDrill } = useStore()
   const current = VIEWS.find((v) => v.id === view)!
+  const drillFrom = drill ? VIEWS.find((v) => v.id === drill.from)?.label : undefined
 
   return (
     <div className="flex min-h-full flex-col">
@@ -78,6 +79,28 @@ function Shell() {
       </header>
 
       {current.filtered ? <FilterBar /> : null}
+
+      {/* A chart click narrows the filter and changes view in one step, so the
+          reader needs telling what they are looking at and a way straight back. */}
+      {drill && current.filtered ? (
+        <div
+          role="status"
+          className="flex flex-wrap items-center gap-3 px-6 py-2 text-xs"
+          style={{ borderBottom: '1px solid var(--border-hairline)', background: 'var(--gridline)' }}
+        >
+          <span style={{ color: 'var(--text-primary)' }}>
+            Filtered to <strong>{drill.label}</strong>
+          </span>
+          <button
+            type="button"
+            onClick={endDrill}
+            className="rounded-md px-2 py-0.5"
+            style={{ color: 'var(--text-secondary)', border: '1px solid var(--border-hairline)' }}
+          >
+            ← Back to {drillFrom}
+          </button>
+        </div>
+      ) : null}
 
       <main className="flex-1 p-6">
         {error ? (

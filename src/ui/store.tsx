@@ -108,6 +108,15 @@ type Store = {
    */
   pendingFocus: PendingFocus | null
   clearPendingFocus: () => void
+  /**
+   * Opens a view scoped to one point of a chart — a month, a park — by setting the
+   * filter, and remembers where the reader came from so they can go back.
+   */
+  drillDown: (target: DrillTarget) => void
+  /** The drill-down in effect, if the filter still is the one it set. */
+  drill: Drill | null
+  /** Restores the filter and view from before the drill-down. */
+  endDrill: () => void
   derived: DerivedState | null
   reload: () => Promise<void>
   theme: 'system' | 'light' | 'dark'
@@ -120,6 +129,19 @@ export type PendingFocus = {
   tab?: 'parks' | 'durations' | 'identity'
   /** Park id, age-group key or trip key, per the destination. */
   focus?: string
+}
+
+export type DrillTarget = {
+  view: ViewId
+  filter: Partial<Filter>
+  /** What the filter now shows, in words: "March 2026", "Northside Park". */
+  label: string
+}
+
+export type Drill = {
+  label: string
+  from: ViewId
+  previous: Filter
 }
 
 const StoreContext = createContext<Store | null>(null)
@@ -138,6 +160,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [filter, setFilterState] = useState<Filter>(DEFAULT_FILTER)
   const [view, setView] = useState<ViewId>('overview')
   const [pendingFocus, setPendingFocus] = useState<PendingFocus | null>(null)
+  const [drill, setDrill] = useState<Drill | null>(null)
   const [theme, setThemeState] = useState<'system' | 'light' | 'dark'>(
     () => (localStorage.getItem('theme') as 'system' | 'light' | 'dark') ?? 'system',
   )
@@ -171,7 +194,32 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   const setFilter = useCallback((next: Partial<Filter>) => {
     setFilterState((f) => ({ ...f, ...next }))
+    // A hand-made change means the filter is no longer the drill-down's, so the
+    // banner naming it would be wrong — and "back" would undo the reader's edit.
+    setDrill(null)
   }, [])
+
+  const drillDown = useCallback(
+    (target: DrillTarget) => {
+      setDrill((d) => ({
+        label: target.label,
+        // Drilling again from a drilled view goes back to where the first began.
+        from: d?.from ?? view,
+        previous: d?.previous ?? filter,
+      }))
+      setFilterState((f) => ({ ...f, ...target.filter }))
+      setView(target.view)
+      setPendingFocus(null)
+    },
+    [view, filter],
+  )
+
+  const endDrill = useCallback(() => {
+    if (!drill) return
+    setFilterState(drill.previous)
+    setView(drill.from)
+    setDrill(null)
+  }, [drill])
 
   const navigate = useCallback((target: NavTarget) => {
     setView(target.view)
@@ -202,6 +250,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       navigate,
       pendingFocus,
       clearPendingFocus,
+      drillDown,
+      drill,
+      endDrill,
       derived,
       reload,
       theme,
@@ -216,6 +267,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       navigate,
       pendingFocus,
       clearPendingFocus,
+      drillDown,
+      drill,
+      endDrill,
       derived,
       reload,
       theme,

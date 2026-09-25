@@ -23,10 +23,35 @@ import {
   YAxis,
 } from 'recharts'
 
-import { ChartFrame, CHART_MARGIN, TooltipBox, type LegendItem, type TableColumn } from './ChartFrame'
+import {
+  ChartFrame,
+  CHART_MARGIN,
+  TooltipBox,
+  type ChartDrill,
+  type LegendItem,
+  type TableColumn,
+} from './ChartFrame'
 import { DIVERGING, MARK, seriesVar } from './palette'
 
 type Fmt = (n: number) => string
+
+/**
+ * A chart-level click, resolved to the row under the pointer. Chart-level rather
+ * than per-mark so the whole column band is the target — a thin bar or a single
+ * line dot is a hard thing to hit.
+ */
+function pointClick<R extends { key: string }>(rows: R[], drill: ChartDrill | undefined) {
+  if (!drill) return undefined
+  return (state: { activeTooltipIndex?: number | string | null | undefined }) => {
+    // Null when the click beat the hover update, which Recharts applies on the next
+    // frame. `Number(null)` is 0, so without this guard such a click would open the
+    // first row — the wrong month, silently. Doing nothing is the honest answer.
+    const index = state.activeTooltipIndex
+    if (index == null || index === '') return
+    const row = rows[Number(index)]
+    if (row) drill.onSelect(row.key)
+  }
+}
 
 /**
  * Recharts hands a label formatter whatever the cell holds, which its types model
@@ -71,6 +96,7 @@ export function HorizontalBar({
   footnote,
   maxRows = 12,
   action,
+  drill,
 }: {
   title: string
   subtitle?: string
@@ -82,6 +108,7 @@ export function HorizontalBar({
   footnote?: string
   maxRows?: number
   action?: React.ReactNode
+  drill?: ChartDrill
 }) {
   const sorted = [...rows].sort((a, b) => b.value - a.value)
   const shown = sorted.slice(0, maxRows)
@@ -108,9 +135,15 @@ export function HorizontalBar({
       tableColumns={columns}
       footnote={[footnote, hiddenNote].filter(Boolean).join(' ') || undefined}
       {...(action ? { action } : {})}
+      {...(drill ? { drill, rowLabel: (r: BarRow) => r.detail ?? r.label } : {})}
     >
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={shown} layout="vertical" margin={{ ...CHART_MARGIN, left: 4, right: 56 }}>
+        <BarChart
+          data={shown}
+          layout="vertical"
+          margin={{ ...CHART_MARGIN, left: 4, right: 56 }}
+          onClick={pointClick(shown, drill)}
+        >
           <CartesianGrid horizontal={false} stroke="var(--gridline)" />
           <XAxis type="number" tickFormatter={format} stroke="var(--baseline)" />
           <YAxis
@@ -169,6 +202,7 @@ export function ColumnChart({
   extraColumns = [],
   footnote,
   action,
+  drill,
 }: {
   title: string
   subtitle?: string
@@ -179,6 +213,7 @@ export function ColumnChart({
   extraColumns?: TableColumn<BarRow>[]
   footnote?: string
   action?: React.ReactNode
+  drill?: ChartDrill
 }) {
   const color = seriesVar(slot)
   const columns: TableColumn<BarRow>[] = [
@@ -198,9 +233,10 @@ export function ColumnChart({
       tableColumns={columns}
       {...(footnote ? { footnote } : {})}
       {...(action ? { action } : {})}
+      {...(drill ? { drill, rowLabel: (r: BarRow) => r.detail ?? r.label } : {})}
     >
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={rows} margin={CHART_MARGIN}>
+        <BarChart data={rows} margin={CHART_MARGIN} onClick={pointClick(rows, drill)}>
           <CartesianGrid vertical={false} stroke="var(--gridline)" />
           <XAxis dataKey="label" stroke="var(--baseline)" interval="preserveStartEnd" />
           <YAxis tickFormatter={format} stroke="var(--baseline)" width={56} />
@@ -271,6 +307,7 @@ export function StackedColumn({
   footnote,
   extraColumns = [],
   action,
+  drill,
 }: {
   title: string
   subtitle?: string
@@ -280,6 +317,7 @@ export function StackedColumn({
   footnote?: string
   extraColumns?: TableColumn<StackedRow>[]
   action?: React.ReactNode
+  drill?: ChartDrill
 }) {
   const legend: LegendItem[] = series.map((s) => ({ label: s.label, color: seriesVar(s.slot) }))
 
@@ -313,9 +351,10 @@ export function StackedColumn({
       tableColumns={columns}
       {...(footnote ? { footnote } : {})}
       {...(action ? { action } : {})}
+      {...(drill ? { drill, rowLabel: (r: StackedRow) => r.label } : {})}
     >
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={rows} margin={CHART_MARGIN}>
+        <BarChart data={rows} margin={CHART_MARGIN} onClick={pointClick(rows, drill)}>
           <CartesianGrid vertical={false} stroke="var(--gridline)" />
           <XAxis dataKey="label" stroke="var(--baseline)" interval="preserveStartEnd" />
           <YAxis tickFormatter={format} stroke="var(--baseline)" width={56} />
@@ -470,6 +509,7 @@ export function TrendLine({
   slot = 1,
   footnote,
   action,
+  drill,
 }: {
   title: string
   subtitle?: string
@@ -479,6 +519,7 @@ export function TrendLine({
   slot?: number
   footnote?: string
   action?: React.ReactNode
+  drill?: ChartDrill
 }) {
   const color = seriesVar(slot)
   const columns: TableColumn<LineRow>[] = [
@@ -501,9 +542,10 @@ export function TrendLine({
       tableColumns={columns}
       {...(footnote ? { footnote } : {})}
       {...(action ? { action } : {})}
+      {...(drill ? { drill, rowLabel: (r: LineRow) => r.label } : {})}
     >
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={rows} margin={{ ...CHART_MARGIN, right: 52 }}>
+        <LineChart data={rows} margin={{ ...CHART_MARGIN, right: 52 }} onClick={pointClick(rows, drill)}>
           <CartesianGrid vertical={false} stroke="var(--gridline)" />
           {/* Unlike a bar, a line's first point sits on the y-axis unless padded,
               centring the first period label where it collides with the lowest tick. */}
