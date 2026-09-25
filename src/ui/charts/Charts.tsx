@@ -31,7 +31,7 @@ import {
   type LegendItem,
   type TableColumn,
 } from './ChartFrame'
-import { DIVERGING, MARK, seriesVar } from './palette'
+import { DIVERGING, MARK, seriesVar, type DivergingColors } from './palette'
 
 type Fmt = (n: number) => string
 
@@ -631,6 +631,7 @@ export function DivergingBar({
   positiveLabel,
   footnote,
   maxRows = 14,
+  colors = DIVERGING,
 }: {
   title: string
   subtitle?: string
@@ -640,6 +641,7 @@ export function DivergingBar({
   positiveLabel: string
   footnote?: string
   maxRows?: number
+  colors?: DivergingColors
 }) {
   const sorted = [...rows].sort((a, b) => a.value - b.value)
   const shown =
@@ -648,8 +650,8 @@ export function DivergingBar({
       : [...sorted.slice(0, Math.ceil(maxRows / 2)), ...sorted.slice(-Math.floor(maxRows / 2))]
 
   const legend: LegendItem[] = [
-    { label: negativeLabel, color: DIVERGING.negative },
-    { label: positiveLabel, color: DIVERGING.positive },
+    { label: negativeLabel, color: colors.negative },
+    { label: positiveLabel, color: colors.positive },
   ]
 
   const columns: TableColumn<DivergingRow>[] = [
@@ -700,7 +702,7 @@ export function DivergingBar({
                     {
                       label: row.value < 0 ? negativeLabel : positiveLabel,
                       value: format(row.value),
-                      color: row.value < 0 ? DIVERGING.negative : DIVERGING.positive,
+                      color: row.value < 0 ? colors.negative : colors.positive,
                     },
                   ]}
                 />
@@ -760,9 +762,13 @@ export function DivergingBar({
             {shown.map((r) => (
               <Cell
                 key={r.key}
-                fill={r.value < 0 ? DIVERGING.negative : DIVERGING.positive}
-                // Rounded on the data end, square at the zero baseline.
-                radius={r.value < 0 ? ([4, 0, 0, 4] as never) : ([0, 4, 4, 0] as never)}
+                fill={r.value < 0 ? colors.negative : colors.positive}
+                // Rounded on the data end, square at the zero baseline. One
+                // radius for both arms: Recharts draws a negative bar from the
+                // zero line with a negative width, mirroring the corner order,
+                // so corners 1-2 sit on the data end either way. A left-handed
+                // [4, 0, 0, 4] would round the zero-line side instead.
+                radius={MARK.barRadiusHorizontal as never}
               />
             ))}
           </Bar>

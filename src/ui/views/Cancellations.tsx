@@ -9,6 +9,7 @@
 import { useMemo, useState } from 'react'
 import { useStore } from '../store'
 import { DivergingBar, HorizontalBar } from '../charts/Charts'
+import { GAIN_LOSS } from '../charts/palette'
 import { Card, EmptyState, StatTile } from '../components/Tiles'
 import { DataTable, type TableColumn } from '../charts/ChartFrame'
 import { cancellationSummary } from '../../derive/metrics'
@@ -151,6 +152,7 @@ export function Cancellations() {
           format={(n) => formatMoney(n, currency)}
           negativeLabel="Lost"
           positiveLabel="Gained"
+          colors={GAIN_LOSS}
           footnote={`${down.length} games paid less than scheduled, ${up.length} paid more.`}
         />
 
