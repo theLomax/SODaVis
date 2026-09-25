@@ -5,7 +5,7 @@
 
 import type { Game } from '../model/game'
 import { isActive, isCancelled } from '../model/game'
-import type { Expense, TripAnnotation } from '../model/annotation'
+import type { Expense, GeneralExpense, TripAnnotation } from '../model/annotation'
 import type { Settings, TimeModelId } from '../model/reference'
 import type { ResolvedGame } from './resolve'
 import type { Trip } from './trips'
@@ -40,9 +40,13 @@ export type MoneyTotals = {
    */
   netFeeVariance: number
   tolls: number
+  /** Expenses logged against trips. The only expenses a per-hour figure sees. */
   expenses: number
   deductibleExpenses: number
-  /** gross - tolls - expenses. */
+  /** Expenses tied to no trip — shoes, dues. In net take-home, never in a rate. */
+  generalExpenses: number
+  deductibleGeneralExpenses: number
+  /** gross - tolls - expenses - generalExpenses. */
   net: number
   travelFees: number
   activeGames: number
@@ -60,11 +64,41 @@ export function sumExpenses(expenses: Expense[]): { total: number; deductible: n
   return { total, deductible }
 }
 
+/**
+ * The general expenses a filtered view should count.
+ *
+ * - Period: by purchase date.
+ * - Park filter: none. A general expense belongs to no park, and counting shoes
+ *   against one park's take-home would charge it for every park's games.
+ * - Sport filter: only those tagged with a selected sport. An untagged expense
+ *   belongs to the work as a whole, which no one sport can claim.
+ */
+export function generalExpensesInScope(
+  expenses: GeneralExpense[],
+  scope: {
+    period: { start: string | null; end: string | null } | null
+    sportCodes: string[]
+    parkIds: string[]
+  },
+): GeneralExpense[] {
+  if (scope.parkIds.length) return []
+  return expenses.filter((e) => {
+    if (scope.period?.start && e.date < scope.period.start) return false
+    if (scope.period?.end && e.date > scope.period.end) return false
+    if (scope.sportCodes.length && !e.sportCodes?.some((c) => scope.sportCodes.includes(c))) {
+      return false
+    }
+    return true
+  })
+}
+
 export function totalMoney(
   resolved: ResolvedGame[],
   trips: Trip[],
   tripAnnotations: Map<string, TripAnnotation>,
   settings: Settings,
+  /** Already scoped to the view — see `generalExpensesInScope`. */
+  generalExpenses: GeneralExpense[] = [],
 ): MoneyTotals {
   let gross = 0
   let scheduledActive = 0
@@ -111,6 +145,8 @@ export function totalMoney(
     }
   }
 
+  const general = sumExpenses(generalExpenses)
+
   return {
     gross: round2(gross),
     scheduledActive: round2(scheduledActive),
@@ -122,7 +158,9 @@ export function totalMoney(
     tolls: round2(tolls),
     expenses: round2(expenses),
     deductibleExpenses: round2(deductibleExpenses),
-    net: round2(gross - tolls - expenses),
+    generalExpenses: round2(general.total),
+    deductibleGeneralExpenses: round2(general.deductible),
+    net: round2(gross - tolls - expenses - general.total),
     travelFees: round2(travelFees),
     activeGames,
     cancelledGames,
@@ -158,6 +196,9 @@ export function computeRates(
   // Deductions are a whole-period figure, so scale them to the share of income
   // the model could time. Otherwise net/hour would subtract expenses belonging to
   // trips that are not in the denominator.
+  //
+  // General expenses are left out on purpose: they belong to no trip, so there is
+  // no share of them that a model's timed trips could be said to have incurred.
   const deductions = money.tolls + money.expenses
 
   const perHour = (useNet: boolean) =>

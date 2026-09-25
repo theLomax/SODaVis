@@ -14,7 +14,12 @@ import type {
   Settings,
   SportProfile,
 } from '../model/reference'
-import type { FeeAnomalyCode, GameAnnotation, TripAnnotation } from '../model/annotation'
+import type {
+  FeeAnomalyCode,
+  GameAnnotation,
+  GeneralExpense,
+  TripAnnotation,
+} from '../model/annotation'
 import { mergeTripAnnotations, parseTripKey, tripKey } from '../model/annotation'
 import {
   SEED_IDENTITY,
@@ -44,6 +49,7 @@ export type AppSnapshot = {
   settings: Settings
   gameAnnotations: GameAnnotation[]
   tripAnnotations: TripAnnotation[]
+  generalExpenses: GeneralExpense[]
   imports: ImportRun[]
   customProfiles: SourceProfile[]
 }
@@ -471,6 +477,17 @@ export async function saveTripAnnotation(
     !annotation.notes?.trim()
   if (isEmpty) await database.tripAnnotations.delete(annotation.key)
   else await database.tripAnnotations.put(annotation)
+}
+
+export async function saveGeneralExpense(
+  expense: GeneralExpense,
+  database: AppDatabase = db,
+): Promise<void> {
+  await database.generalExpenses.put(expense)
+}
+
+export async function deleteGeneralExpense(id: string, database: AppDatabase = db): Promise<void> {
+  await database.generalExpenses.delete(id)
 }
 
 // ---------------------------------------------------------------------------

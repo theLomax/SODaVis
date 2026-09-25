@@ -116,12 +116,18 @@ export function Overview() {
           detail={`${formatMoney(money.gross, currency)} gross, less ${formatMoney(
             money.tolls + money.expenses,
             currency,
-          )} tolls and expenses`}
+          )} tolls and trip expenses${
+            money.generalExpenses > 0
+              ? ` and ${formatMoney(money.generalExpenses, currency)} general expenses`
+              : ''
+          }`}
         >
           {netPerHour != null ? (
             <p className="m-0 mt-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
               {formatMoney(netPerHour, currency)}/hr under {selectedModel.label.toLowerCase()}
               {incomplete > 0 ? `, over the ${counted} trips it can time` : ''}
+              {/* Said, because the two figures above no longer divide into each other. */}
+              {money.generalExpenses > 0 ? '. General expenses belong to no trip, so they are not in the rate' : ''}
             </p>
           ) : null}
         </HeroFigure>

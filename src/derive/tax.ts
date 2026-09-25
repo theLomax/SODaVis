@@ -11,7 +11,7 @@
 
 import { isActive, isCancelled } from '../model/game'
 import type { Settings } from '../model/reference'
-import type { Expense, ExpenseCategory, TripAnnotation } from '../model/annotation'
+import type { Expense, ExpenseCategory, GeneralExpense, TripAnnotation } from '../model/annotation'
 import type { ResolvedGame } from './resolve'
 import type { Trip } from './trips'
 import { round2, sumExpenses } from './money'
@@ -68,6 +68,8 @@ export function taxYear(
   trips: Trip[],
   tripAnnotations: Map<string, TripAnnotation>,
   settings: Settings,
+  /** Every general expense; this picks the year's by purchase date. */
+  generalExpenses: GeneralExpense[] = [],
 ): TaxYear {
   const prefix = String(year)
   const inYear = resolved.filter((r) => r.game.date.startsWith(prefix))
@@ -129,6 +131,14 @@ export function taxYear(
     expensesTotal += sums.total
     deductibleExpenses += sums.deductible
   }
+
+  // General expenses join the same categories: a Schedule C line does not care
+  // whether the shoes were bought on the way to a game.
+  const generalInYear = generalExpenses.filter((e) => e.date.startsWith(prefix))
+  for (const e of generalInYear) bump(e.category, e.amount, e.deductible)
+  const general = sumExpenses(generalInYear)
+  expensesTotal += general.total
+  deductibleExpenses += general.deductible
 
   const rate = settings.irsMileageRateByYear[prefix] ?? 0
   let miles = 0

@@ -27,10 +27,9 @@ import type {
   GearModifierId,
   SportProfile,
 } from '../../model/reference'
+import { EXPENSE_CATEGORIES as CATEGORIES } from '../../model/annotation'
 import type { Expense, ExpenseCategory, TripAnnotation } from '../../model/annotation'
 import { severityStatus } from '../charts/palette'
-
-const CATEGORIES: ExpenseCategory[] = ['tolls', 'parking', 'meals', 'gear', 'fuel', 'dues', 'other']
 
 export function Trips() {
   const { derived, reload, pendingFocus, clearPendingFocus } = useStore()

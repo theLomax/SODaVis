@@ -133,6 +133,16 @@ export type ExpenseCategory =
   | 'dues'
   | 'other'
 
+export const EXPENSE_CATEGORIES: ExpenseCategory[] = [
+  'tolls',
+  'parking',
+  'meals',
+  'gear',
+  'fuel',
+  'dues',
+  'other',
+]
+
 export type Expense = {
   id: string
   amount: number
@@ -140,6 +150,26 @@ export type Expense = {
   /** Whether this expense counts toward the tax view's deductible subtotal. */
   deductible: boolean
   note?: string
+}
+
+/**
+ * An expense that belongs to no single trip: shoes, a uniform, association dues.
+ * Same shape as a trip expense, so the Tax view groups both by category.
+ *
+ * Deliberately kept out of every per-hour figure. A rate is income over the time
+ * of the trips it can count, and a pair of shoes is not part of any one of them —
+ * spreading it across games would invent a per-game cost nobody incurred. It
+ * reaches the Tax view and net take-home only.
+ */
+export type GeneralExpense = Expense & {
+  /** ISO date of purchase — which tax year it falls in. */
+  date: string
+  /**
+   * Sports this was bought for, if any. Scopes it under a sport filter: plate
+   * shoes are a baseball cost, not a kickball one. Untagged means the work as a
+   * whole, which no single sport can claim — so it counts only with no sport filter.
+   */
+  sportCodes?: string[]
 }
 
 /** Keyed `${date}|${parkId}` — the trip's natural identity. */
