@@ -37,13 +37,15 @@ the data model.
   whether the public sample should grow to cover more cases first.
 
 ## Data errors
-- **A game with no scheduled fee counts its whole fee as "earned above rate".**
-  `totalMoney` reads a missing scheduled fee as `0`, so `bonus` gains the full actual
-  fee — yet the anomaly it raises says variance *cannot be computed* for that game.
-  Found by the sample's new `no-scheduled-fee` row; the real export has none, so no
-  figure shown so far is wrong. Not a one-line fix: `forfeited − bonus` is meant to
-  reconcile to `scheduledAll − gross`, so excluding the game from `bonus` needs a third
-  term — income with no rate to compare against — or the reconciliation breaks.
+- **A paid cancellation breaks the fee reconciliation.** Overview says forfeited,
+  less pay above rate and income from games with no rate, "offsets it to" the net
+  gap (`scheduledAll − gross`). A cancellation that paid part of its fee counts only
+  the unpaid part as forfeited, but its payment is kept out of `gross` by design, so
+  the pieces fall short of the gap by exactly that payment. On the sample: $152.50 −
+  $28 − $50 = $74.50 against a $97 gap; the $22.50 is the half-paid rainout. The
+  real export has no paid cancellation, so no figure shown so far is wrong. Needs a
+  decision first: either a paid cancellation's money is income (it arrived), or it
+  needs its own term in the sentence.
 
 ## Features
 - consider decoupling the game gear objects: allow users to create their own items and gear presets, including shirt colors.

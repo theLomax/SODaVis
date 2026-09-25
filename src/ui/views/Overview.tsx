@@ -203,7 +203,11 @@ export function Overview() {
             detail={`${money.cancelledGames} cancelled; ${formatMoney(
               money.bonus,
               currency,
-            )} earned above rate offsets it to ${formatMoney(money.netFeeVariance, currency)}`}
+            )} earned above rate${
+              money.unscheduledIncome > 0
+                ? ` and ${formatMoney(money.unscheduledIncome, currency)} from games with no rate`
+                : ''
+            } offsets it to ${formatMoney(money.netFeeVariance, currency)}`}
           />
         </div>
       </div>

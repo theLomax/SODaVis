@@ -23,8 +23,16 @@ export type MoneyTotals = {
    * cancellation, plus any active game paid below its assigned rate.
    */
   forfeited: number
-  /** Actual minus scheduled on active games: pay above the assigned rate. */
+  /**
+   * Actual minus scheduled on active games: pay above the assigned rate. Only
+   * games that had a rate — a game with none was not paid *above* anything.
+   */
   bonus: number
+  /**
+   * Income from active games with no scheduled fee at all. Kept apart from
+   * `bonus`: reading a missing rate as $0 made the whole fee look like a premium.
+   */
+  unscheduledIncome: number
   /**
    * `scheduledAll - gross`. The single figure that reconciles the source file's
    * own totals row, and smaller than `forfeited` whenever upward adjustments
@@ -63,6 +71,7 @@ export function totalMoney(
   let scheduledAll = 0
   let forfeited = 0
   let bonus = 0
+  let unscheduledIncome = 0
   let travelFees = 0
   let activeGames = 0
   let cancelledGames = 0
@@ -83,7 +92,8 @@ export function totalMoney(
     gross += actual
     scheduledActive += scheduled
     travelFees += game.fees.travel ?? 0
-    if (actual > scheduled) bonus += actual - scheduled
+    if (game.fees.scheduled == null) unscheduledIncome += actual
+    else if (actual > scheduled) bonus += actual - scheduled
     else if (actual < scheduled) forfeited += scheduled - actual
   }
 
@@ -107,6 +117,7 @@ export function totalMoney(
     scheduledAll: round2(scheduledAll),
     forfeited: round2(forfeited),
     bonus: round2(bonus),
+    unscheduledIncome: round2(unscheduledIncome),
     netFeeVariance: round2(scheduledAll - gross),
     tolls: round2(tolls),
     expenses: round2(expenses),
@@ -256,7 +267,10 @@ export function feeReconciliation(games: Game[]): FeeVariance[] {
  * The narrower set, for the diverging chart: a bar of zero is not a variance, and
  * 180 of them would drown the 22 that are. `feeReconciliation` is the one to use
  * when the question is "does this add up".
+ *
+ * A game with no scheduled fee had no assignment to differ from, so it is left
+ * out — as a +$50 bar it read as a $50 premium. The anomaly panel reports it.
  */
 export function feeVariances(games: Game[]): FeeVariance[] {
-  return feeReconciliation(games).filter((v) => v.delta !== 0)
+  return feeReconciliation(games).filter((v) => v.delta !== 0 && v.game.fees.scheduled != null)
 }

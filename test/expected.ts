@@ -28,7 +28,14 @@ export type ExpectedFigures = {
     blankSportCode: number
   }
   trips: { total: number; workDays: number; multiTripDays: number }
-  money: { grossActual: number; grossScheduled: number; forfeited: number; bonus: number }
+  money: {
+    grossActual: number
+    grossScheduled: number
+    forfeited: number
+    bonus: number
+    /** Income from active games with no scheduled fee, kept out of `bonus`. */
+    unscheduledIncome: number
+  }
   durations: { extracted: number; scopesNeedingFigure: number; gamesWithoutDuration: number }
   ageGroups: { rawStrings: number; competitions: number }
   parks: { withGames: number; withoutMileage: number }

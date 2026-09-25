@@ -84,6 +84,15 @@ lose and expensive to rediscover.
 
 ## Data resolution
 
+- **A game with no rate no longer counts as paid above rate.** A missing scheduled
+  fee was read as `$0`, so the sample's $50 tournament add-on counted its whole fee
+  as bonus. It now goes to its own `unscheduledIncome` figure, is left out of the
+  scheduled-vs-actual chart (it had no assignment to differ from), and is named in
+  the Overview reconciliation sentence. The expected-figures generator had the same
+  bug, so the sample's `expected.json` is regenerated: bonus 78 → 28, plus 50 with
+  no rate. Checking the arithmetic turned up a second gap, for paid cancellations,
+  now under *Data errors* in `toDo.md`.
+
 - **A fee anomaly can be accepted rather than only reported.** The app raises an
   anomaly where money and status disagree — an active game paying nothing, a
   cancellation that paid anyway — but had no way to say "checked, that one is
