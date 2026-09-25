@@ -271,20 +271,26 @@ export function Leagues() {
         />
       </div>
 
-      <HorizontalBar
-        title="Calls recorded"
-        subtitle="Rare calls tagged on a game. A game with two tags counts toward both."
-        rows={calls.map((r) => ({ key: r.key, label: r.label, value: r.games }))}
-        format={(n) => n.toLocaleString()}
-        valueHeader="Games"
-        slot={1}
-        maxRows={12}
-        footnote={
-          calls.every((r) => r.games === 0)
-            ? 'None tagged yet. Open a trip and tick the calls that happened, or add types under Reference data → Call types.'
-            : undefined
-        }
-      />
+      {/* Until something is tagged, a chart of zero-length bars reads as "no calls
+          were made" rather than "none recorded yet" — so the hint stands alone. */}
+      {calls.every((r) => r.games === 0) ? (
+        <Card title="Calls recorded" subtitle="Rare calls tagged on a game.">
+          <p className="m-0 text-xs" style={{ color: 'var(--text-muted)' }}>
+            None tagged yet. Open a trip and tick the calls that happened, or add types under
+            Reference data → Call types.
+          </p>
+        </Card>
+      ) : (
+        <HorizontalBar
+          title="Calls recorded"
+          subtitle="Rare calls tagged on a game. A game with two tags counts toward both."
+          rows={calls.map((r) => ({ key: r.key, label: r.label, value: r.games }))}
+          format={(n) => n.toLocaleString()}
+          valueHeader="Games"
+          slot={1}
+          maxRows={12}
+        />
+      )}
 
       <Card title="Assignors" subtitle="Who assigned the work">
         <div className="overflow-auto">
