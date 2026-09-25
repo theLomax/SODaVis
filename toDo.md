@@ -16,9 +16,6 @@ the data model.
   day is home→A→B→home. Depends on the editor above, so they land together.
 - **Multiple vehicles** with a default and per-trip attribution. A new reference
   entity and an optional trip field; the mileage layer changes very little.
-- **General expenses** (shoes, uniform, gear) with optional sport tags. Expenses
-  already exist per trip, so this is a second scope — not-trip-bound — rather than
-  a new concept.
 
 ## Large — changes the data model
 
