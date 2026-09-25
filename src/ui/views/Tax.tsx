@@ -16,6 +16,7 @@ import { DataTable, type TableColumn } from '../charts/ChartFrame'
 import { taxYear, taxYearToCsv, type ExpenseLine, type PayorLine } from '../../derive/tax'
 import { yearsPresent } from '../../derive/metrics'
 import { formatMoney, formatMoneyCompact } from '../../derive/money'
+import { GeneralExpenses } from './GeneralExpenses'
 
 export function Tax() {
   const { derived } = useStore()
@@ -32,6 +33,7 @@ export function Tax() {
       derived.allTrips,
       new Map(derived.snapshot.tripAnnotations.map((a) => [a.key, a])),
       derived.snapshot.settings,
+      derived.snapshot.generalExpenses,
     )
   }, [derived, activeYear])
 
@@ -164,8 +166,13 @@ export function Tax() {
         </p>
       </Card>
 
+      <GeneralExpenses year={activeYear} />
+
       {summary.expensesByCategory.length > 0 ? (
-        <Card title="Expenses by category" subtitle="Toll estimates are included as a deductible category">
+        <Card
+          title="Expenses by category"
+          subtitle="Trip expenses and general expenses together. Toll estimates are included as a deductible category"
+        >
           <DataTable rows={summary.expensesByCategory} columns={expenseColumns} />
         </Card>
       ) : null}

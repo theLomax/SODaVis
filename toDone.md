@@ -6,6 +6,19 @@ lose and expensive to rediscover.
 
 ## Features
 
+- **General expenses.** Shoes, a uniform, dues: costs no single trip incurred. A new
+  `generalExpenses` table (schema v4) reuses the trip `Expense` shape plus a
+  purchase date and optional sport tags, entered in a card on the Tax view. They
+  come off net take-home and join the Tax view's categories for their purchase
+  year, and never enter a per-hour rate: a rate is income over the trips it can
+  time, and no trip incurred a pair of shoes. Spreading sport-tagged ones across
+  that sport's games was considered and left out, because it would invent a
+  per-game cost nobody paid.
+
+  Under the global filter they scope by purchase date. A park filter excludes them
+  all, since none belongs to a park. A sport filter keeps only those tagged with a
+  selected sport; an untagged one belongs to the work as a whole, which no one
+  sport can claim.
 - **A chart point opens the games behind it.** Clicking a month on any of the three
   Overview month charts opens *Trips* filtered to that month; clicking a park's bar
   on *Venues* opens its trips. It navigates rather than filtering in place, because

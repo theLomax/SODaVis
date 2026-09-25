@@ -340,3 +340,37 @@ describe('call types', () => {
     expect((await db.callTypes.toArray()).map((t) => t.id)).toContain('infield-fly')
   })
 })
+
+describe('general expenses', () => {
+  const shoes = {
+    id: 'shoes',
+    date: '2026-04-02',
+    amount: 120,
+    category: 'gear' as const,
+    deductible: true,
+    sportCodes: ['C-BB'],
+  }
+
+  it('round-trips through a replace restore, sport tags included', async () => {
+    await db.generalExpenses.put(shoes)
+    const backup = await exportBackup(db)
+    expect(backup.counts.generalExpenses).toBe(1)
+    await restoreBackup(backup, 'replace', db)
+    expect(await db.generalExpenses.get('shoes')).toEqual(shoes)
+  })
+
+  it('accepts a backup written before the table existed', async () => {
+    await db.generalExpenses.put(shoes)
+    const backup = await exportBackup(db)
+    delete (backup.data as { generalExpenses?: unknown }).generalExpenses
+    expect(validateBackup(backup).ok).toBe(true)
+    await restoreBackup(backup, 'merge', db)
+    // Merge leaves what is already here alone.
+    expect(await db.generalExpenses.get('shoes')).toBeDefined()
+  })
+
+  it('reaches the snapshot', async () => {
+    await db.generalExpenses.put(shoes)
+    expect((await loadSnapshot(db)).generalExpenses.map((e) => e.id)).toEqual(['shoes'])
+  })
+})

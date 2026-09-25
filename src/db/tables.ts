@@ -238,6 +238,20 @@ export const TABLES: readonly TableSpec[] = [
     merge: 'key',
     seedRows: SEED_CALL_TYPES,
   },
+  {
+    name: 'generalExpenses',
+    since: 4,
+    indexes: 'id, date',
+    kind: 'rows',
+    rowSchema: z
+      .object({ id: z.string(), amount: z.number(), date: z.string(), category: z.string() })
+      .loose(),
+    backupShape: 'array',
+    optionalInBackup: true,
+    keyOf: (row) => row.id as string,
+    merge: 'key',
+    inCounts: true,
+  },
 ]
 
 export const TABLE_NAMES = TABLES.map((t) => t.name)

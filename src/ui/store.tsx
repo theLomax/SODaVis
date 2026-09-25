@@ -28,7 +28,13 @@ import { loadSnapshot, type AppSnapshot } from '../db/repo'
 import { resolveGames, type ResolveContext, type ResolvedGame } from '../derive/resolve'
 import { buildTrips, type Trip } from '../derive/trips'
 import type { TimeContext } from '../derive/time'
-import { totalMoney, computeRates, type MoneyTotals, type Rates } from '../derive/money'
+import {
+  computeRates,
+  generalExpensesInScope,
+  totalMoney,
+  type MoneyTotals,
+  type Rates,
+} from '../derive/money'
 import { totalTime, type TimeTotals } from '../derive/time'
 import type { BreakdownContext } from '../derive/metrics'
 import type { FixTarget } from './flags'
@@ -334,7 +340,13 @@ export function derive(snapshot: AppSnapshot, filter: Filter): DerivedState {
     ),
   }
 
-  const money = totalMoney(resolved, trips, tripAnnotations, snapshot.settings)
+  const money = totalMoney(
+    resolved,
+    trips,
+    tripAnnotations,
+    snapshot.settings,
+    generalExpensesInScope(snapshot.generalExpenses, filter),
+  )
   const time = totalTime(trips, timeCtx)
   const rates = computeRates(money, trips, timeCtx)
 
