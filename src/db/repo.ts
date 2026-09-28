@@ -22,6 +22,7 @@ import type {
 } from '../model/annotation'
 import { mergeTripAnnotations, parseTripKey, tripKey } from '../model/annotation'
 import type { GearItem, GearProduct, GearSet } from '../model/gear'
+import { normalizeGearProduct } from '../model/gear'
 import {
   SEED_IDENTITY,
   SEED_SETTINGS,
@@ -84,6 +85,9 @@ async function readSnapshotTable(spec: TableSpec, database: AppDatabase): Promis
       return sortGearLevels(await table.toArray())
     case 'gearModifiers':
       return sortGearModifiers(await table.toArray())
+    case 'gearProducts':
+      // Rows written before identifiers were split still carry `sku`.
+      return (await table.toArray()).map((p) => normalizeGearProduct(p as GearProduct))
     default:
       return table.toArray()
   }
@@ -499,7 +503,7 @@ export async function deleteGeneralExpense(id: string, database: AppDatabase = d
 // ---------------------------------------------------------------------------
 
 export async function saveGearProduct(product: GearProduct, database: AppDatabase = db): Promise<void> {
-  await database.gearProducts.put(product)
+  await database.gearProducts.put(normalizeGearProduct(product))
 }
 
 /**
@@ -534,13 +538,14 @@ async function patchRow<T extends { id: string }>(
   inTransaction: (fn: () => Promise<void>) => Promise<void>,
   id: string,
   patch: Partial<Omit<T, 'id'>>,
+  normalize: (row: T) => T = (row) => row,
 ): Promise<void> {
   await inTransaction(async () => {
     const existing = await table.get(id)
     if (!existing) return
     const next: Record<string, unknown> = { ...existing, ...patch }
     for (const k of Object.keys(next)) if (next[k] === undefined) delete next[k]
-    await table.put(next as T)
+    await table.put(normalize(next as T))
   })
 }
 
@@ -557,7 +562,13 @@ export async function patchGearProduct(
   patch: Partial<Omit<GearProduct, 'id'>>,
   database: AppDatabase = db,
 ): Promise<void> {
-  await patchRow<GearProduct>(database.gearProducts, (fn) => database.transaction('rw', database.gearProducts, fn), id, patch)
+  await patchRow<GearProduct>(
+    database.gearProducts,
+    (fn) => database.transaction('rw', database.gearProducts, fn),
+    id,
+    patch,
+    normalizeGearProduct,
+  )
 }
 
 /**

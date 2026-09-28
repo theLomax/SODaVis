@@ -6,6 +6,21 @@ lose and expensive to rediscover.
 
 ## Features
 
+- **Gear identifiers: UPC, brand product number, retailer SKUs.** Catalog products
+  carry a `upc` (digits only; the check digit is verified for UPC-A, EAN-13 and EAN-8,
+  and a failure warns without blocking, since a label may read that way), a
+  `brandProductId` (the manufacturer's number, unique only within its brand) and a list
+  of `vendorSkus` (retailer and SKU pairs, since a SKU means nothing without the
+  retailer that issued it). The old `sku` field held the manufacturer's number, so it
+  becomes `brandProductId` on every read and write: rows in the browser and old
+  backups come forward with no migration step.
+
+  Adding a product checks for a duplicate in the order from `toDo.md`: the app's own
+  id, then UPC, then brand and product number, then retailer and SKU. A match stops
+  with "Looks like X, already in the catalog with the same UPC", and *Add anyway*. An
+  inline edit that makes two entries share one says so rather than blocking. A name
+  alone never matches: two "Black short-sleeve shirt" rows may well be different.
+
 - **RefTown imports, and a format picker.** RefTown's standard export is Excel, which
   the text-only importer could not read, so this was code after all, not the
   "configuration exercise" the readme promised. The columns come from RefTown's
