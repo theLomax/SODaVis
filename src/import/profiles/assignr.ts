@@ -12,6 +12,10 @@ import type { SourceProfile } from './types'
 export const assignrProfile: SourceProfile = {
   id: 'assignr',
   label: 'Assignr - game export (CSV)',
+  platform: 'Assignr',
+  fileTypes: ['csv'],
+  // Kept general: the menu path was not checked against Assignr's own help.
+  exportSteps: ['Export your games from Assignr as a CSV file, over the dates you want.'],
   fingerprint: [
     'Game ID',
     'Date',

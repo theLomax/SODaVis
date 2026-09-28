@@ -38,6 +38,22 @@ export type MappedRow =
   | { ok: true; game: Game }
   | { ok: false; reason: string; rawRow: Record<string, string> }
 
+/**
+ * Whether the file has a column for this field at all. Different from a blank
+ * cell: a format with no status column (RefTown) is not a file full of games
+ * whose status is unknown.
+ */
+export function fileHasField(
+  headers: string[],
+  fieldMap: SourceProfile['fieldMap'],
+  field: CanonicalField,
+): boolean {
+  const spec = fieldMap[field]
+  if (!spec) return false
+  const present = new Set(headers)
+  return (Array.isArray(spec) ? spec : [spec]).some((h) => present.has(h))
+}
+
 /** Resolves a canonical field to the row's value, honoring multi-header maps. */
 function pick(
   row: Record<string, string>,
@@ -86,7 +102,10 @@ export function mapRow(
   }
 
   const rawStatus = pick(row, profile.fieldMap, 'status')
-  const status = parseStatus(rawStatus, profile.statusVocabulary)
+  const status =
+    profile.defaultStatus && !fileHasField(ctx.headers, profile.fieldMap, 'status')
+      ? profile.defaultStatus
+      : parseStatus(rawStatus, profile.statusVocabulary)
   if (status === 'unknown') {
     flags.push({
       code: 'unrecognised-status',
@@ -217,6 +236,7 @@ export function mapRow(
       ...(scheduled != null ? { scheduled } : {}),
       ...(actual != null ? { actual } : {}),
       ...(travel != null ? { travel } : {}),
+      ...(feesNotInSource(ctx) ? { notInSource: true } : {}),
       currency: ctx.currency,
     },
     assignments,
@@ -243,6 +263,14 @@ export function mapRow(
   }
 
   return { ok: true, game }
+}
+
+/** No scheduled or actual fee column in this file, so its fees are unknown rather than zero. */
+export function feesNotInSource(ctx: Pick<MapContext, 'headers' | 'profile'>): boolean {
+  return (
+    !fileHasField(ctx.headers, ctx.profile.fieldMap, 'feeScheduled') &&
+    !fileHasField(ctx.headers, ctx.profile.fieldMap, 'feeActual')
+  )
 }
 
 export type MapResult = {

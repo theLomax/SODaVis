@@ -89,6 +89,12 @@ export type Assignment = {
 export type GameFees = {
   scheduled?: number
   actual?: number
+  /**
+   * True when the file this game came from had no fee column at all, as with
+   * RefTown's game export. The fees above are then unknown, not zero, and the
+   * fee anomalies stay quiet: there is nothing in the source to disagree.
+   */
+  notInSource?: boolean
   travel?: number
   currency: string
 }

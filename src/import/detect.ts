@@ -20,16 +20,24 @@ export type DetectionCandidate = {
 
 const norm = (h: string) => h.trim().toLowerCase().replace(/[\s_-]+/g, ' ')
 
+/**
+ * Official and position columns, however numbered. Left out of the confidence
+ * score: their count follows the crew size, not the format, so a RefTown export
+ * listing ten officials would otherwise score as a poor match for RefTown.
+ */
+const isSlotHeader = (normalized: string) =>
+  /^(official|umpire|referee|judge|position|role|slot)\s*(?:\(\d+\)|\d+)?$/.test(normalized)
+
 export function detectProfile(
   headers: string[],
   profiles: SourceProfile[] = BUILT_IN_PROFILES,
 ): DetectionCandidate[] {
-  const fileSet = new Set(headers.map(norm))
+  const fileSet = new Set(headers.map(norm).filter((h) => !isSlotHeader(h)))
 
   return profiles
     .filter((p) => p.fingerprint.length > 0)
     .map((profile) => {
-      const profSet = new Set(profile.fingerprint.map(norm))
+      const profSet = new Set(profile.fingerprint.map(norm).filter((h) => !isSlotHeader(h)))
       const matched = [...profSet].filter((h) => fileSet.has(h))
       const missing = [...profSet].filter((h) => !fileSet.has(h))
       const extra = [...fileSet].filter((h) => !profSet.has(h))
@@ -103,21 +111,26 @@ export function suggestFieldMap(headers: string[]): FieldSuggestion[] {
  * Discovers `Position N` / `Official N` column pairs, so a 3- or 4-official crew
  * needs no schema change. Also accepts `Official`/`Position` without a number,
  * and `Umpire N` / `Referee N` wordings.
+ *
+ * A repeated bare header counts too. RefTown's import templates head ten columns
+ * `Official`, which `parseTable` makes unique as `Official`, `Official (2)` …
+ * `Official (10)`; its export numbers them `Official_1` instead. Both are one
+ * slot per column, in order.
  */
 export function discoverOfficialColumns(
   headers: string[],
 ): { position: string; official: string }[] {
-  const officialRe = /^(official|umpire|referee|judge)\s*(\d+)?$/i
-  const positionRe = /^(position|role|slot)\s*(\d+)?$/i
+  const officialRe = /^(official|umpire|referee|judge)\s*(?:\((\d+)\)|(\d+))?$/i
+  const positionRe = /^(position|role|slot)\s*(?:\((\d+)\)|(\d+))?$/i
 
   const officials = new Map<string, string>()
   const positions = new Map<string, string>()
 
   for (const h of headers) {
     const o = officialRe.exec(norm(h))
-    if (o) officials.set(o[2] ?? '1', h)
+    if (o) officials.set(o[2] ?? o[3] ?? '1', h)
     const p = positionRe.exec(norm(h))
-    if (p) positions.set(p[2] ?? '1', h)
+    if (p) positions.set(p[2] ?? p[3] ?? '1', h)
   }
 
   return [...officials.keys()]

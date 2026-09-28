@@ -6,6 +6,25 @@ lose and expensive to rediscover.
 
 ## Features
 
+- **RefTown imports, and a format picker.** RefTown's standard export is Excel, which
+  the text-only importer could not read, so this was code after all, not the
+  "configuration exercise" the readme promised. The columns come from RefTown's
+  public import templates (the export re-imports, so it shares them), plus `GameID`
+  and `Official_1…N` from its help pages. No real export has been checked yet.
+
+  Two things the template lacks would have ruined an import: there is no status
+  column, so every game read as "not worked"; and no fee column, so every game raised
+  two fee anomalies. A format can now default the status when the file has no status
+  column, and a file with no fee column marks its games' pay as unknown, which keeps
+  the anomaly panel quiet. The review step says pay is missing and what that does to
+  income and $/hr. Pay itself (fee rules or a paysheet import) is plan item 6.6.
+
+  The picker shows each platform's export steps and limits the file dialog to its
+  types. A hand-picked format that the file does not match is flagged, with a one-click
+  switch, and changing the format re-reads a file already under review. Found while
+  checking it: picking the same file again after Cancel did nothing, because the file
+  box kept its value; it is now cleared after every read.
+
 - **General expenses.** Shoes, a uniform, dues: costs no single trip incurred. A new
   `generalExpenses` table (schema v4) reuses the trip `Expense` shape plus a
   purchase date and optional sport tags, entered in a card on the Tax view. They
