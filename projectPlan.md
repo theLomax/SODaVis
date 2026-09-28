@@ -34,6 +34,9 @@ build` succeeds. `node test/private/e2e.mjs` **fails** on `main` (see Phase 0).
 | 5.2 | Per-game item tracking and lifespan | M | Medium | Overnight | 5.1, 3.1 |
 | 6.1 | Local ratings of parks and leagues | S | Low | Daytime | 1.2 |
 | 6.2 | Chart type options, chosen per chart | M | Medium | Daytime | 2.2 |
+| 6.5 | Import formats: Excel files, a format picker, RefTown | M | Medium | Daytime | — |
+| 6.6 | RefTown pay: fee rules or a paysheet import | M | Medium | Design by day | 6.5, a real export |
+| 6.7 | Localization: EN-US, EN-UK, EN-CA, Spanish, FR-CA | L | High | Design by day, build overnight | — |
 | 7 | API support, global analytics, demographics | XL | — | Decision first | a backend |
 
 Sizes are relative: XS is a one-file edit, S is a single run, M is a single run touching
@@ -190,6 +193,66 @@ where every segment touches every other (a donut) caps at three series. Pick one
 alternate form per chart where it genuinely helps (for example, a line for rate over time)
 rather than adding a universal switcher. It follows 2.2 so the click-through works in
 whichever form is shown.
+
+## Phase 6.5: Import formats and RefTown
+
+Found while reviewing RefTown's own documentation. RefTown is not "a configuration
+exercise, not a code change", as `readme.md` claimed:
+
+- **Excel, not CSV.** An official's export is *Schedules → Games → Quick Links →
+  Export → Export to Excel* ([KB #237](https://reftown.com/kbp/index.php?View=entry&EntryID=237)),
+  an `.xlsx` named `games_<timestamp>`. RefTown's public import templates are `.xls`.
+  The importer read text only.
+- **The columns** come from RefTown's public import templates
+  ([standard](https://www.reftown.com/common/templates/game_import_template.xls),
+  [max](https://www.reftown.com/common/templates/game_import_template_max.xls),
+  [min](https://www.reftown.com/common/templates/game_import_template_min.xls)), unchanged
+  since the Internet Archive's 2010 copies: `Reference, Date, Time, Payor, Location,
+  SubLocation, Home, Visitor, Comment, Assignor-Notes, Count, Rating, League, Type,
+  Level, Sport, CrewType, Self-Assign, Link-Group, Official ×10`. The export can be
+  re-imported, so it shares them, plus `GameID` and `Official_1…N`
+  ([KB #267](https://reftown.com/kbp/index.php?View=entry&EntryID=267)).
+- **No status and no fee column** in the template. With the importer as it was, every
+  row would count as not worked, and every game would raise two fee anomalies.
+
+**6.5 Import formats.** An Excel reader (SheetJS, loaded only when an Excel file is
+picked), shared with the CSV path after parsing. Formats become a registry carrying
+their platform, file types and export steps. The Import view gets a picker (Auto-detect,
+Assignr, RefTown, other platforms, saved formats) that shows the steps and limits the
+file picker. RefTown's format defaults a missing status to active and marks its games'
+fees as not in the source, so they raise no fee anomaly.
+
+**6.6 RefTown pay (open).** Needs one real export to settle what the template cannot:
+whether the export has a status column, any fee, and named crew duties. Then either fee
+rules in Reference data (level and crew type, the way RefTown computes pay, [KB
+#157](https://www.reftown.com/kbp/index.php?View=entry&EntryID=157)) or a second
+paysheet import joined on `GameID`.
+
+## Phase 6.7: Localization
+
+Offer the app in **EN-US** (the base language), **EN-UK**, **EN-CA**, **Spanish** and
+**FR-CA**.
+
+- **Base language is EN-US.** The copy drifted toward UK spelling: about 170
+  occurrences across code, comments and docs (`colour` ×25, `behaviour` ×7, `labelled`,
+  `recognised`, `favour`, `licence`, `grey`…). New copy is written in US English from
+  now on; existing copy is converted as it moves into string catalogs, not in one sweep.
+- **Not every UK spelling is copy.** `cancelled` appears 109 times, but much of that is
+  either a source's own vocabulary (Assignr's `Cancelled - Pay` status must match
+  exactly) or a stored identifier (`cancelled-nopay`, `unrecognised-status`). Those stay
+  as they are, or change only with a data migration. Only what the reader sees is
+  translated.
+- **Strings move to catalogs,** one per locale, with a missing key falling back to EN-US.
+  Pick a library first (`i18next` or the browser's `Intl` plus a small lookup). A
+  source's vocabulary is never translated, since the importer has to match it exactly.
+- **Numbers, dates and money through `Intl`,** keyed by locale rather than hard-coded:
+  `formatMoney` and the date labels already take a currency, so they need a locale too.
+  EN-CA and FR-CA use CAD; the IRS mileage rate in Settings is US-only, so a Canadian
+  user needs the CRA rate instead, which makes the Tax view a locale question as well as
+  a language one.
+- **Units:** miles are assumed throughout (`oneWayMiles`, `$/mile`). Canadian users will
+  expect kilometers, so distance needs a unit setting, not just
+  a label.
 
 ## Phase 7: Needs a decision before any code
 

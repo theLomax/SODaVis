@@ -14,9 +14,25 @@ export type DedupeSpec =
   /** No stable id: hash these columns instead. */
   | { strategy: 'fingerprint'; columns: string[] }
 
+/** What a picked file may be. Excel covers `.xlsx`, `.xlsm` and legacy `.xls`. */
+export type ImportFileType = 'csv' | 'excel'
+
 export type SourceProfile = {
   id: string
   label: string
+  /** The platform, for grouping in the format picker: "Assignr", "RefTown". */
+  platform?: string
+  /** File types this format arrives as; the picker limits the file dialog to them. */
+  fileTypes?: ImportFileType[]
+  /** How to get the file out of the platform, one step per line, shown in the picker. */
+  exportSteps?: string[]
+  /**
+   * Status to use when the format has no status column at all. RefTown's game
+   * export has none; without this every row would read as "unknown" and none
+   * would count as worked. A blank cell in a status column that *does* exist is
+   * still unknown — that is a gap in the data, not in the format.
+   */
+  defaultStatus?: GameStatus
   /** Headers expected in this source, used for detection. */
   fingerprint: string[]
   /**

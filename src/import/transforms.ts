@@ -73,7 +73,9 @@ function isoOrUndefined(y: number, m: number, d: number): string | undefined {
 /** `'6:00 PM'` -> `'18:00'`. `'18:00'` -> `'18:00'`. `'6PM'` -> `'18:00'`. */
 export function parseTime(raw: string | undefined): string | undefined {
   if (raw == null) return undefined
-  const s = raw.trim()
+  // A spreadsheet cell holding a full date-time reads as `YYYY-MM-DD HH:mm`;
+  // the date belongs to the date column, so only the time is kept here.
+  const s = raw.trim().replace(/^\d{4}-\d{1,2}-\d{1,2}[ T]/, '')
   if (!s) return undefined
 
   const m = /^(\d{1,2})(?::(\d{2}))?(?::\d{2})?\s*([AaPp])\.?[Mm]?\.?$/.exec(s)

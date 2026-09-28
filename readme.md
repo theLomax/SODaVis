@@ -112,12 +112,17 @@ to the thing it describes.
 
 ## Import is source-agnostic
 
-Assignr's export is one profile, not the shape of the pipeline. RefTown is a
-configuration exercise, not a code change.
+Assignr's export is one profile, not the shape of the pipeline. Each platform is a
+format: its columns, status words, file types and the steps to export it. The Import
+view offers them in a picker (Assignr, RefTown, your saved formats, or map a new one),
+with auto-detect as the default.
 
-1. **Parse** — tolerant of ragged rows (a solo game omits its trailing columns) and
-   trailer rows (a `TOTALS:` sum line).
+1. **Parse** — CSV, or Excel (`.xlsx` and legacy `.xls`, told apart by the file's first
+   bytes, and read by SheetJS only when one is picked). Tolerant of ragged rows (a solo
+   game omits its trailing columns) and trailer rows (a `TOTALS:` sum line).
 2. **Detect** — ranks known profiles by header fingerprint and reports its confidence.
+   Official and position columns are left out of the score, since their number follows
+   the crew size rather than the format.
 3. **Map** — a known profile applies its field map; an unknown file opens a mapping UI
    with fuzzy suggestions, saved as a reusable custom profile. `Position N`/`Official N`
    pairs are discovered by pattern, so a 3- or 4-official crew needs no schema change.

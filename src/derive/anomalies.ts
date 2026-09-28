@@ -31,6 +31,9 @@ export type FeeAnomaly = {
 /** Which anomalies, if any, a game exhibits. */
 export function anomalyCodesFor(game: Game): FeeAnomalyCode[] {
   const codes: FeeAnomalyCode[] = []
+  // A file with no fee column says nothing about pay, so there is nothing to
+  // disagree with — flagging every such game would bury the real anomalies.
+  if (game.fees.notInSource) return []
   const actual = game.fees.actual ?? 0
 
   // An active game that paid nothing: either the fee is missing from the source or

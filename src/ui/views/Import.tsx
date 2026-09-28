@@ -11,11 +11,17 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import { useStore } from '../store'
 import { Button, TextInput, selectStyle } from '../components/Controls'
 import { Card, StatTile, StatusChip } from '../components/Tiles'
-import { parseDelimited, readFileAsText, type ParsedFile } from '../../import/parse'
+import { parseDelimited, type ParsedFile } from '../../import/parse'
+import { isExcelData, parseWorkbook } from '../../import/excel'
 import { CONFIDENT_THRESHOLD, detectProfile, suggestFieldMap, type DetectionCandidate } from '../../import/detect'
-import { mapRows, type MapResult } from '../../import/map'
+import { feesNotInSource, mapRows, type MapResult } from '../../import/map'
 import { reconcile, resolveToIncoming, type Reconciliation } from '../../import/reconcile'
-import { BUILT_IN_PROFILES, genericProfile, type SourceProfile } from '../../import/profiles'
+import {
+  BUILT_IN_PROFILES,
+  genericProfile,
+  type ImportFileType,
+  type SourceProfile,
+} from '../../import/profiles'
 import { CANONICAL_FIELDS, type CanonicalField } from '../../model/game'
 import {
   commitImport,
@@ -55,9 +61,13 @@ export function ImportView() {
     [snapshot],
   )
 
+  /** The format picked above the drop zone: auto-detect, a profile id, or the mapper. */
+  const [format, setFormat] = useState<string>('auto')
+  const pickedProfile =
+    format === 'auto' ? undefined : format === 'generic' ? genericProfile : profiles.find((p) => p.id === format)
+
   const analyze = useCallback(
-    (fileName: string, text: string, profile?: SourceProfile) => {
-      const parsed = parseDelimited(text)
+    (fileName: string, parsed: ParsedFile, profile?: SourceProfile) => {
       if (parsed.headers.length === 0) {
         setStage({ kind: 'error', message: 'That file has no readable header row.' })
         return
@@ -89,13 +99,12 @@ export function ImportView() {
   const onFile = useCallback(
     async (file: File) => {
       try {
-        const text = await readFileAsText(file)
-        analyze(file.name, text)
+        analyze(file.name, await readImportFile(file), pickedProfile)
       } catch (e) {
         setStage({ kind: 'error', message: e instanceof Error ? e.message : String(e) })
       }
     },
-    [analyze],
+    [analyze, pickedProfile],
   )
 
   async function commit() {
@@ -141,8 +150,23 @@ export function ImportView() {
     <div className="flex flex-col gap-4">
       <Card
         title="Import a game export"
-        subtitle="CSV from Assignr, RefTown, or any source you can map. Nothing leaves this machine."
+        subtitle="A CSV or Excel export from Assignr, RefTown, or any source you can map. Nothing leaves this machine."
       >
+        <FormatPicker
+          format={format}
+          setFormat={(next) => {
+            setFormat(next)
+            // A file already under review is re-read under the new format, so a
+            // wrong first pick needs no second trip to the file dialog.
+            if (stage.kind === 'ready') {
+              const profile =
+                next === 'auto' ? undefined : next === 'generic' ? genericProfile : profiles.find((p) => p.id === next)
+              analyze(stage.fileName, stage.parsed, profile)
+            }
+          }}
+          profiles={profiles}
+          picked={pickedProfile}
+        />
         <div
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => {
@@ -154,15 +178,18 @@ export function ImportView() {
           style={{ border: '1px dashed var(--baseline)' }}
         >
           <p className="m-0 text-sm" style={{ color: 'var(--text-secondary)' }}>
-            Drop a CSV here, or
+            Drop the file here, or
           </p>
           <input
             ref={inputRef}
             type="file"
-            accept=".csv,.tsv,.txt,text/csv"
+            accept={acceptFor(pickedProfile?.fileTypes)}
             onChange={(e) => {
               const file = e.target.files?.[0]
               if (file) void onFile(file)
+              // Cleared at once, so picking the same file again — after Cancel, or
+              // after changing the format — is still a change the browser reports.
+              e.target.value = ''
             }}
             className="text-xs"
             style={{ color: 'var(--text-secondary)' }}
@@ -189,9 +216,9 @@ export function ImportView() {
             stage={stage}
             profiles={profiles}
             onChoose={(profile) => {
-              // Re-analyzing from the parsed text keeps every step consistent.
-              const text = rebuildCsv(stage.parsed)
-              analyze(stage.fileName, text, profile)
+              // Re-running from the parsed rows keeps every step consistent, and
+              // works for a spreadsheet, which has no text to re-read.
+              analyze(stage.fileName, stage.parsed, profile)
             }}
             onSavedProfile={reload}
           />
@@ -228,14 +255,96 @@ export function ImportView() {
   )
 }
 
-/** Reassembles a CSV from the parsed table so a profile change can be re-run. */
-function rebuildCsv(parsed: ParsedFile): string {
-  const esc = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v)
-  const lines = [parsed.headers.map(esc).join(',')]
-  for (const row of parsed.rows) {
-    lines.push(parsed.headers.map((h) => esc(row[h] ?? '')).join(','))
-  }
-  return lines.join('\n')
+/**
+ * Reads a picked file as a table. Excel is told apart by its first bytes, not its
+ * name, so a renamed or extension-less download still reads.
+ */
+async function readImportFile(file: File): Promise<ParsedFile> {
+  const bytes = new Uint8Array(await file.arrayBuffer())
+  if (isExcelData(bytes)) return parseWorkbook(bytes)
+  const text = new TextDecoder().decode(bytes)
+  // Strip a UTF-8 BOM; it would otherwise poison the first header name.
+  return parseDelimited(text.charCodeAt(0) === 0xfeff ? text.slice(1) : text)
+}
+
+const ACCEPT: Record<ImportFileType, string> = {
+  csv: '.csv,.tsv,.txt,text/csv',
+  excel:
+    '.xlsx,.xls,.xlsm,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+}
+
+/** The file dialog's filter: a format's own types, or everything readable. */
+function acceptFor(types: ImportFileType[] | undefined): string {
+  return (types?.length ? types : (['csv', 'excel'] as const)).map((t) => ACCEPT[t]).join(',')
+}
+
+// ---------------------------------------------------------------------------
+// Format picker
+// ---------------------------------------------------------------------------
+
+/**
+ * Chosen before the file, so the file dialog can offer the right kind and the
+ * steps for getting it out of the platform are on screen when they are needed.
+ * Auto-detect stays the default: it is right for any file a format already knows.
+ */
+function FormatPicker({
+  format,
+  setFormat,
+  profiles,
+  picked,
+}: {
+  format: string
+  setFormat: (f: string) => void
+  profiles: SourceProfile[]
+  picked: SourceProfile | undefined
+}) {
+  const platforms = profiles.filter((p) => !p.isCustom)
+  const custom = profiles.filter((p) => p.isCustom)
+  return (
+    <div className="mb-3 flex flex-col gap-2">
+      <label className="flex flex-wrap items-center gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+        Format
+        <select
+          value={format}
+          onChange={(e) => setFormat(e.target.value)}
+          aria-label="Import format"
+          className="rounded-md px-2 py-1 text-xs"
+          style={selectStyle}
+        >
+          <option value="auto">Auto-detect from the file</option>
+          <optgroup label="Platforms">
+            {platforms.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.label}
+              </option>
+            ))}
+          </optgroup>
+          {custom.length ? (
+            <optgroup label="My formats">
+              {custom.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.label}
+                </option>
+              ))}
+            </optgroup>
+          ) : null}
+          <option value="generic">Another platform — map the columns</option>
+        </select>
+      </label>
+      {picked?.exportSteps?.length ? (
+        <ol className="m-0 flex list-decimal flex-col gap-0.5 pl-5 text-xs" style={{ color: 'var(--text-secondary)' }}>
+          {picked.exportSteps.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ol>
+      ) : format === 'generic' ? (
+        <p className="m-0 text-xs" style={{ color: 'var(--text-secondary)' }}>
+          Export your games as CSV or Excel, then match its columns to the app's fields. Save the
+          mapping and it appears under My formats next time.
+        </p>
+      ) : null}
+    </div>
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -296,6 +405,26 @@ function ProfileStep({
             profile.
           </p>
         )}
+
+        {/* A format picked by hand can be the wrong one; say so rather than let
+            every column map to nothing. */}
+        {best && best.confidence >= CONFIDENT_THRESHOLD && best.profile.id !== stage.profile.id ? (
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <StatusChip role="warning" label={`This file looks like ${best.profile.label}`} />
+            <Button onClick={() => onChoose(best.profile)}>Use that format</Button>
+          </div>
+        ) : null}
+
+        {stage.mapped.games.length > 0 && feesNotInSource({ headers: stage.parsed.headers, profile: stage.profile }) ? (
+          <div className="flex flex-col gap-1 text-xs">
+            <StatusChip role="warning" label="No pay in this file" />
+            <p className="m-0" style={{ color: 'var(--text-secondary)' }}>
+              It has no fee columns, so these games import with pay unknown rather than $0, and raise no
+              fee warnings. Until pay can be added, their time still counts but their income does not,
+              so income and $/hr read low.
+            </p>
+          </div>
+        ) : null}
 
         {Object.keys(stage.parsed.fieldCounts).length > 1 ? (
           <p className="m-0 text-xs" style={{ color: 'var(--text-muted)' }}>

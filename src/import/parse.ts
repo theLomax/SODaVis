@@ -29,7 +29,16 @@ export function parseDelimited(text: string): ParsedFile {
     .filter((e) => e.code !== 'TooFewFields' && e.code !== 'TooManyFields')
     .map((e) => `row ${e.row ?? '?'}: ${e.message}`)
 
-  const table = (result.data ?? []).filter(
+  return parseTable(result.data ?? [], errors)
+}
+
+/**
+ * A grid of cells, first row the headers, into keyed rows. Shared by the CSV
+ * reader above and the Excel reader in `excel.ts`, so everything downstream of
+ * parsing — detection, mapping, reconciling — never knows which it was.
+ */
+export function parseTable(grid: string[][], errors: string[] = []): ParsedFile {
+  const table = grid.filter(
     (r) => Array.isArray(r) && r.some((c) => (c ?? '').trim() !== ''),
   )
 
@@ -63,10 +72,4 @@ function dedupeHeaders(raw: string[]): string[] {
     seen.set(base, n + 1)
     return n === 0 ? base : `${base} (${n + 1})`
   })
-}
-
-export async function readFileAsText(file: File): Promise<string> {
-  const text = await file.text()
-  // Strip a UTF-8 BOM; it would otherwise poison the first header name.
-  return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text
 }
