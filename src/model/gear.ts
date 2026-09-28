@@ -80,6 +80,17 @@ export type GearItem = {
   /** Purchase or acquisition date, ISO `YYYY-MM-DD`. */
   acquiredOn?: string
   /**
+   * As printed on the piece: "L", "10.5", "7 3/8". Free text, because every
+   * category sizes differently. On the item, not the product, since the same
+   * shirt can be owned in two sizes.
+   */
+  size?: string
+  /**
+   * What this piece cost, in the settings currency. Per item for the same reason:
+   * two of the same shirt can cost differently, bought on sale or second-hand.
+   */
+  pricePaid?: number
+  /**
    * Set when the item leaves service. A retired item stays on the games that
    * used it; it only stops being offered for new ones.
    */
@@ -133,9 +144,21 @@ export function newGearId(prefix: 'gp' | 'gi' | 'gs'): string {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`
 }
 
-/** "Brand · Name · Colour", skipping what is unknown. */
+/** "Brand · Name · Color", skipping what is unknown. */
 export function describeProduct(p: GearProduct): string {
   return [p.brand, p.name, p.color].filter(Boolean).join(' · ')
+}
+
+/**
+ * A typed price, as the new-item form needs it: blank is "not recorded"
+ * (`undefined`), and anything that is not a non-negative amount is `null`, so the
+ * form can refuse it rather than save a typo. `$12.50` and `12.5` both read.
+ */
+export function parsePricePaid(text: string): number | undefined | null {
+  const t = text.trim().replace(/^\$/, '').replace(/,/g, '')
+  if (!t) return undefined
+  const n = Number(t)
+  return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : null
 }
 
 export function isRetired(item: GearItem): boolean {

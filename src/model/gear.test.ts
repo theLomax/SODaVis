@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { GEAR_CATEGORIES, SEED_GEAR_PRODUCTS, describeProduct, nextItemLabel, type GearProduct } from './gear'
+import {
+  GEAR_CATEGORIES,
+  SEED_GEAR_PRODUCTS,
+  describeProduct,
+  nextItemLabel,
+  parsePricePaid,
+  type GearProduct,
+} from './gear'
 
 const shirt: GearProduct = { id: 'p', category: 'shirt', name: 'V3 shirt', color: 'Black', origin: 'user' }
 
@@ -13,6 +20,16 @@ describe('gear helpers', () => {
   it('describes a product from whatever is known', () => {
     expect(describeProduct({ ...shirt, brand: 'Example Co' })).toBe('Example Co · V3 shirt · Black')
     expect(describeProduct({ id: 'x', category: 'mask', name: 'Mask', origin: 'user' })).toBe('Mask')
+  })
+
+  it('reads a typed price, blank as not recorded and a typo as refused', () => {
+    expect(parsePricePaid('')).toBeUndefined()
+    expect(parsePricePaid('  ')).toBeUndefined()
+    expect(parsePricePaid('12.5')).toBe(12.5)
+    expect(parsePricePaid('$1,249.999')).toBe(1250)
+    expect(parsePricePaid('0')).toBe(0)
+    expect(parsePricePaid('-5')).toBeNull()
+    expect(parsePricePaid('twelve')).toBeNull()
   })
 
   it('seeds only known categories, with unique ids and no brand claims', () => {
