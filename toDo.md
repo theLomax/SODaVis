@@ -99,6 +99,15 @@ the data model.
       two users is two IDs; a shared catalog has to reconcile them.
   - **Next:** a gear list on `GameAnnotation` (so a re-import keeps it like the other
     game notes) and the *Add gear* button on the game entry.
+  - **More Features:** 
+    - The full catalogue could get uncomfortably large. We should filter results to show 50 items at a time, with a "Load more" button to fetch additional results, as well as a toggle to view more items: 100, 200, 500, etc.
+    - We should have a filter for the catalogue, to display items by sport, brand, etc. We will need to add a sport field to the gear entries. Ask the user to choose from a list of sports, but fallback to an inferred sport based on the user's profile, with sports attributed.
+    - Add custom fields to specific gear, like `ball_first`(boolean) and `dial_count`(integer) for indicators. Other gear might have a field for hand dominance `ambidextrous`(boolean) or `right_handed`(boolean (if ambidextrous=false)).
+  - We should track the UPC value, over the SKU or Product number, though we can leave those values. SKU would likely be a sub-object key, where the SKU is matched with a retail vendor. We would additionally need a system ID to track individual gear items, since UPC values may not be reliable or available with user-supplied data. For identifying duplicate gear entries, we should prioritize matching values in this order:
+    1. ItemID
+    2. UPC
+    3. Brand Product ID
+    4. Retail Vendor / SKU pair
 - Anonymized global data tracking: collect and track all metrics across all users, but anonymized to protect user privacy. This will allow us to track popular brands for gear, frequency of calls, contrast those frequencies by region, age, and other demographic factors.
 - consider other user metrics, like age, sex, years of experience. Offer users to opt-out, but reinforce that it's anonymized, and used for general analytics and trend tracking.
 - Demographic reviews: consider an option for officials to rate gear, brands, fields, leagues (with breakdowns for players, coaches, parents, boardmembers, surrounding neighborhoods, etc.), rulesets, concessions, facilities, and other elements.

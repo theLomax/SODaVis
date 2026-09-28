@@ -150,8 +150,8 @@ export function Cancellations() {
             detail: `${formatMoney(v.scheduled, currency)} scheduled, ${formatMoney(v.actual, currency)} actual`,
           }))}
           format={(n) => formatMoney(n, currency)}
-          negativeLabel="Lost"
-          positiveLabel="Gained"
+          negativeLabel="Lost Income"
+          positiveLabel="Bonus Income"
           colors={GAIN_LOSS}
           footnote={`${down.length} games paid less than scheduled, ${up.length} paid more.`}
         />
