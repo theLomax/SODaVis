@@ -522,6 +522,45 @@ export async function saveGearItem(item: GearItem, database: AppDatabase = db): 
 }
 
 /**
+ * Merges one or more fields into the stored row, read inside the transaction.
+ *
+ * Inline editors commit on blur, so tabbing from one field to the next fires two
+ * saves before the view reloads. Saving the whole row as it was when rendered
+ * made the second save put back the first field's old value. A patch only ever
+ * writes what changed. `undefined` clears a field.
+ */
+async function patchRow<T extends { id: string }>(
+  table: { get(id: string): Promise<T | undefined>; put(row: T): Promise<unknown> },
+  inTransaction: (fn: () => Promise<void>) => Promise<void>,
+  id: string,
+  patch: Partial<Omit<T, 'id'>>,
+): Promise<void> {
+  await inTransaction(async () => {
+    const existing = await table.get(id)
+    if (!existing) return
+    const next: Record<string, unknown> = { ...existing, ...patch }
+    for (const k of Object.keys(next)) if (next[k] === undefined) delete next[k]
+    await table.put(next as T)
+  })
+}
+
+export async function patchGearItem(
+  id: string,
+  patch: Partial<Omit<GearItem, 'id'>>,
+  database: AppDatabase = db,
+): Promise<void> {
+  await patchRow<GearItem>(database.gearItems, (fn) => database.transaction('rw', database.gearItems, fn), id, patch)
+}
+
+export async function patchGearProduct(
+  id: string,
+  patch: Partial<Omit<GearProduct, 'id'>>,
+  database: AppDatabase = db,
+): Promise<void> {
+  await patchRow<GearProduct>(database.gearProducts, (fn) => database.transaction('rw', database.gearProducts, fn), id, patch)
+}
+
+/**
  * Deletes an owned item and takes it out of every set, in one transaction, so no
  * set is left pointing at a piece that no longer exists. Retiring is the usual
  * path; this is for an item entered by mistake.

@@ -1,7 +1,7 @@
 /**
  * Gear: the pieces the user owns, the sets they wear together, and the catalog
- * both are drawn from. Managed here rather than analysed — there are no charts,
- * because the questions this data exists for ("which shirt colour is worn most")
+ * both are drawn from. Managed here rather than analyzed — there are no charts,
+ * because the questions this data exists for ("which shirt color is worn most")
  * need per-game gear first, and that is a later step.
  *
  * Top to bottom in the order the work happens: sets are what a game will use, so
@@ -17,6 +17,8 @@ import {
   deleteGearItem,
   deleteGearProduct,
   deleteGearSet,
+  patchGearItem,
+  patchGearProduct,
   saveGearItem,
   saveGearProduct,
   saveGearSet,
@@ -28,12 +30,13 @@ import {
   isRetired,
   newGearId,
   nextItemLabel,
+  parsePricePaid,
   type GearCategory,
   type GearItem,
   type GearProduct,
   type GearSet,
 } from '../../model/gear'
-import { TextCell } from './reference/cells'
+import { NumberCell, TextCell } from './reference/cells'
 
 export function Gear() {
   const { derived, reload } = useStore()
@@ -315,6 +318,8 @@ function ItemsCard({
   const [productId, setProductId] = useState('')
   const [label, setLabel] = useState('')
   const [acquiredOn, setAcquiredOn] = useState('')
+  const [size, setSize] = useState('')
+  const [price, setPrice] = useState('')
   const [showRetired, setShowRetired] = useState(false)
 
   const byProduct = new Map(products.map((p) => [p.id, p]))
@@ -336,19 +341,25 @@ function ItemsCard({
     setLabel(product ? nextItemLabel(product, items) : '')
   }
 
+  const pricePaid = parsePricePaid(price)
+
   async function add() {
-    if (!productId || !label.trim()) return
+    if (!productId || !label.trim() || pricePaid === null) return
     await run(() =>
       saveGearItem({
         id: newGearId('gi'),
         productId,
         label: label.trim(),
         ...(acquiredOn ? { acquiredOn } : {}),
+        ...(size.trim() ? { size: size.trim() } : {}),
+        ...(pricePaid !== undefined ? { pricePaid } : {}),
       }),
     )
     setProductId('')
     setLabel('')
     setAcquiredOn('')
+    setSize('')
+    setPrice('')
   }
 
   const today = new Date().toISOString().slice(0, 10)
@@ -375,7 +386,7 @@ function ItemsCard({
       ) : (
         <div className="overflow-auto">
           <table className="w-full border-collapse text-xs">
-            <HeaderRow headers={['Item', 'Product', 'Acquired', 'In sets', 'Status', '']} />
+            <HeaderRow headers={['Item', 'Product', 'Size', 'Price paid', 'Acquired', 'In sets', 'Status', '']} />
             <tbody>
               {shown.map((item) => {
                 const product = byProduct.get(item.productId)
@@ -388,7 +399,7 @@ function ItemsCard({
                         ariaLabel={`Name of ${item.label}`}
                         width={220}
                         onCommit={(v) => {
-                          if (v && v !== item.label) void run(() => saveGearItem({ ...item, label: v }))
+                          if (v && v !== item.label) void run(() => patchGearItem(item.id, { label: v }))
                         }}
                       />
                     </td>
@@ -403,16 +414,34 @@ function ItemsCard({
                       )}
                     </td>
                     <td className="px-2 py-1.5">
+                      <TextCell
+                        value={item.size}
+                        ariaLabel={`Size of ${item.label}`}
+                        width={70}
+                        onCommit={(v) => {
+                          if (v !== item.size) void run(() => patchGearItem(item.id, { size: v }))
+                        }}
+                      />
+                    </td>
+                    <td className="px-2 py-1.5">
+                      <NumberCell
+                        value={item.pricePaid}
+                        step="0.01"
+                        ariaLabel={`Price paid for ${item.label}`}
+                        onCommit={(v) => {
+                          // A negative price is a typo, not a refund; leave the figure alone.
+                          if (v === item.pricePaid || (v !== undefined && v < 0)) return
+                          void run(() => patchGearItem(item.id, { pricePaid: v }))
+                        }}
+                      />
+                    </td>
+                    <td className="px-2 py-1.5">
                       <input
                         type="date"
                         value={item.acquiredOn ?? ''}
-                        onChange={(e) => {
-                          const { acquiredOn: _drop, ...rest } = item
-                          void _drop
-                          void run(() =>
-                            saveGearItem(e.target.value ? { ...rest, acquiredOn: e.target.value } : rest),
-                          )
-                        }}
+                        onChange={(e) =>
+                          void run(() => patchGearItem(item.id, { acquiredOn: e.target.value || undefined }))
+                        }
                         aria-label={`Date ${item.label} was acquired`}
                         className="rounded-md px-1.5 py-0.5 text-xs"
                         style={selectStyle}
@@ -430,18 +459,14 @@ function ItemsCard({
                       <span className="inline-flex gap-3">
                         {retired ? (
                           <RowAction
-                            onClick={() => {
-                              const { retiredOn: _drop, ...rest } = item
-                              void _drop
-                              void run(() => saveGearItem(rest))
-                            }}
+                            onClick={() => void run(() => patchGearItem(item.id, { retiredOn: undefined }))}
                             ariaLabel={`Return ${item.label} to use`}
                           >
                             Unretire
                           </RowAction>
                         ) : (
                           <RowAction
-                            onClick={() => void run(() => saveGearItem({ ...item, retiredOn: today }))}
+                            onClick={() => void run(() => patchGearItem(item.id, { retiredOn: today }))}
                             ariaLabel={`Retire ${item.label}`}
                           >
                             Retire
@@ -504,7 +529,15 @@ function ItemsCard({
             style={selectStyle}
           />
         </label>
-        <Button onClick={() => void add()} disabled={!productId || !label.trim()}>
+        <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+          Size (optional)
+          <TextInput value={size} onChange={setSize} width={70} placeholder="L" ariaLabel="Size of the new item" />
+        </label>
+        <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+          Price paid (optional)
+          <TextInput value={price} onChange={setPrice} type="number" step="0.01" width={90} ariaLabel="Price paid for the new item" />
+        </label>
+        <Button onClick={() => void add()} disabled={!productId || !label.trim() || pricePaid === null}>
           Add item
         </Button>
       </div>
@@ -565,10 +598,7 @@ function CatalogCard({
   function patch(product: GearProduct, key: 'name' | 'brand' | 'color' | 'sku', v: string | undefined) {
     if (key === 'name' && !v) return
     if ((product[key] ?? undefined) === v) return
-    const next = { ...product }
-    if (v) next[key] = v
-    else delete next[key]
-    void run(() => saveGearProduct(next))
+    void run(() => patchGearProduct(product.id, { [key]: v || undefined }))
   }
 
   return (
@@ -584,7 +614,7 @@ function CatalogCard({
       {open ? (
         <div className="overflow-auto">
           <table className="w-full border-collapse text-xs">
-            <HeaderRow headers={['Category', 'Name', 'Brand', 'Colour', 'SKU', 'Owned', '']} />
+            <HeaderRow headers={['Category', 'Name', 'Brand', 'Color', 'SKU', 'Owned', '']} />
             <tbody>
               {sorted.map((p) => (
                 <tr key={p.id} style={rowStyle}>
@@ -603,7 +633,7 @@ function CatalogCard({
                     <TextCell value={p.brand} ariaLabel={`Brand of ${describeProduct(p)}`} onCommit={(v) => patch(p, 'brand', v)} />
                   </td>
                   <td className="px-2 py-1.5">
-                    <TextCell value={p.color} ariaLabel={`Colour of ${describeProduct(p)}`} onCommit={(v) => patch(p, 'color', v)} />
+                    <TextCell value={p.color} ariaLabel={`Color of ${describeProduct(p)}`} onCommit={(v) => patch(p, 'color', v)} />
                   </td>
                   <td className="px-2 py-1.5">
                     <TextCell value={p.sku} ariaLabel={`SKU of ${describeProduct(p)}`} onCommit={(v) => patch(p, 'sku', v)} />
@@ -660,8 +690,8 @@ function CatalogCard({
           <TextInput value={brand} onChange={setBrand} width={110} ariaLabel="Brand for the new product" />
         </label>
         <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-          Colour
-          <TextInput value={color} onChange={setColor} width={100} ariaLabel="Colour for the new product" />
+          Color
+          <TextInput value={color} onChange={setColor} width={100} ariaLabel="Color for the new product" />
         </label>
         <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
           SKU / product no.

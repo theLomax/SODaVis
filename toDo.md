@@ -65,7 +65,8 @@ the data model.
     now.
   - **Gear tab — built** (`views/Gear.tsx`; tables `gearProducts`, `gearItems`,
     `gearSets` at schema v5). Sets, owned items with purchase date and retire /
-    unretire, and a collapsible catalog with 20 unbranded seed products plus the
+    unretire, a size and price paid per item (on the piece, not the product, since one
+    shirt can be owned in two sizes and bought at two prices), and a collapsible catalog with 20 unbranded seed products plus the
     user's own (brand, colour, SKU, shop link). A retired item stays in its sets,
     marked, but is no longer offered for adding. Deleting an item removes it from
     every set; deleting a product that an item is still of is refused. Still to add

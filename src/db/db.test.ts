@@ -22,6 +22,8 @@ import {
   loadSnapshot,
   patchGameAnnotation,
   saveGameAnnotation,
+  patchGearItem,
+  patchGearProduct,
   saveGearItem,
   saveGearProduct,
   saveGearSet,
@@ -403,6 +405,51 @@ describe('gear inventory', () => {
     const seeded = await db.gearProducts.toArray()
     expect(seeded.length).toBeGreaterThan(0)
     expect(seeded.every((p) => p.origin === 'seed')).toBe(true)
+  })
+
+  it('keeps size and price paid per item, through a backup', async () => {
+    // Same product, two sizes, two prices: both belong to the piece, not the product.
+    await saveGearProduct(shirt, db)
+    await saveGearItem({ ...first, size: 'L', pricePaid: 42.5 }, db)
+    await saveGearItem({ ...second, size: 'XL', pricePaid: 30 }, db)
+    const backup = await exportBackup(db)
+    await restoreBackup(backup, 'replace', db)
+    expect(await db.gearItems.get('gi-1')).toMatchObject({ size: 'L', pricePaid: 42.5 })
+    expect(await db.gearItems.get('gi-2')).toMatchObject({ size: 'XL', pricePaid: 30 })
+    expect(await db.gearProducts.get('gp-shirt')).not.toHaveProperty('size')
+  })
+
+  it('keeps both of two edits made back to back from the same row', async () => {
+    // Tabbing from size to price fires two saves before the view reloads. With
+    // whole-row saves the second put the first field back; patches do not.
+    await saveGearProduct(shirt, db)
+    await saveGearItem({ ...first, size: 'L', pricePaid: 42.5 }, db)
+    await Promise.all([
+      patchGearItem('gi-1', { size: 'XL' }, db),
+      patchGearItem('gi-1', { pricePaid: 39.99 }, db),
+    ])
+    expect(await db.gearItems.get('gi-1')).toMatchObject({ size: 'XL', pricePaid: 39.99, label: 'Black V3 #1' })
+  })
+
+  it('clears a field patched to undefined, and ignores a missing row', async () => {
+    await saveGearItem({ ...first, size: 'L', retiredOn: '2026-01-01' }, db)
+    await patchGearItem('gi-1', { size: undefined, retiredOn: undefined }, db)
+    const item = await db.gearItems.get('gi-1')
+    expect(item).not.toHaveProperty('size')
+    expect(item).not.toHaveProperty('retiredOn')
+    await patchGearItem('no-such-item', { size: 'M' }, db)
+    expect(await db.gearItems.get('no-such-item')).toBeUndefined()
+  })
+
+  it('patches a catalog product without touching its other fields', async () => {
+    await saveGearProduct(shirt, db)
+    await Promise.all([
+      patchGearProduct('gp-shirt', { brand: 'Other Co' }, db),
+      patchGearProduct('gp-shirt', { color: undefined }, db),
+    ])
+    const p = await db.gearProducts.get('gp-shirt')
+    expect(p).toMatchObject({ brand: 'Other Co', sku: 'EX-V3-BLK', name: 'V3 short-sleeve shirt' })
+    expect(p).not.toHaveProperty('color')
   })
 
   it('keeps two copies of one product as two items', async () => {
