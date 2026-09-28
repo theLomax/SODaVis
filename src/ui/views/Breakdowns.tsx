@@ -12,7 +12,16 @@ import { useStore } from '../store'
 import { HorizontalBar } from '../charts/Charts'
 import { Card, EmptyState, StatTile } from '../components/Tiles'
 import { DataTable, type TableColumn } from '../charts/ChartFrame'
-import { byAssignor, byCall, byLeague, byPark, byPartner, bySport, type Breakdown } from '../../derive/metrics'
+import {
+  byAssignor,
+  byCall,
+  byLeague,
+  byOrganization,
+  byPark,
+  byPartner,
+  bySport,
+  type Breakdown,
+} from '../../derive/metrics'
 import { formatMoney, formatMoneyCompact } from '../../derive/money'
 import { formatMinutes } from '../../derive/time'
 
@@ -241,6 +250,13 @@ export function Leagues() {
     () => (ctx && derived ? byCall(ctx, derived.snapshot.callTypes) : []),
     [ctx, derived],
   )
+  const organizations = useMemo(
+    () =>
+      ctx && derived && derived.snapshot.organizations.length > 0
+        ? byOrganization(ctx, (id) => derived.snapshot.organizations.find((o) => o.id === id)?.name ?? id)
+        : [],
+    [ctx, derived],
+  )
   const currency = derived?.money.currency ?? 'USD'
   const columns = useBreakdownTable(currency)
 
@@ -251,6 +267,27 @@ export function Leagues() {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Only once organizations exist: the organization, not the platform or the
+          league, is who pays, so it leads when it is known. */}
+      {organizations.length > 0 ? (
+        <div className="grid gap-4 xl:grid-cols-2">
+          <HorizontalBar
+            title="Income by organization"
+            subtitle="Who hired and paid you. Set under Reference data → Organizations"
+            rows={organizations.map((r) => ({ key: r.key, label: r.label, value: r.gross }))}
+            format={(n) => formatMoneyCompact(n, currency)}
+            valueHeader="Income"
+            slot={1}
+            maxRows={12}
+          />
+          <Card title="All organizations">
+            <div className="overflow-auto">
+              <DataTable rows={organizations} columns={columns} />
+            </div>
+          </Card>
+        </div>
+      ) : null}
+
       <div className="grid gap-4 xl:grid-cols-2">
         <HorizontalBar
           title="Income by league"

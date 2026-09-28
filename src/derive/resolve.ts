@@ -8,6 +8,7 @@
 import type { DataQualityFlag, Game } from '../model/game'
 import { isActive } from '../model/game'
 import type {
+  Organization,
   AgeGroupDuration,
   GearLevelId,
   GearModifierId,
@@ -328,6 +329,56 @@ export function resolveGearLevel(
 }
 
 // ---------------------------------------------------------------------------
+// Organization
+// ---------------------------------------------------------------------------
+
+/** Case and spacing aside, so "H&B  Officials" and "h&b officials" are one name. */
+function normalizeName(name: string | undefined): string {
+  return (name ?? '').trim().replace(/\s+/g, ' ').toLowerCase()
+}
+
+/** Where a game's organization came from, strongest first. */
+export type OrganizationSource = 'manual' | 'payor' | 'import'
+
+/**
+ * Which organization a game was worked for, most specific first:
+ *
+ *  1. set by hand on the game;
+ *  2. the game's payor, when it is the organization's name or one it is also
+ *     known by — the one place an export may name the organization itself;
+ *  3. the organization chosen for the import the game came from.
+ *
+ * Nothing is guessed from people or leagues: an assignor is a person who may
+ * assign for more than one organization. A reference to an organization since
+ * deleted is ignored, not trusted.
+ */
+export function resolveOrganization(
+  game: Game,
+  annotation: GameAnnotation | undefined,
+  organizations: Organization[],
+  importOrganizations: Map<string, string>,
+): { id: string; source: OrganizationSource } | undefined {
+  const known = new Set(organizations.map((o) => o.id))
+
+  if (annotation?.organizationId && known.has(annotation.organizationId)) {
+    return { id: annotation.organizationId, source: 'manual' }
+  }
+
+  const payor = normalizeName(game.payor)
+  if (payor) {
+    const named = organizations.find((org) =>
+      [org.name, ...(org.aliases ?? [])].some((n) => normalizeName(n) === payor),
+    )
+    if (named) return { id: named.id, source: 'payor' }
+  }
+
+  const fromImport = importOrganizations.get(game.source.importId)
+  if (fromImport && known.has(fromImport)) return { id: fromImport, source: 'import' }
+
+  return undefined
+}
+
+// ---------------------------------------------------------------------------
 // Per-game resolution bundle
 // ---------------------------------------------------------------------------
 
@@ -368,6 +419,9 @@ export type ResolvedGame = {
   weatherRelated?: boolean
   /** Rare calls tagged on this game. Empty when none have been recorded. */
   calls: string[]
+  /** The organization the game was worked for, when one is known. */
+  organizationId?: string
+  organizationSource?: OrganizationSource
   /** Import flags plus any raised during resolution. */
   flags: DataQualityFlag[]
 }
@@ -383,6 +437,10 @@ export type ResolveContext = {
    * always passes it; omitting it trusts the stored values.
    */
   identity?: Identity
+  /** Organizations, by name; the first whose name matches a payor wins. */
+  organizations?: Organization[]
+  /** Import id → the organization chosen for that import. */
+  importOrganizations?: Map<string, string>
 }
 
 export function resolveGame(stored: Game, ctx: ResolveContext): ResolvedGame {
@@ -437,6 +495,23 @@ export function resolveGame(stored: Game, ctx: ResolveContext): ResolvedGame {
     })
   }
 
+  const organization = resolveOrganization(
+    game,
+    annotation,
+    ctx.organizations ?? [],
+    ctx.importOrganizations ?? new Map(),
+  )
+  // Only once any organization exists: before that, every game would be flagged
+  // for a feature the user has not started using.
+  if (!organization && (ctx.organizations?.length ?? 0) > 0) {
+    flags.push({
+      code: 'missing-organization',
+      severity: 'info',
+      message: 'No organization is recorded for this game.',
+      context: [game.assignor, game.payor, game.league].filter(Boolean).join(' · '),
+    })
+  }
+
   const sport = resolveSport(game, ctx.sports, annotation)
   const sportCode = effectiveSportCode(game, annotation)
   const gearLevel = resolveGearLevel(game, ctx.sports, annotation)
@@ -460,6 +535,7 @@ export function resolveGame(stored: Game, ctx: ResolveContext): ResolvedGame {
       ? { weatherRelated: annotation.weatherRelated }
       : {}),
     calls: annotation?.calls ?? [],
+    ...(organization ? { organizationId: organization.id, organizationSource: organization.source } : {}),
     flags,
   }
 }

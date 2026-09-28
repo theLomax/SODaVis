@@ -294,6 +294,18 @@ export const TABLES: readonly TableSpec[] = [
     merge: 'key',
     inCounts: true,
   },
+  {
+    name: 'organizations',
+    since: 6,
+    indexes: 'id, name',
+    kind: 'rows',
+    rowSchema: z.object({ id: z.string(), name: z.string(), kind: z.string() }).loose(),
+    backupShape: 'array',
+    optionalInBackup: true,
+    keyOf: (row) => row.id as string,
+    merge: 'key',
+    inCounts: true,
+  },
 ]
 
 export const TABLE_NAMES = TABLES.map((t) => t.name)

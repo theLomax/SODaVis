@@ -6,6 +6,7 @@
 import type { Game, ImportRun } from '../model/game'
 import type {
   AgeGroupDuration,
+  Organization,
   CallType,
   GearLevel,
   GearModifier,
@@ -50,6 +51,7 @@ export type AppSnapshot = {
   settings: Settings
   gameAnnotations: GameAnnotation[]
   tripAnnotations: TripAnnotation[]
+  organizations: Organization[]
   generalExpenses: GeneralExpense[]
   gearProducts: GearProduct[]
   gearItems: GearItem[]
@@ -104,6 +106,8 @@ export type CommitPlan = {
   profileLabel: string
   rowsInFile: number
   rowsSkipped: number
+  /** The organization this file's games default to, if one was chosen. */
+  organizationId?: string
 }
 
 /**
@@ -135,6 +139,7 @@ export async function commitImport(
     },
     insertedGameIds: plan.inserts.map((g) => g.id),
     replacedGames: [],
+    ...(plan.organizationId ? { organizationId: plan.organizationId } : {}),
   }
 
   await database.transaction('rw', [database.games, database.imports], async () => {
@@ -391,6 +396,7 @@ export async function saveGameAnnotation(
     !annotation.gearLevel &&
     annotation.gearModifiers == null &&
     !annotation.sportCodeOverride &&
+    !annotation.organizationId &&
     !annotation.cancelStage &&
     annotation.droveToCancelled == null &&
     annotation.weatherRelated == null &&
@@ -581,6 +587,71 @@ export async function saveGearSet(set: GearSet, database: AppDatabase = db): Pro
 
 export async function deleteGearSet(id: string, database: AppDatabase = db): Promise<void> {
   await database.gearSets.delete(id)
+}
+
+// ---------------------------------------------------------------------------
+// Organizations
+// ---------------------------------------------------------------------------
+
+export async function saveOrganization(org: Organization, database: AppDatabase = db): Promise<void> {
+  await database.organizations.put(org)
+}
+
+/** Merges fields into the stored row, like the gear patches, so back-to-back inline edits keep both. */
+export async function patchOrganization(
+  id: string,
+  patch: Partial<Omit<Organization, 'id'>>,
+  database: AppDatabase = db,
+): Promise<void> {
+  await patchRow<Organization>(
+    database.organizations,
+    (fn) => database.transaction('rw', database.organizations, fn),
+    id,
+    patch,
+  )
+}
+
+/**
+ * Deletes an organization and every reference to it — hand-set games and the
+ * imports it was the default for — in one transaction, so nothing is left
+ * pointing at a name that no longer exists. Those games fall back to whatever
+ * else claims them: a match rule, or nothing.
+ */
+export async function deleteOrganization(id: string, database: AppDatabase = db): Promise<void> {
+  await database.transaction(
+    'rw',
+    [database.organizations, database.gameAnnotations, database.imports],
+    async () => {
+      await database.organizations.delete(id)
+      const annotations = (await database.gameAnnotations.toArray()).filter((a) => a.organizationId === id)
+      for (const a of annotations) {
+        const { organizationId: _drop, ...rest } = a
+        void _drop
+        await saveGameAnnotation(rest, database)
+      }
+      const runs = (await database.imports.toArray()).filter((r) => r.organizationId === id)
+      for (const r of runs) {
+        const { organizationId: _drop, ...rest } = r
+        void _drop
+        await database.imports.put(rest)
+      }
+    },
+  )
+}
+
+/** Sets, or clears with `undefined`, the organization an import's games default to. */
+export async function setImportOrganization(
+  importId: string,
+  organizationId: string | undefined,
+  database: AppDatabase = db,
+): Promise<void> {
+  await database.transaction('rw', database.imports, async () => {
+    const run = await database.imports.get(importId)
+    if (!run) throw new Error(`No import with id ${importId}`)
+    const { organizationId: _old, ...rest } = run
+    void _old
+    await database.imports.put(organizationId ? { ...rest, organizationId } : rest)
+  })
 }
 
 // ---------------------------------------------------------------------------

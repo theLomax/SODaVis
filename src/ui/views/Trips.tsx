@@ -21,6 +21,7 @@ import type { Trip } from '../../derive/trips'
 import type { ResolvedGame } from '../../derive/resolve'
 import type {
   CallType,
+  Organization,
   GearLevel,
   GearLevelId,
   GearModifier,
@@ -179,6 +180,7 @@ export function Trips() {
                             gearLevels={derived.snapshot.gearLevels}
                             gearModifiers={derived.snapshot.gearModifiers}
                             callTypes={derived.snapshot.callTypes}
+                            organizations={derived.snapshot.organizations}
                             annotation={annotations.get(trip.key)}
                             committedMinutes={t.byModel['committed']}
                             prepMinutes={t.prepMinutes}
@@ -257,6 +259,7 @@ function TripDetail({
   gearLevels,
   gearModifiers,
   callTypes,
+  organizations,
   annotation,
   committedMinutes,
   prepMinutes,
@@ -272,6 +275,7 @@ function TripDetail({
   gearLevels: GearLevel[]
   gearModifiers: GearModifier[]
   callTypes: CallType[]
+  organizations: Organization[]
   annotation: TripAnnotation | undefined
   committedMinutes: number | null
   prepMinutes: number
@@ -407,6 +411,14 @@ function TripDetail({
                       <CallCell game={g} callTypes={callTypes} onSaved={onSaved} />
                     </td>
                   </tr>
+                  {organizations.length > 0 ? (
+                    <tr style={{ borderBottom: '1px solid var(--gridline)' }}>
+                      <Td>{''}</Td>
+                      <td className="px-2 py-1 align-middle" colSpan={5}>
+                        <OrganizationCell game={g} organizations={organizations} onSaved={onSaved} />
+                      </td>
+                    </tr>
+                  ) : null}
                 </Fragment>
               ))}
             </tbody>
@@ -567,6 +579,64 @@ function Labeled({ label, children }: { label: string; children: React.ReactNode
  *
  * The override is a game annotation keyed by dedupeKey, so re-importing keeps it.
  */
+/**
+ * The organization a game was worked for. Blank means automatic — the payor
+ * or the import's organization — and says which, so setting one by hand is a
+ * visible override rather than a guess at what was there.
+ */
+function OrganizationCell({
+  game,
+  organizations,
+  onSaved,
+}: {
+  game: ResolvedGame
+  organizations: Organization[]
+  onSaved: () => Promise<void>
+}) {
+  const [saving, setSaving] = useState(false)
+  const sorted = [...organizations].sort((a, b) => a.name.localeCompare(b.name))
+  const manual = game.organizationSource === 'manual' ? game.organizationId : undefined
+  const automatic =
+    game.organizationSource && game.organizationSource !== 'manual'
+      ? organizations.find((o) => o.id === game.organizationId)
+      : undefined
+  const automaticLabel = automatic
+    ? `${game.organizationSource === 'payor' ? 'From payor' : 'From import'}: ${automatic.name}`
+    : 'None recorded'
+
+  async function set(id: string) {
+    setSaving(true)
+    try {
+      // A patch, so the sport tag, gear and calls on this game survive.
+      await patchGameAnnotation(game.game.source.dedupeKey, { organizationId: id || undefined })
+      await onSaved()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1.5">
+      <span style={{ color: 'var(--text-muted)' }}>Organization</span>
+      <select
+        value={manual ?? ''}
+        disabled={saving}
+        onChange={(e) => void set(e.target.value)}
+        aria-label={`Organization for the ${game.game.startTime} game`}
+        className="rounded-md px-1.5 py-0.5 text-xs"
+        style={selectStyle}
+      >
+        <option value="">{automaticLabel}</option>
+        {sorted.map((o) => (
+          <option key={o.id} value={o.id}>
+            {o.name}
+          </option>
+        ))}
+      </select>
+    </span>
+  )
+}
+
 function SportTag({
   game,
   sports,

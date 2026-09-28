@@ -34,6 +34,35 @@ export type Park = {
   notes?: string
 }
 
+/**
+ * Who hired, assigned and paid for a game: an officials' association, or a
+ * direct contract such as a tournament director. Not the platform — two
+ * associations can both use Assignr, and one association can switch platforms —
+ * so the platform is only a note here.
+ */
+export type OrganizationKind = 'association' | 'direct'
+
+export type Organization = {
+  id: string
+  name: string
+  kind: OrganizationKind
+  /** The scheduling platform it assigns through, if any: "Assignr", "RefTown"… */
+  platform?: string
+  /**
+   * Other names it goes by, e.g. "H&B Officials" for "Harbor Officials Group". An export may name
+   * the organization as a game's payor; a payor equal to the name or any of these
+   * (case aside) is the source saying which organization the game was for. Never
+   * the assignor: that is a person, who may assign for more than one.
+   */
+  aliases?: string[]
+  notes?: string
+}
+
+export const ORGANIZATION_KINDS: { id: OrganizationKind; label: string }[] = [
+  { id: 'association', label: 'Association' },
+  { id: 'direct', label: 'Direct contract' },
+]
+
 export type DurationOrigin = 'extracted' | 'manual'
 
 export type AgeGroupDuration = {

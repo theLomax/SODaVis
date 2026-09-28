@@ -54,6 +54,7 @@ function fixtureSnapshot(): AppSnapshot {
     settings: SEED_SETTINGS,
     gameAnnotations: [],
     tripAnnotations: [],
+    organizations: [],
     generalExpenses: [],
     gearProducts: [],
     gearItems: [],
