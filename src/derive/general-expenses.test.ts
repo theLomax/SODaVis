@@ -52,6 +52,9 @@ function snapshot(generalExpenses: GeneralExpense[]): AppSnapshot {
     gameAnnotations: [],
     tripAnnotations: [],
     generalExpenses,
+    gearProducts: [],
+    gearItems: [],
+    gearSets: [],
     imports: [],
     customProfiles: [],
   }

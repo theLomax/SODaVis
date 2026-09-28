@@ -21,6 +21,7 @@ import {
   SEED_SETTINGS,
   SEED_SPORT_PROFILES,
 } from '../model/reference'
+import { SEED_GEAR_PRODUCTS } from '../model/gear'
 
 /** How a snapshot reads the table, and how a merge restore writes it. */
 export type TableKind =
@@ -246,6 +247,47 @@ export const TABLES: readonly TableSpec[] = [
     rowSchema: z
       .object({ id: z.string(), amount: z.number(), date: z.string(), category: z.string() })
       .loose(),
+    backupShape: 'array',
+    optionalInBackup: true,
+    keyOf: (row) => row.id as string,
+    merge: 'key',
+    inCounts: true,
+  },
+  // Gear inventory. Products are the shared catalog, items the pieces a user
+  // owns, sets the kits built from them — see `model/gear.ts` for why they are
+  // three tables rather than one.
+  {
+    name: 'gearProducts',
+    since: 5,
+    indexes: 'id, category',
+    kind: 'rows',
+    rowSchema: z
+      .object({ id: z.string(), category: z.string(), name: z.string(), origin: z.string() })
+      .loose(),
+    backupShape: 'array',
+    optionalInBackup: true,
+    keyOf: (row) => row.id as string,
+    merge: 'key',
+    seedRows: SEED_GEAR_PRODUCTS,
+  },
+  {
+    name: 'gearItems',
+    since: 5,
+    indexes: 'id, productId',
+    kind: 'rows',
+    rowSchema: z.object({ id: z.string(), productId: z.string(), label: z.string() }).loose(),
+    backupShape: 'array',
+    optionalInBackup: true,
+    keyOf: (row) => row.id as string,
+    merge: 'key',
+    inCounts: true,
+  },
+  {
+    name: 'gearSets',
+    since: 5,
+    indexes: 'id',
+    kind: 'rows',
+    rowSchema: z.object({ id: z.string(), name: z.string(), itemIds: z.array(z.string()) }).loose(),
     backupShape: 'array',
     optionalInBackup: true,
     keyOf: (row) => row.id as string,

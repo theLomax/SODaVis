@@ -17,6 +17,7 @@ import type {
   SportProfile,
 } from '../model/reference'
 import type { GameAnnotation, GeneralExpense, TripAnnotation } from '../model/annotation'
+import type { GearItem, GearProduct, GearSet } from '../model/gear'
 import type { SourceProfile } from '../import/profiles'
 import { TABLES, schemaVersions, storesAddedIn } from './tables'
 
@@ -46,6 +47,9 @@ export class AppDatabase extends Dexie {
   gearModifiers!: EntityTable<GearModifier, 'id'>
   callTypes!: EntityTable<CallType, 'id'>
   generalExpenses!: EntityTable<GeneralExpense, 'id'>
+  gearProducts!: EntityTable<GearProduct, 'id'>
+  gearItems!: EntityTable<GearItem, 'id'>
+  gearSets!: EntityTable<GearSet, 'id'>
   customProfiles!: EntityTable<StoredProfile, 'id'>
 
   constructor(name = 'so-datavisualizer') {

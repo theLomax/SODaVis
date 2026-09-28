@@ -21,6 +21,7 @@ import type {
   TripAnnotation,
 } from '../model/annotation'
 import { mergeTripAnnotations, parseTripKey, tripKey } from '../model/annotation'
+import type { GearItem, GearProduct, GearSet } from '../model/gear'
 import {
   SEED_IDENTITY,
   SEED_SETTINGS,
@@ -50,6 +51,9 @@ export type AppSnapshot = {
   gameAnnotations: GameAnnotation[]
   tripAnnotations: TripAnnotation[]
   generalExpenses: GeneralExpense[]
+  gearProducts: GearProduct[]
+  gearItems: GearItem[]
+  gearSets: GearSet[]
   imports: ImportRun[]
   customProfiles: SourceProfile[]
 }
@@ -488,6 +492,56 @@ export async function saveGeneralExpense(
 
 export async function deleteGeneralExpense(id: string, database: AppDatabase = db): Promise<void> {
   await database.generalExpenses.delete(id)
+}
+
+// ---------------------------------------------------------------------------
+// Gear inventory
+// ---------------------------------------------------------------------------
+
+export async function saveGearProduct(product: GearProduct, database: AppDatabase = db): Promise<void> {
+  await database.gearProducts.put(product)
+}
+
+/**
+ * Refuses while any owned item is of this product, rather than cascading: an
+ * item without its product has no category, brand or colour left to count by,
+ * and deleting the user's own pieces as a side effect would be worse.
+ */
+export async function deleteGearProduct(id: string, database: AppDatabase = db): Promise<void> {
+  await database.transaction('rw', [database.gearProducts, database.gearItems], async () => {
+    const owned = await database.gearItems.where('productId').equals(id).count()
+    if (owned > 0) {
+      throw new Error(`${owned} owned item${owned === 1 ? ' is' : 's are'} of this product. Delete or reassign ${owned === 1 ? 'it' : 'them'} first.`)
+    }
+    await database.gearProducts.delete(id)
+  })
+}
+
+export async function saveGearItem(item: GearItem, database: AppDatabase = db): Promise<void> {
+  await database.gearItems.put(item)
+}
+
+/**
+ * Deletes an owned item and takes it out of every set, in one transaction, so no
+ * set is left pointing at a piece that no longer exists. Retiring is the usual
+ * path; this is for an item entered by mistake.
+ */
+export async function deleteGearItem(id: string, database: AppDatabase = db): Promise<void> {
+  await database.transaction('rw', [database.gearItems, database.gearSets], async () => {
+    await database.gearItems.delete(id)
+    const holding = (await database.gearSets.toArray()).filter((s) => s.itemIds.includes(id))
+    for (const set of holding) {
+      await database.gearSets.put({ ...set, itemIds: set.itemIds.filter((i) => i !== id) })
+    }
+  })
+}
+
+export async function saveGearSet(set: GearSet, database: AppDatabase = db): Promise<void> {
+  await database.gearSets.put(set)
+}
+
+export async function deleteGearSet(id: string, database: AppDatabase = db): Promise<void> {
+  await database.gearSets.delete(id)
 }
 
 // ---------------------------------------------------------------------------

@@ -47,6 +47,7 @@ export type ViewId =
   | 'trips'
   | 'cancellations'
   | 'tax'
+  | 'gear'
   | 'import'
   | 'reference'
   | 'quality'

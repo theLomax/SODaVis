@@ -45,8 +45,60 @@ the data model.
   needs its own term in the sentence.
 
 ## Features
-- consider decoupling the game gear objects: allow users to create their own items and gear presets, including shirt colors.
-- add individual item tracking (like shirt color, or mask 1 / mask 2) per game, for more data tracking and lifespan statistics for gear.
+- **Gear inventory, collections and per-game gear.** Replaces the two rough gear
+  ideas that were here (user-made items and presets; per-item tracking such as mask 1 /
+  mask 2).
+  - **Catalog.** A seeded set of gear products: shirts, shields, jackets, hats, chest
+    protectors, ball bags and so on, each with brand, colour and SKU / product number
+    where known. Users can add their own, including an item found online by its product
+    number. These are product types, not the things a user owns.
+  - **Owned items.** A user's own gear, each one a catalog product plus a date of
+    purchase or acquisition. Duplicates are separate items, so "Black V3 #1" is one
+    specific short-sleeve black baseball shirt of a known brand and SKU, distinct from
+    #2.
+  - **Collections.** Named sets of owned items, such as "BB: Plate Gear" or "SB: Bases",
+    so a whole kit goes on a game in one step. A shirt can be picked on its own, either
+    a variant ("BB: Black V3, shortsleeve") or a specific item ("Black V3 #1").
+  - **On a game.** An *Add gear* button on the game entry opens a picker for a
+    collection, individual items and the shirt. Nothing shows until something is added:
+    no rows of empty checkboxes. Added gear appears as removable chips, as call tags do
+    now.
+  - **Gear tab — built** (`views/Gear.tsx`; tables `gearProducts`, `gearItems`,
+    `gearSets` at schema v5). Sets, owned items with purchase date and retire /
+    unretire, and a collapsible catalog with 20 unbranded seed products plus the
+    user's own (brand, colour, SKU, shop link). A retired item stays in its sets,
+    marked, but is no longer offered for adding. Deleting an item removes it from
+    every set; deleting a product that an item is still of is refused. Still to add
+    here: a variant pick ("BB: Black V3, shortsleeve") alongside the specific item.
+  - **Consolidate onto the Gear tab** — candidates, none done yet:
+    - *Reference data → Sports & gear* holds the position prep deltas and the gear
+      modifiers (full gear, shield, casual, cold, rain). The gear half belongs here;
+      the per-sport prep and wrap minutes can stay under Reference.
+    - `SportProfile.defaultGearLevel` (plate or base per sport) is the natural seed
+      for a default set per sport — `GearSet.sportCode` already exists for that.
+    - "Shield" is a modifier checkbox but is really a piece of gear (a chest
+      protector type). Once games carry items, it can be read from what was worn.
+    - Gear-category general expenses (Tax view) are purchases of the items tracked
+      here. An item's purchase could offer to log the expense, or an expense could
+      link to the item, so the cost and the lifespan live together.
+  - **Not yet:** no charts or reports on gear. The data is collected for later
+    questions such as "which shirt colour is worn most" and "the most popular
+    chest-protector brand", which is what the anonymised global tracking below would
+    answer. Lifespan figures (games per item, purchase to retirement) come from the
+    same data later.
+  - **Decide first:**
+    - The existing position selector and modifier checkboxes (`GearCell` in
+      `Trips.tsx`) feed prep time in `derive/time.ts` through `gearLevel` and
+      `gearModifiers` on the game annotation. Either keep them beside the new picker,
+      or have collections carry the prep-time effect and move the old fields over.
+    - Where the seeded catalog lives: shipped with the app, like the other seed tables,
+      or fetched later from the cloud store.
+    - Keep product IDs stable and free of personal details, because cross-user
+      counting depends on every user's "Brand X chest protector" having the same ID.
+      User-added products get a random local ID today, so the same product added by
+      two users is two IDs; a shared catalog has to reconcile them.
+  - **Next:** a gear list on `GameAnnotation` (so a re-import keeps it like the other
+    game notes) and the *Add gear* button on the game entry.
 - Anonymized global data tracking: collect and track all metrics across all users, but anonymized to protect user privacy. This will allow us to track popular brands for gear, frequency of calls, contrast those frequencies by region, age, and other demographic factors.
 - consider other user metrics, like age, sex, years of experience. Offer users to opt-out, but reinforce that it's anonymized, and used for general analytics and trend tracking.
 - Demographic reviews: consider an option for officials to rate gear, brands, fields, leagues (with breakdowns for players, coaches, parents, boardmembers, surrounding neighborhoods, etc.), rulesets, concessions, facilities, and other elements.

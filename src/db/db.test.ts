@@ -17,12 +17,18 @@ import { AppDatabase, seedReferenceData } from './schema'
 import {
   acknowledgeAnomaly,
   deleteCallType,
+  deleteGearItem,
+  deleteGearProduct,
   loadSnapshot,
   patchGameAnnotation,
   saveGameAnnotation,
+  saveGearItem,
+  saveGearProduct,
+  saveGearSet,
 } from './repo'
 import { exportBackup, restoreBackup, validateBackup } from './backup'
 import { SEED_SETTINGS } from '../model/reference'
+import type { GearItem, GearProduct } from '../model/gear'
 
 let db: AppDatabase
 let counter = 0
@@ -372,5 +378,109 @@ describe('general expenses', () => {
   it('reaches the snapshot', async () => {
     await db.generalExpenses.put(shoes)
     expect((await loadSnapshot(db)).generalExpenses.map((e) => e.id)).toEqual(['shoes'])
+  })
+})
+
+/**
+ * Gear inventory. The rules worth locking are the ones that protect references
+ * between the three tables: a set never points at a deleted item, and a product
+ * cannot vanish from under an item that is still of it.
+ */
+describe('gear inventory', () => {
+  const shirt: GearProduct = {
+    id: 'gp-shirt',
+    category: 'shirt',
+    name: 'V3 short-sleeve shirt',
+    brand: 'Example Co',
+    color: 'Black',
+    sku: 'EX-V3-BLK',
+    origin: 'user',
+  }
+  const first: GearItem = { id: 'gi-1', productId: 'gp-shirt', label: 'Black V3 #1', acquiredOn: '2025-04-02' }
+  const second: GearItem = { id: 'gi-2', productId: 'gp-shirt', label: 'Black V3 #2' }
+
+  it('seeds a starting catalog on first run', async () => {
+    const seeded = await db.gearProducts.toArray()
+    expect(seeded.length).toBeGreaterThan(0)
+    expect(seeded.every((p) => p.origin === 'seed')).toBe(true)
+  })
+
+  it('keeps two copies of one product as two items', async () => {
+    await saveGearProduct(shirt, db)
+    await saveGearItem(first, db)
+    await saveGearItem(second, db)
+    expect(await db.gearItems.where('productId').equals('gp-shirt').count()).toBe(2)
+  })
+
+  it('takes a deleted item out of every set that held it', async () => {
+    await saveGearProduct(shirt, db)
+    await saveGearItem(first, db)
+    await saveGearItem(second, db)
+    await saveGearSet({ id: 'gs-plate', name: 'BB: Plate Gear', itemIds: ['gi-1', 'gi-2'] }, db)
+    await saveGearSet({ id: 'gs-bases', name: 'BB: Bases', itemIds: ['gi-1'] }, db)
+
+    await deleteGearItem('gi-1', db)
+
+    expect(await db.gearItems.get('gi-1')).toBeUndefined()
+    expect((await db.gearSets.get('gs-plate'))!.itemIds).toEqual(['gi-2'])
+    expect((await db.gearSets.get('gs-bases'))!.itemIds).toEqual([])
+  })
+
+  it('keeps a retired item, and its place in a set', async () => {
+    await saveGearProduct(shirt, db)
+    await saveGearItem(first, db)
+    await saveGearSet({ id: 'gs-plate', name: 'BB: Plate Gear', itemIds: ['gi-1'] }, db)
+
+    await saveGearItem({ ...first, retiredOn: '2026-08-01' }, db)
+
+    expect((await db.gearItems.get('gi-1'))!.retiredOn).toBe('2026-08-01')
+    expect((await db.gearSets.get('gs-plate'))!.itemIds).toEqual(['gi-1'])
+  })
+
+  it('refuses to delete a product that an owned item is still of', async () => {
+    await saveGearProduct(shirt, db)
+    await saveGearItem(first, db)
+    await expect(deleteGearProduct('gp-shirt', db)).rejects.toThrow(/owned item/)
+    expect(await db.gearProducts.get('gp-shirt')).toBeDefined()
+
+    await deleteGearItem('gi-1', db)
+    await deleteGearProduct('gp-shirt', db)
+    expect(await db.gearProducts.get('gp-shirt')).toBeUndefined()
+  })
+
+  it('round-trips products, items and sets through a replace restore', async () => {
+    await saveGearProduct(shirt, db)
+    await saveGearItem(first, db)
+    await saveGearSet({ id: 'gs-plate', name: 'BB: Plate Gear', itemIds: ['gi-1'], sportCode: 'C-BB' }, db)
+    const backup = await exportBackup(db)
+    expect(backup.counts.gearItems).toBe(1)
+    expect(backup.counts.gearSets).toBe(1)
+
+    await restoreBackup(backup, 'replace', db)
+    expect(await db.gearProducts.get('gp-shirt')).toEqual(shirt)
+    expect(await db.gearItems.get('gi-1')).toEqual(first)
+    expect((await db.gearSets.get('gs-plate'))!.sportCode).toBe('C-BB')
+  })
+
+  it('accepts a backup written before the gear tables existed, and reseeds the catalog', async () => {
+    const backup = await exportBackup(db)
+    const data = backup.data as Record<string, unknown>
+    delete data.gearProducts
+    delete data.gearItems
+    delete data.gearSets
+    expect(validateBackup(backup).ok).toBe(true)
+
+    await restoreBackup(backup, 'replace', db)
+    expect(await db.gearProducts.count()).toBeGreaterThan(0)
+    expect(await db.gearItems.count()).toBe(0)
+  })
+
+  it('reaches the snapshot', async () => {
+    await saveGearProduct(shirt, db)
+    await saveGearItem(first, db)
+    const snapshot = await loadSnapshot(db)
+    expect(snapshot.gearItems.map((i) => i.id)).toEqual(['gi-1'])
+    expect(snapshot.gearProducts.some((p) => p.id === 'gp-shirt')).toBe(true)
+    expect(snapshot.gearSets).toEqual([])
   })
 })

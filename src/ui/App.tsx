@@ -4,8 +4,9 @@
  * The switcher reads and writes the store's `view`, so `navigate()` from a flag
  * dialog or a warning badge moves the nav highlight along with the content.
  *
- * Views that show metrics sit under the filter bar; Import, Reference and Data
- * quality do not, because a date filter on an import screen would be misleading.
+ * Views that show metrics sit under the filter bar; Gear, Import, Reference and
+ * Data quality do not, because a date filter on an import screen would be
+ * misleading.
  */
 
 import { StoreProvider, useStore, type ViewId } from './store'
@@ -15,6 +16,7 @@ import { Venues, Partners, Leagues } from './views/Breakdowns'
 import { Trips } from './views/Trips'
 import { Cancellations } from './views/Cancellations'
 import { Tax } from './views/Tax'
+import { Gear } from './views/Gear'
 import { ImportView } from './views/Import'
 import { Reference } from './views/Reference'
 import { DataQuality } from './views/DataQuality'
@@ -27,6 +29,7 @@ const VIEWS: { id: ViewId; label: string; filtered: boolean }[] = [
   { id: 'trips', label: 'Trips', filtered: true },
   { id: 'cancellations', label: 'Cancellations', filtered: true },
   { id: 'tax', label: 'Tax', filtered: false },
+  { id: 'gear', label: 'Gear', filtered: false },
   { id: 'import', label: 'Import', filtered: false },
   { id: 'reference', label: 'Reference data', filtered: false },
   { id: 'quality', label: 'Data quality', filtered: false },
@@ -124,6 +127,7 @@ function Shell() {
             {view === 'trips' ? <Trips /> : null}
             {view === 'cancellations' ? <Cancellations /> : null}
             {view === 'tax' ? <Tax /> : null}
+            {view === 'gear' ? <Gear /> : null}
             {view === 'import' ? <ImportView /> : null}
             {view === 'reference' ? <Reference /> : null}
             {view === 'quality' ? <DataQuality /> : null}
