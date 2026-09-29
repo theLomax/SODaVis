@@ -240,6 +240,20 @@ export function byAssignor(ctx: BreakdownContext): Breakdown[] {
   }, false)
 }
 
+/** The key games with no organization are grouped under. */
+export const NO_ORGANIZATION = '(no organization)'
+
+/**
+ * Income, time and rate by the organization each game was worked for. Games with
+ * none get their own row rather than vanishing, so the gap stays visible.
+ */
+export function byOrganization(ctx: BreakdownContext, organizationName: (id: string) => string): Breakdown[] {
+  return buildBreakdown(ctx, (g) => {
+    const id = g.organizationId
+    return [id ? { key: id, label: organizationName(id) } : { key: NO_ORGANIZATION, label: 'No organization' }]
+  }, false)
+}
+
 export function bySport(ctx: BreakdownContext, sportLabel: (code: string) => string): Breakdown[] {
   return buildBreakdown(ctx, (g) => {
     const code = g.sportCode ?? '(unknown)'

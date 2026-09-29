@@ -25,6 +25,7 @@ import {
 import { CANONICAL_FIELDS, type CanonicalField } from '../../model/game'
 import {
   commitImport,
+  setImportOrganization,
   saveCustomProfile,
   seedDurations,
   undoBlockers,
@@ -54,6 +55,8 @@ export function ImportView() {
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<string | null>(null)
   const [acceptConflicts, setAcceptConflicts] = useState(true)
+  /** The organization this file's games default to; '' leaves it to each game's payor. */
+  const [organizationId, setOrganizationId] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
   const profiles = useMemo(
@@ -125,6 +128,7 @@ export function ImportView() {
         profileLabel: stage.profile.label,
         rowsInFile: stage.parsed.rows.length,
         rowsSkipped: stage.mapped.nonDataRows + stage.mapped.skipped.length,
+        ...(organizationId ? { organizationId } : {}),
       })
 
       // Seed age-group durations from whatever the new rows state, without
@@ -228,6 +232,7 @@ export function ImportView() {
             setAcceptConflicts={setAcceptConflicts}
             currency={snapshot?.settings.currency ?? 'USD'}
           />
+          <OrganizationChoice value={organizationId} onChange={setOrganizationId} />
           <div className="flex items-center gap-3">
             <Button variant="primary" onClick={() => void commit()} disabled={busy}>
               {busy
@@ -699,7 +704,18 @@ function ImportLog({ onUndone }: { onUndone: () => Promise<void> }) {
   const [error, setError] = useState<string | null>(null)
 
   const imports = snapshot?.imports ?? []
+  const organizations = [...(snapshot?.organizations ?? [])].sort((a, b) => a.name.localeCompare(b.name))
   if (imports.length === 0) return null
+
+  async function setOrganization(run: ImportRun, organizationId: string | undefined) {
+    setError(null)
+    try {
+      await setImportOrganization(run.id, organizationId)
+      await onUndone()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    }
+  }
 
   async function undo(run: ImportRun) {
     setConfirming(null)
@@ -723,13 +739,13 @@ function ImportLog({ onUndone }: { onUndone: () => Promise<void> }) {
       <table className="w-full border-collapse text-xs">
         <thead>
           <tr>
-            {['When', 'File', 'Profile', 'New', 'Updated', 'Unchanged', ''].map((h, i) => (
+            {['When', 'File', 'Profile', 'Organization', 'New', 'Updated', 'Unchanged', ''].map((h, i) => (
               <th
                 key={h || `sp-${i}`}
                 scope="col"
                 className="px-2 py-1.5 font-medium"
                 style={{
-                  textAlign: i >= 3 && i <= 5 ? 'right' : 'left',
+                  textAlign: i >= 4 && i <= 6 ? 'right' : 'left',
                   color: 'var(--text-secondary)',
                   borderBottom: '1px solid var(--gridline)',
                 }}
@@ -759,6 +775,24 @@ function ImportLog({ onUndone }: { onUndone: () => Promise<void> }) {
                 </td>
                 <td className="px-2 py-1.5" style={{ color: 'var(--text-secondary)' }}>
                   {run.profileLabel}
+                </td>
+                <td className="px-2 py-1.5">
+                  {/* Changeable after the fact, which is how games imported before
+                      organizations existed get one without a re-import. */}
+                  <select
+                    value={run.organizationId ?? ''}
+                    onChange={(e) => void setOrganization(run, e.target.value || undefined)}
+                    aria-label={`Organization for ${run.fileName}, imported ${new Date(run.importedAt).toLocaleString()}`}
+                    className="rounded-md px-1.5 py-0.5 text-xs"
+                    style={selectStyle}
+                  >
+                    <option value="">From each game's payor</option>
+                    {organizations.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.name}
+                      </option>
+                    ))}
+                  </select>
                 </td>
                 <td className="num-tabular px-2 py-1.5 text-right">{run.counts.inserted}</td>
                 <td className="num-tabular px-2 py-1.5 text-right">{run.counts.updated}</td>
@@ -821,6 +855,44 @@ function ImportLog({ onUndone }: { onUndone: () => Promise<void> }) {
 }
 
 /** Convenience wrapper so the import view can reach the snapshot directly. */
+/**
+ * Which organization this file's games were worked for. Optional: a file that
+ * mixes organizations is better left to each game's payor, and it can be set later
+ * from the import history.
+ */
+function OrganizationChoice({ value, onChange }: { value: string; onChange: (id: string) => void }) {
+  const { snapshot } = useImportContext()
+  const organizations = [...(snapshot?.organizations ?? [])].sort((a, b) => a.name.localeCompare(b.name))
+  if (organizations.length === 0) {
+    return (
+      <p className="m-0 text-xs" style={{ color: 'var(--text-muted)' }}>
+        To record which organization these games were for, add it under Reference data → Organizations. It can be
+        set on this import afterwards, from Import history.
+      </p>
+    )
+  }
+  return (
+    <label className="flex flex-wrap items-center gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
+      Organization for these games
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label="Organization for the games in this file"
+        className="rounded-md px-2 py-1 text-xs"
+        style={selectStyle}
+      >
+        <option value="">None — use each game's payor</option>
+        {organizations.map((o) => (
+          <option key={o.id} value={o.id}>
+            {o.name}
+          </option>
+        ))}
+      </select>
+      <span style={{ color: 'var(--text-muted)' }}>A game set by hand, or whose payor names an organization, keeps its own.</span>
+    </label>
+  )
+}
+
 function useImportContext() {
   const store = useStore()
   return { derived: store.derived, reload: store.reload, snapshot: store.derived?.snapshot ?? null }

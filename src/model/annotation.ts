@@ -42,6 +42,12 @@ export type GameAnnotation = {
    * so a later export that fills the column in can be diffed against what you said.
    */
   sportCodeOverride?: string
+  /**
+   * The organization this game was worked for, set by hand. Wins over a match
+   * rule and over the import's organization: it is the one thing only the
+   * official knows for certain, such as a single game picked up directly.
+   */
+  organizationId?: string
 
   // --- Cancellations ------------------------------------------------------
   // A cancelled game earns nothing and takes no game time, so it never affects

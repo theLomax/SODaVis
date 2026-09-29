@@ -70,6 +70,7 @@ export type DataQualityFlagCode =
   | 'unparsed-time'
   | 'unrecognised-status'
   | 'duplicate-dedupe-key'
+  | 'missing-organization'
 
 export type DataQualityFlag = {
   code: DataQualityFlagCode
@@ -165,5 +166,11 @@ export type ImportRun = {
   insertedGameIds: string[]
   /** Pre-image of games this run overwrote, for undo. */
   replacedGames: Game[]
+  /**
+   * The organization this file's games came from, chosen at import or later
+   * from the import history. The fallback for a game no rule or hand-set
+   * organization claims; see `resolveOrganization`.
+   */
+  organizationId?: string
   notes?: string
 }

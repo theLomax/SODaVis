@@ -16,14 +16,16 @@ import { IdentityEditor } from './reference/Identity'
 import { SettingsEditor } from './reference/Settings'
 import { BackupPanel } from './reference/Backup'
 import { CallsEditor } from './reference/Calls'
+import { OrganizationsEditor } from './reference/Organizations'
 
-type Tab = 'parks' | 'durations' | 'sports' | 'calls' | 'identity' | 'settings' | 'backup'
+type Tab = 'parks' | 'durations' | 'sports' | 'calls' | 'organizations' | 'identity' | 'settings' | 'backup'
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'parks', label: 'Parks & mileage' },
   { id: 'durations', label: 'Game durations' },
   { id: 'sports', label: 'Sports & gear' },
   { id: 'calls', label: 'Call types' },
+  { id: 'organizations', label: 'Organizations' },
   { id: 'identity', label: 'Identity' },
   { id: 'settings', label: 'Settings' },
   { id: 'backup', label: 'Backup' },
@@ -71,6 +73,7 @@ export function Reference() {
       {tab === 'durations' ? <DurationsEditor /> : null}
       {tab === 'sports' ? <SportsEditor /> : null}
       {tab === 'calls' ? <CallsEditor /> : null}
+      {tab === 'organizations' ? <OrganizationsEditor /> : null}
       {tab === 'identity' ? <IdentityEditor /> : null}
       {tab === 'settings' ? <SettingsEditor /> : null}
       {tab === 'backup' ? <BackupPanel /> : null}

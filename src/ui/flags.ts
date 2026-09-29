@@ -23,7 +23,7 @@ import { STATUS, STATUS_ICON } from './charts/palette'
  * from wherever the flag was noticed.
  */
 export type FixTarget =
-  | { view: 'reference'; tab: 'parks' | 'durations' | 'identity'; label: string }
+  | { view: 'reference'; tab: 'parks' | 'durations' | 'identity' | 'organizations'; label: string }
   | { view: 'trips'; label: string }
   | { view: 'quality'; label: string }
   | { view: 'import'; label: string }
@@ -105,6 +105,14 @@ export const FLAG_INFO: Record<DataQualityFlagCode, FlagPresentation> = {
     what: 'The source row carried no sport code.',
     why: 'Prep and wrap time fall back to defaults rather than the sport’s own figures, so committed time for this trip is approximate.',
     fix: 'Nothing is broken. If the league reliably means one sport, the cleanest fix is at the source.',
+  },
+  'missing-organization': {
+    title: 'No organization',
+    groupTitle: 'Games with no organization',
+    what: 'No organization is recorded for this game: none was set on it, no organization’s match rule fits it, and the import it came from has none.',
+    why: 'Income by organization leaves it out, so what an organization reports paying you cannot be checked against these games.',
+    fix: 'Set the organization on the import it came from, add a match rule to the organization, or set it on the game in Trips.',
+    fixTarget: { view: 'reference', tab: 'organizations', label: 'Reference data → Organizations' },
   },
   'duplicate-dedupe-key': {
     title: 'Duplicate identity key',

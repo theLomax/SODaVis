@@ -20,7 +20,10 @@ import {
   deleteGearItem,
   deleteGearProduct,
   loadSnapshot,
+  deleteOrganization,
   patchGameAnnotation,
+  saveOrganization,
+  setImportOrganization,
   saveGameAnnotation,
   patchGearItem,
   patchGearProduct,
@@ -562,5 +565,69 @@ describe('gear inventory', () => {
     expect(snapshot.gearItems.map((i) => i.id)).toEqual(['gi-1'])
     expect(snapshot.gearProducts.some((p) => p.id === 'gp-shirt')).toBe(true)
     expect(snapshot.gearSets).toEqual([])
+  })
+})
+
+/**
+ * Organizations are referenced from game annotations and import runs, so both
+ * the save path and the delete path have to know about those references.
+ */
+describe('organizations', () => {
+  const org = { id: 'o-1', name: 'North Texas Umpires', kind: 'association' as const }
+
+  it('keeps a game annotation that carries only an organization', async () => {
+    await patchGameAnnotation('game-1', { organizationId: 'o-1' }, db)
+    expect((await db.gameAnnotations.get('game-1'))!.organizationId).toBe('o-1')
+  })
+
+  it('sets, then clears, the organization an import defaults to', async () => {
+    await db.imports.put({
+      id: 'imp-1',
+      importedAt: '2026-09-28T00:00:00.000Z',
+      fileName: 'a.csv',
+      profileId: 'assignr',
+      profileLabel: 'Assignr',
+      counts: { rowsInFile: 0, rowsSkipped: 0, inserted: 0, updated: 0, unchanged: 0, conflicts: 0 },
+      insertedGameIds: [],
+      replacedGames: [],
+    })
+    await setImportOrganization('imp-1', 'o-1', db)
+    expect((await db.imports.get('imp-1'))!.organizationId).toBe('o-1')
+    await setImportOrganization('imp-1', undefined, db)
+    expect(await db.imports.get('imp-1')).not.toHaveProperty('organizationId')
+  })
+
+  it('removes every reference when an organization is deleted', async () => {
+    await saveOrganization(org, db)
+    await patchGameAnnotation('only-org', { organizationId: 'o-1' }, db)
+    await patchGameAnnotation('org-and-note', { organizationId: 'o-1', notes: 'kept' }, db)
+    await db.imports.put({
+      id: 'imp-2',
+      importedAt: '2026-09-28T00:00:00.000Z',
+      fileName: 'b.csv',
+      profileId: 'assignr',
+      profileLabel: 'Assignr',
+      counts: { rowsInFile: 0, rowsSkipped: 0, inserted: 0, updated: 0, unchanged: 0, conflicts: 0 },
+      insertedGameIds: [],
+      replacedGames: [],
+      organizationId: 'o-1',
+    })
+    await deleteOrganization('o-1', db)
+    expect(await db.organizations.get('o-1')).toBeUndefined()
+    // An annotation that held nothing else goes; one with a note keeps the note.
+    expect(await db.gameAnnotations.get('only-org')).toBeUndefined()
+    expect(await db.gameAnnotations.get('org-and-note')).toEqual({ dedupeKey: 'org-and-note', notes: 'kept' })
+    expect(await db.imports.get('imp-2')).not.toHaveProperty('organizationId')
+  })
+
+  it('round-trips through a backup, and accepts one from before organizations', async () => {
+    await saveOrganization({ ...org, aliases: ['H&B Officials'] }, db)
+    const backup = await exportBackup(db)
+    expect(backup.counts.organizations).toBe(1)
+    await restoreBackup(backup, 'replace', db)
+    expect(await db.organizations.get('o-1')).toMatchObject({ aliases: ['H&B Officials'] })
+
+    delete (backup.data as { organizations?: unknown }).organizations
+    expect(validateBackup(backup).ok).toBe(true)
   })
 })

@@ -133,7 +133,7 @@ type Store = {
 export type PendingFocus = {
   view: ViewId
   /** Only set for a Reference target. */
-  tab?: 'parks' | 'durations' | 'identity'
+  tab?: 'parks' | 'durations' | 'identity' | 'organizations'
   /** Park id, age-group key or trip key, per the destination. */
   focus?: string
 }
@@ -308,6 +308,10 @@ export function derive(snapshot: AppSnapshot, filter: Filter): DerivedState {
     sports: new Map(snapshot.sports.map((s) => [s.code, s])),
     annotations: new Map(snapshot.gameAnnotations.map((a) => [a.dedupeKey, a])),
     identity: snapshot.identity,
+    organizations: [...snapshot.organizations].sort((a, b) => a.name.localeCompare(b.name)),
+    importOrganizations: new Map(
+      snapshot.imports.filter((r) => r.organizationId).map((r) => [r.id, r.organizationId!]),
+    ),
   }
 
   const allResolved = resolveGames(snapshot.games, resolveCtx)
