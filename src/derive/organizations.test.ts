@@ -59,6 +59,7 @@ function snapshot(parts: Partial<AppSnapshot>): AppSnapshot {
     gearItems: [],
     gearSets: [],
     organizations: [],
+    vehicles: [],
     imports: [],
     customProfiles: [],
     ...parts,

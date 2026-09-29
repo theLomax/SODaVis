@@ -6,6 +6,19 @@ lose and expensive to rediscover.
 
 ## Features
 
+- **Multiple vehicles.** A *Reference data → Vehicles* list (name, year/make/model,
+  notes) with one default, kept in Settings; the first vehicle added becomes it. A
+  trip uses its own vehicle, set in the trip editor, or else the default. The Tax
+  view's mileage card splits miles, trips and deduction by vehicle — the deduction is
+  claimed per vehicle — with trips naming none on their own row; the rows add up to
+  the year's totals, since every vehicle takes the same rate.
+
+  A vehicle a trip names cannot be deleted: its trips would fall silently to the
+  default and move mileage between vehicles in the tax records. Deleting the default
+  clears it. The trip editor rebuilds the whole annotation on save, so the vehicle is
+  held in that form's state; saved apart from it, the next "Save overrides" would have
+  dropped it. A park merge keeps the surviving trip's vehicle.
+
 - **Gear identifiers: UPC, brand product number, retailer SKUs.** Catalog products
   carry a `upc` (digits only; the check digit is verified for UPC-A, EAN-13 and EAN-8,
   and a failure warns without blocking, since a label may read that way), a
