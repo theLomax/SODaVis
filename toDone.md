@@ -131,6 +131,19 @@ lose and expensive to rediscover.
 
 ## Data resolution
 
+- **A cancellation that paid counts as income.** A rainout paid at half rate put its
+  unpaid half in *forfeited* but kept its paid half out of gross, so the Overview
+  sentence fell short by exactly that payment ($22.50 on the sample). Worse, found
+  while deciding: the Tax view skipped cancelled games altogether, so the pay was
+  missing from *Gross received* and from its payor's line, which a 1099 would count.
+
+  Decided: it arrived, so it is income. `gross` is now everything received and feeds
+  net take-home, the Tax view (by payor, adding no game to the count) and the
+  reconciliation, which now holds to the cent. A new `grossWorked` is what every rate
+  divides — $/hr, $/game, $/trip, $/mile — since no time was spent for that money, and
+  the chart breakdowns stay work-only as before. Both income tiles say how much came
+  from cancellations. The real export has none, so no real figure moved.
+
 - **A game with no rate no longer counts as paid above rate.** A missing scheduled
   fee was read as `$0`, so the sample's $50 tournament add-on counted its whole fee
   as bonus. It now goes to its own `unscheduledIncome` figure, is left out of the

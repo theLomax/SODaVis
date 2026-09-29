@@ -36,7 +36,8 @@ import {
   type ResolvedGame,
 } from './resolve'
 import { buildTrips, workDays, type Trip } from './trips'
-import { totalMoney, totalMiles, feeVariances } from './money'
+import { computeRates, totalMoney, totalMiles, feeVariances } from './money'
+import { taxYear } from './tax'
 import { byPartner, cancellationSummary } from './metrics'
 import { feeAnomalies, groupAnomalies } from './anomalies'
 import type { TimeContext } from './time'
@@ -191,12 +192,16 @@ describe('fixture identity & partners', () => {
 })
 
 describe('fixture money', () => {
-  it('counts only active games as income', () => {
+  it('counts worked games as worked income, and adds what cancellations paid', () => {
     const totals = totalMoney(resolved, trips, tripAnnotations, SEED_SETTINGS)
-    // 17 active games totalling $748; the 2 cancellations contribute nothing.
     expect(totals.activeGames).toBe(expectedFigures.games.active)
     expect(totals.cancelledGames).toBe(expectedFigures.games.cancelled)
-    expect(totals.gross).toBe(expectedFigures.money.grossActual)
+    expect(totals.grossWorked).toBe(expectedFigures.money.grossActual)
+    const cancellationPay = games
+      .filter((g) => isCancelled(g.status))
+      .reduce((n, g) => n + (g.fees.actual ?? 0), 0)
+    expect(totals.cancellationIncome).toBeCloseTo(cancellationPay, 2)
+    expect(totals.gross).toBeCloseTo(expectedFigures.money.grossActual + cancellationPay, 2)
   })
 
   it('reports forfeited income from cancellations without mixing it into gross', () => {
@@ -245,14 +250,54 @@ describe('fixture money', () => {
     expect([...groups.values()].every((n) => n === 1)).toBe(true)
   })
 
-  it('keeps a paid cancellation out of gross, though it paid', () => {
+  it('counts a paid cancellation as income, but not as work', () => {
+    // The sample's rainout paid half its fee. That money arrived, so it is
+    // income; no game was worked for it, so no rate may divide it.
     const paid = games.find((g) => isCancelled(g.status) && (g.fees.actual ?? 0) > 0)!
-    const totals = totalMoney(resolved, trips, tripAnnotations, SEED_SETTINGS)
-    const activeGross = games
-      .filter((g) => !isCancelled(g.status))
-      .reduce((n, g) => n + (g.fees.actual ?? 0), 0)
     expect(paid).toBeDefined()
-    expect(totals.gross).toBeCloseTo(activeGross, 2)
+    const totals = totalMoney(resolved, trips, tripAnnotations, SEED_SETTINGS)
+    expect(totals.cancellationIncome).toBe(paid.fees.actual)
+    expect(totals.gross - totals.grossWorked).toBeCloseTo(paid.fees.actual!, 2)
+    // Only the unpaid part of its scheduled fee is forfeited.
+    const unpaid = (paid.fees.scheduled ?? 0) - (paid.fees.actual ?? 0)
+    const withoutIt = totalMoney(
+      resolved.filter((r) => r.game.id !== paid.id),
+      trips,
+      tripAnnotations,
+      SEED_SETTINGS,
+    )
+    expect(totals.forfeited - withoutIt.forfeited).toBeCloseTo(unpaid, 2)
+  })
+
+  it('reconciles scheduled pay to what arrived, to the cent', () => {
+    // The Overview sentence: forfeited, less pay above rate and pay with no rate,
+    // is the gap between everything scheduled and everything received.
+    const totals = totalMoney(resolved, trips, tripAnnotations, SEED_SETTINGS)
+    expect(totals.netFeeVariance).toBeCloseTo(totals.scheduledAll - totals.gross, 2)
+    expect(totals.forfeited - totals.bonus - totals.unscheduledIncome).toBeCloseTo(totals.netFeeVariance, 2)
+  })
+
+  it('keeps cancellation pay out of every rate', () => {
+    const totals = totalMoney(resolved, trips, tripAnnotations, SEED_SETTINGS)
+    expect(totals.cancellationIncome).toBeGreaterThan(0)
+    const rates = computeRates(totals, trips, timeCtx)
+    expect(rates.perGame).toBeCloseTo(totals.grossWorked / totals.activeGames, 2)
+    const noCancelPay = { ...totals, gross: totals.grossWorked, cancellationIncome: 0 }
+    expect(computeRates(noCancelPay, trips, timeCtx)).toEqual(rates)
+  })
+
+  it('reports cancellation pay under its payor in the tax year, without adding a game', () => {
+    const paid = games.find((g) => isCancelled(g.status) && (g.fees.actual ?? 0) > 0)!
+    const year = Number(paid.date.slice(0, 4))
+    const t = taxYear(year, resolved, trips, tripAnnotations, SEED_SETTINGS)
+    expect(t.cancellationIncome).toBe(paid.fees.actual)
+    const line = t.byPayor.find((p) => p.payor === (paid.payor ?? 'Unknown payor'))!
+    const worked = resolved.filter(
+      (r) => r.game.date.startsWith(String(year)) && !isCancelled(r.game.status) && r.game.status === 'active' && (r.game.payor ?? 'Unknown payor') === line.payor,
+    )
+    expect(line.games).toBe(worked.length)
+    expect(line.gross).toBeCloseTo(worked.reduce((n, r) => n + (r.game.fees.actual ?? 0), 0) + paid.fees.actual!, 2)
+    expect(t.byPayor.reduce((n, p) => n + p.gross, 0)).toBeCloseTo(t.gross, 2)
   })
 })
 

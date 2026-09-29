@@ -48,7 +48,10 @@ export type ExpenseLine = {
 export type TaxYear = {
   year: number
   byPayor: PayorLine[]
+  /** Everything received, cancellation pay included — what a 1099 counts. */
   gross: number
+  /** The part of `gross` paid by cancelled games. */
+  cancellationIncome: number
   travel: number
   /** Toll estimates plus logged expenses that are marked deductible. */
   deductibleExpenses: number
@@ -80,10 +83,25 @@ export function taxYear(
   let travel = 0
   let activeGames = 0
   let cancelledGames = 0
+  let cancellationIncome = 0
 
   for (const { game } of inYear) {
+    const payor = game.payor ?? 'Unknown payor'
+    const payorLine = () => payors.get(payor) ?? { games: 0, gross: 0, travel: 0, paidVia: new Set<string>() }
+
     if (isCancelled(game.status)) {
       cancelledGames++
+      // A rainout paid at half rate is income the payor will report. It joins
+      // that payor's line, though it adds no game to the count.
+      const paid = game.fees.actual ?? 0
+      if (paid > 0) {
+        cancellationIncome += paid
+        gross += paid
+        const p = payorLine()
+        p.gross += paid
+        if (game.paidVia) p.paidVia.add(game.paidVia)
+        payors.set(payor, p)
+      }
       continue
     }
     if (!isActive(game.status)) continue
@@ -93,8 +111,7 @@ export function taxYear(
     gross += amount
     travel += tv
 
-    const payor = game.payor ?? 'Unknown payor'
-    const p = payors.get(payor) ?? { games: 0, gross: 0, travel: 0, paidVia: new Set<string>() }
+    const p = payorLine()
     p.games++
     p.gross += amount
     p.travel += tv
@@ -193,6 +210,7 @@ export function taxYear(
     netAfterDeductions: round2(gross - deductibleExpenses - deduction),
     activeGames,
     cancelledGames,
+    cancellationIncome: round2(cancellationIncome),
     currency: settings.currency,
   }
 }
@@ -213,7 +231,17 @@ export function taxYearToCsv(t: TaxYear): string {
       ['Income by payor', esc(p.payor), esc(`${p.games} games via ${p.paidVia.join(' / ') || 'unspecified'}`), p.gross.toFixed(2)].join(','),
     )
   }
-  lines.push(['Income', 'Gross received', esc(`${t.activeGames} active games`), t.gross.toFixed(2)].join(','))
+  lines.push(
+    [
+      'Income',
+      'Gross received',
+      esc(
+        `${t.activeGames} active games` +
+          (t.cancellationIncome > 0 ? `, including ${t.cancellationIncome.toFixed(2)} paid for cancellations` : ''),
+      ),
+      t.gross.toFixed(2),
+    ].join(','),
+  )
   if (t.travel > 0) lines.push(['Income', 'Travel fees', '', t.travel.toFixed(2)].join(','))
   lines.push('')
 

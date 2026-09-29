@@ -34,15 +34,8 @@ the data model.
   whether the public sample should grow to cover more cases first.
 
 ## Data errors
-- **A paid cancellation breaks the fee reconciliation.** Overview says forfeited,
-  less pay above rate and income from games with no rate, "offsets it to" the net
-  gap (`scheduledAll − gross`). A cancellation that paid part of its fee counts only
-  the unpaid part as forfeited, but its payment is kept out of `gross` by design, so
-  the pieces fall short of the gap by exactly that payment. On the sample: $152.50 −
-  $28 − $50 = $74.50 against a $97 gap; the $22.50 is the half-paid rainout. The
-  real export has no paid cancellation, so no figure shown so far is wrong. Needs a
-  decision first: either a paid cancellation's money is income (it arrived), or it
-  needs its own term in the sentence.
+
+None open.
 
 ## Features
 - **Gear inventory, collections and per-game gear.** Replaces the two rough gear

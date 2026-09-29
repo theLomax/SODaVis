@@ -155,7 +155,11 @@ export function Overview() {
           <StatTile
             label="Gross income"
             value={formatMoneyCompact(money.gross, currency)}
-            detail={`${money.activeGames} games worked`}
+            detail={`${money.activeGames} games worked${
+              money.cancellationIncome > 0
+                ? `, plus ${formatMoney(money.cancellationIncome, currency)} paid for cancellations`
+                : ''
+            }`}
           />
           <StatTile
             label={`Rate per hour (${selectedModel.label.toLowerCase()})`}
