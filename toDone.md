@@ -6,25 +6,20 @@ lose and expensive to rediscover.
 
 ## Features
 
-- **Organizations: who hired and paid for each game.** The platform is not the
-  answer — two associations can both use Assignr — and neither is the assignor, who is
-  a person assigning for an organization. Organizations are their own reference list
-  (*Reference data → Organizations*): a name, the other names it goes by, association
-  or direct contract (a league or tournament paying you itself, or a freelance game),
-  and the platform as a note.
+- **Gear identifiers: UPC, brand product number, retailer SKUs.** Catalog products
+  carry a `upc` (digits only; the check digit is verified for UPC-A, EAN-13 and EAN-8,
+  and a failure warns without blocking, since a label may read that way), a
+  `brandProductId` (the manufacturer's number, unique only within its brand) and a list
+  of `vendorSkus` (retailer and SKU pairs, since a SKU means nothing without the
+  retailer that issued it). The old `sku` field held the manufacturer's number, so it
+  becomes `brandProductId` on every read and write: rows in the browser and old
+  backups come forward with no migration step.
 
-  An export may name the organization after all, as the payor: a game whose payor is
-  one of an organization's names belongs to it. Each game resolves most specific
-  first: set by hand in Trips; then its payor; then the organization chosen for its
-  import. The import's organization is picked on the review step and can be changed
-  later from Import history, so games imported before organizations existed get one
-  without a re-import. Nothing is inferred from the assignor or the league.
-
-  The editor lists the payors on unassigned games with one-click *Add as association*,
-  *Add as direct contract*, or file as another name for an existing one. Once any
-  organization exists, a game with none raises an info flag. Leagues gains *Income by
-  organization*, with the unassigned as their own row. Deleting an organization clears
-  it from every game and import in one transaction.
+  Adding a product checks for a duplicate in the order from `toDo.md`: the app's own
+  id, then UPC, then brand and product number, then retailer and SKU. A match stops
+  with "Looks like X, already in the catalog with the same UPC", and *Add anyway*. An
+  inline edit that makes two entries share one says so rather than blocking. A name
+  alone never matches: two "Black short-sleeve shirt" rows may well be different.
 
 - **RefTown imports, and a format picker.** RefTown's standard export is Excel, which
   the text-only importer could not read, so this was code after all, not the
