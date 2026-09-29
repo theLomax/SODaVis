@@ -31,10 +31,16 @@ import {
   newGearId,
   nextItemLabel,
   parsePricePaid,
+  DUPLICATE_REASON,
+  findDuplicateProduct,
+  isValidUpc,
+  normalizeGearProduct,
+  type DuplicateMatch,
   type GearCategory,
   type GearItem,
   type GearProduct,
   type GearSet,
+  type VendorSku,
 } from '../../model/gear'
 import { NumberCell, TextCell } from './reference/cells'
 
@@ -563,8 +569,15 @@ function CatalogCard({
   const [name, setName] = useState('')
   const [brand, setBrand] = useState('')
   const [color, setColor] = useState('')
-  const [sku, setSku] = useState('')
+  const [upc, setUpc] = useState('')
+  const [brandProductId, setBrandProductId] = useState('')
+  const [vendor, setVendor] = useState('')
+  const [vendorSku, setVendorSku] = useState('')
   const [url, setUrl] = useState('')
+  /** A likely duplicate found on Add, held until the user confirms or backs out. */
+  const [duplicate, setDuplicate] = useState<DuplicateMatch | null>(null)
+  /** Said after an inline edit makes two entries share an identifier. */
+  const [notice, setNotice] = useState<string | null>(null)
 
   const owned = (id: string) => items.filter((i) => i.productId === id).length
   const sorted = [...products].sort(
@@ -573,48 +586,80 @@ function CatalogCard({
       describeProduct(a).localeCompare(describeProduct(b)),
   )
 
-  async function add() {
-    if (!name.trim()) return
-    const opt = (v: string) => v.trim() || undefined
-    const product: GearProduct = {
+  const opt = (v: string) => v.trim() || undefined
+
+  function draft(): GearProduct {
+    return normalizeGearProduct({
       id: newGearId('gp'),
       category,
       name: name.trim(),
       origin: 'user',
       ...(opt(brand) ? { brand: opt(brand)! } : {}),
       ...(opt(color) ? { color: opt(color)! } : {}),
-      ...(opt(sku) ? { sku: opt(sku)! } : {}),
+      ...(opt(upc) ? { upc: opt(upc)! } : {}),
+      ...(opt(brandProductId) ? { brandProductId: opt(brandProductId)! } : {}),
+      ...(opt(vendor) && opt(vendorSku) ? { vendorSkus: [{ vendor: opt(vendor)!, sku: opt(vendorSku)! }] } : {}),
       ...(opt(url) ? { url: opt(url)! } : {}),
-    }
-    await run(() => saveGearProduct(product))
-    setName('')
-    setBrand('')
-    setColor('')
-    setSku('')
-    setUrl('')
+    })
   }
 
+  /** Checks for a duplicate first; `force` is the "add anyway" answer. */
+  async function add(force = false) {
+    if (!name.trim()) return
+    const product = draft()
+    // The draft's fresh id cannot match anything, so it is left out of the check.
+    const { id: _fresh, ...identifiers } = product
+    void _fresh
+    const match = force ? undefined : findDuplicateProduct(identifiers, products)
+    if (match) {
+      setDuplicate(match)
+      return
+    }
+    await run(() => saveGearProduct(product))
+    setDuplicate(null)
+    for (const clear of [setName, setBrand, setColor, setUpc, setBrandProductId, setVendor, setVendorSku, setUrl]) clear('')
+  }
+
+  type TextKey = 'name' | 'brand' | 'color' | 'upc' | 'brandProductId'
+
   /** Blank clears the field rather than storing an empty string. */
-  function patch(product: GearProduct, key: 'name' | 'brand' | 'color' | 'sku', v: string | undefined) {
+  function patch(product: GearProduct, key: TextKey, v: string | undefined) {
     if (key === 'name' && !v) return
     if ((product[key] ?? undefined) === v) return
+    const { id: _own, ...next } = normalizeGearProduct({ ...product, [key]: v || undefined })
+    void _own
+    const match = findDuplicateProduct(next, products.filter((p) => p.id !== product.id))
+    setNotice(
+      match
+        ? `${describeProduct(product)} now has ${DUPLICATE_REASON[match.on]} as ${describeProduct(match.product)}. They are probably the same product.`
+        : null,
+    )
     void run(() => patchGearProduct(product.id, { [key]: v || undefined }))
+  }
+
+  function setVendorSkus(product: GearProduct, next: VendorSku[]) {
+    void run(() => patchGearProduct(product.id, { vendorSkus: next.length ? next : undefined }))
   }
 
   return (
     <Card
       title="Catalog"
-      subtitle="The products your items are drawn from. A starting list ships with the app; add the exact ones you own, with brand and SKU where you have them."
+      subtitle="The products your items are drawn from. A starting list ships with the app; add the exact ones you own. A UPC, the brand's product number or a retailer SKU lets the same product be recognized when it is entered twice."
       action={
         <Button onClick={() => setOpen(!open)}>{open ? 'Hide catalog' : `Show catalog (${products.length})`}</Button>
       }
     >
+      {notice ? (
+        <p role="status" className="m-0 mb-2 text-xs" style={{ color: 'var(--status-warning)' }}>
+          {notice}
+        </p>
+      ) : null}
       {/* Collapsed by default: the catalog is consulted when adding gear, not
           read every visit, and a long list would push the sets off screen. */}
       {open ? (
         <div className="overflow-auto">
           <table className="w-full border-collapse text-xs">
-            <HeaderRow headers={['Category', 'Name', 'Brand', 'Color', 'SKU', 'Owned', '']} />
+            <HeaderRow headers={['Category', 'Name', 'Brand', 'Color', 'UPC', 'Product no.', 'Retailer SKUs', 'Owned', '']} />
             <tbody>
               {sorted.map((p) => (
                 <tr key={p.id} style={rowStyle}>
@@ -635,8 +680,27 @@ function CatalogCard({
                   <td className="px-2 py-1.5">
                     <TextCell value={p.color} ariaLabel={`Color of ${describeProduct(p)}`} onCommit={(v) => patch(p, 'color', v)} />
                   </td>
+                  <td className="whitespace-nowrap px-2 py-1.5">
+                    <TextCell value={p.upc} width={120} ariaLabel={`UPC of ${describeProduct(p)}`} onCommit={(v) => patch(p, 'upc', v)} />
+                    {p.upc && !isValidUpc(p.upc) ? (
+                      <span
+                        className="ml-1"
+                        title="The last digit does not check out for a 12- or 13-digit UPC. Kept as typed, in case the label reads that way."
+                        style={{ color: 'var(--status-warning)' }}
+                      >
+                        check
+                      </span>
+                    ) : null}
+                  </td>
                   <td className="px-2 py-1.5">
-                    <TextCell value={p.sku} ariaLabel={`SKU of ${describeProduct(p)}`} onCommit={(v) => patch(p, 'sku', v)} />
+                    <TextCell
+                      value={p.brandProductId}
+                      ariaLabel={`Product number of ${describeProduct(p)}`}
+                      onCommit={(v) => patch(p, 'brandProductId', v)}
+                    />
+                  </td>
+                  <td className="px-2 py-1.5">
+                    <VendorSkuCell product={p} onChange={(next) => setVendorSkus(p, next)} />
                   </td>
                   <td className="num-tabular px-2 py-1.5" style={{ color: 'var(--text-secondary)' }}>
                     {owned(p.id)}
@@ -694,8 +758,20 @@ function CatalogCard({
           <TextInput value={color} onChange={setColor} width={100} ariaLabel="Color for the new product" />
         </label>
         <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-          SKU / product no.
-          <TextInput value={sku} onChange={setSku} width={120} ariaLabel="SKU for the new product" />
+          UPC
+          <TextInput value={upc} onChange={setUpc} width={120} placeholder="12 digits" ariaLabel="UPC for the new product" />
+        </label>
+        <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+          Product no.
+          <TextInput value={brandProductId} onChange={setBrandProductId} width={110} ariaLabel="Brand product number for the new product" />
+        </label>
+        <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+          Retailer
+          <TextInput value={vendor} onChange={setVendor} width={100} ariaLabel="Retailer for the new product's SKU" />
+        </label>
+        <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+          Retailer SKU
+          <TextInput value={vendorSku} onChange={setVendorSku} width={100} ariaLabel="Retailer SKU for the new product" />
         </label>
         <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
           Link (optional)
@@ -705,6 +781,83 @@ function CatalogCard({
           Add product
         </Button>
       </div>
+      {opt(upc) && !isValidUpc(upc) ? (
+        <p className="m-0 mt-1 text-xs" style={{ color: 'var(--status-warning)' }}>
+          The UPC's last digit does not check out. It will be saved as typed; compare it with the label.
+        </p>
+      ) : null}
+      {Boolean(opt(vendor)) !== Boolean(opt(vendorSku)) ? (
+        <p className="m-0 mt-1 text-xs" style={{ color: 'var(--text-muted)' }}>
+          A retailer SKU needs both the retailer and the SKU; one on its own is not saved.
+        </p>
+      ) : null}
+      {duplicate ? (
+        <div role="alert" className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+          <span style={{ color: 'var(--status-warning)' }}>
+            Looks like {describeProduct(duplicate.product)}, already in the catalog with {DUPLICATE_REASON[duplicate.on]}.
+          </span>
+          <Button onClick={() => void add(true)}>Add anyway</Button>
+          <Button onClick={() => setDuplicate(null)}>Cancel</Button>
+        </div>
+      ) : null}
     </Card>
+  )
+}
+
+/**
+ * Retailer SKUs as chips, each removable, with an inline pair of fields to add
+ * one. A pair, never a bare SKU: a SKU is only unique at the retailer that set it.
+ */
+function VendorSkuCell({ product, onChange }: { product: GearProduct; onChange: (next: VendorSku[]) => void }) {
+  const [adding, setAdding] = useState(false)
+  const [vendor, setVendor] = useState('')
+  const [sku, setSku] = useState('')
+  const list = product.vendorSkus ?? []
+  const label = describeProduct(product)
+
+  function save() {
+    if (!vendor.trim() || !sku.trim()) return
+    onChange([...list, { vendor: vendor.trim(), sku: sku.trim() }])
+    setVendor('')
+    setSku('')
+    setAdding(false)
+  }
+
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1">
+      {list.map((v, i) => (
+        <span
+          key={`${v.vendor}|${v.sku}`}
+          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5"
+          style={{ border: '1px solid var(--border-hairline)', color: 'var(--text-primary)' }}
+        >
+          <span style={{ color: 'var(--text-muted)' }}>{v.vendor}:</span> {v.sku}
+          <button
+            type="button"
+            onClick={() => onChange(list.filter((_, j) => j !== i))}
+            aria-label={`Remove the ${v.vendor} SKU from ${label}`}
+            style={{ color: 'var(--text-muted)' }}
+          >
+            ✕
+          </button>
+        </span>
+      ))}
+      {adding ? (
+        <span className="inline-flex items-center gap-1">
+          <TextInput value={vendor} onChange={setVendor} width={80} placeholder="Retailer" ariaLabel={`Retailer for a new SKU on ${label}`} />
+          <TextInput value={sku} onChange={setSku} width={80} placeholder="SKU" ariaLabel={`New retailer SKU for ${label}`} />
+          <RowAction onClick={save} ariaLabel={`Save the retailer SKU on ${label}`}>
+            Save
+          </RowAction>
+          <RowAction onClick={() => setAdding(false)} ariaLabel="Cancel adding a retailer SKU">
+            Cancel
+          </RowAction>
+        </span>
+      ) : (
+        <RowAction onClick={() => setAdding(true)} ariaLabel={`Add a retailer SKU to ${label}`}>
+          + SKU
+        </RowAction>
+      )}
+    </span>
   )
 }

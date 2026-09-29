@@ -395,7 +395,7 @@ describe('gear inventory', () => {
     name: 'V3 short-sleeve shirt',
     brand: 'Example Co',
     color: 'Black',
-    sku: 'EX-V3-BLK',
+    brandProductId: 'EX-V3-BLK',
     origin: 'user',
   }
   const first: GearItem = { id: 'gi-1', productId: 'gp-shirt', label: 'Black V3 #1', acquiredOn: '2025-04-02' }
@@ -448,8 +448,41 @@ describe('gear inventory', () => {
       patchGearProduct('gp-shirt', { color: undefined }, db),
     ])
     const p = await db.gearProducts.get('gp-shirt')
-    expect(p).toMatchObject({ brand: 'Other Co', sku: 'EX-V3-BLK', name: 'V3 short-sleeve shirt' })
+    expect(p).toMatchObject({ brand: 'Other Co', brandProductId: 'EX-V3-BLK', name: 'V3 short-sleeve shirt' })
     expect(p).not.toHaveProperty('color')
+  })
+
+  it('reads a product saved with the old sku field as a brand product number', async () => {
+    // Written straight to the table, as a row from before the split would be.
+    await db.gearProducts.put({ ...shirt, brandProductId: undefined, sku: 'OLD-123' } as GearProduct)
+    const loaded = (await loadSnapshot(db)).gearProducts.find((p) => p.id === 'gp-shirt')!
+    expect(loaded.brandProductId).toBe('OLD-123')
+    expect(loaded).not.toHaveProperty('sku')
+
+    // A backup from then restores the same way, since the snapshot reads through it.
+    const backup = await exportBackup(db)
+    await restoreBackup(backup, 'replace', db)
+    expect((await loadSnapshot(db)).gearProducts.find((p) => p.id === 'gp-shirt')!.brandProductId).toBe('OLD-123')
+  })
+
+  it('stores identifiers cleaned: UPC digits only, and no half-filled retailer SKU', async () => {
+    await saveGearProduct(
+      {
+        ...shirt,
+        upc: '0-36000 29145-2',
+        vendorSkus: [
+          { vendor: ' Ump Shop ', sku: ' 998 ' },
+          { vendor: 'No SKU', sku: ' ' },
+        ],
+      },
+      db,
+    )
+    expect(await db.gearProducts.get('gp-shirt')).toMatchObject({
+      upc: '036000291452',
+      vendorSkus: [{ vendor: 'Ump Shop', sku: '998' }],
+    })
+    await patchGearProduct('gp-shirt', { upc: 'n/a' }, db)
+    expect(await db.gearProducts.get('gp-shirt')).not.toHaveProperty('upc')
   })
 
   it('keeps two copies of one product as two items', async () => {

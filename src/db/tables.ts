@@ -32,6 +32,7 @@ export type TableKind =
   | 'profiles'
   | 'gearLevels'
   | 'gearModifiers'
+  | 'gearProducts'
 
 export type TableSpec = {
   name: string
@@ -260,7 +261,7 @@ export const TABLES: readonly TableSpec[] = [
     name: 'gearProducts',
     since: 5,
     indexes: 'id, category',
-    kind: 'rows',
+    kind: 'gearProducts',
     rowSchema: z
       .object({ id: z.string(), category: z.string(), name: z.string(), origin: z.string() })
       .loose(),
