@@ -112,7 +112,11 @@ export function Tax() {
           <StatTile
             label="Gross received"
             value={formatMoneyCompact(summary.gross, currency)}
-            detail={`${summary.activeGames} games worked`}
+            detail={`${summary.activeGames} games worked${
+              summary.cancellationIncome > 0
+                ? `, plus ${formatMoney(summary.cancellationIncome, currency)} paid for cancellations`
+                : ''
+            }`}
           />
           <StatTile
             label="Business miles"

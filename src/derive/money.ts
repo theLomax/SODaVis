@@ -12,15 +12,25 @@ import type { Trip } from './trips'
 import { totalTime, type TimeContext } from './time'
 
 export type MoneyTotals = {
-  /** Sum of actual fees on active games. */
+  /**
+   * Everything received: worked games' fees plus what cancellations paid. The
+   * figure a payor's 1099 reports, and what net take-home starts from.
+   */
   gross: number
+  /**
+   * Fees on games actually worked. What every rate divides — $/hr, $/game,
+   * $/trip, $/mile — since no time was spent on a cancellation's pay.
+   */
+  grossWorked: number
+  /** Paid by cancelled games: a rainout paid at half rate, say. In `gross`, never in a rate. */
+  cancellationIncome: number
   /** Sum of scheduled fees on active games. */
   scheduledActive: number
   /** Sum of scheduled fees on every game, cancellations included. */
   scheduledAll: number
   /**
-   * Scheduled pay that never arrived: the full scheduled fee of every
-   * cancellation, plus any active game paid below its assigned rate.
+   * Scheduled pay that never arrived: whatever a cancellation did not pay of its
+   * scheduled fee, plus any active game paid below its assigned rate.
    */
   forfeited: number
   /**
@@ -34,9 +44,9 @@ export type MoneyTotals = {
    */
   unscheduledIncome: number
   /**
-   * `scheduledAll - gross`. The single figure that reconciles the source file's
-   * own totals row, and smaller than `forfeited` whenever upward adjustments
-   * offset part of what the cancellations cost.
+   * `scheduledAll - gross`: scheduled pay against everything received. It equals
+   * `forfeited - bonus - unscheduledIncome` exactly, because a cancellation's pay
+   * is in `gross` and only its unpaid part is in `forfeited`.
    */
   netFeeVariance: number
   tolls: number
@@ -101,6 +111,7 @@ export function totalMoney(
   generalExpenses: GeneralExpense[] = [],
 ): MoneyTotals {
   let gross = 0
+  let cancellationIncome = 0
   let scheduledActive = 0
   let scheduledAll = 0
   let forfeited = 0
@@ -117,6 +128,8 @@ export function totalMoney(
 
     if (isCancelled(game.status)) {
       cancelledGames++
+      // The pay arrived, so it is income; only the part that did not is forfeited.
+      cancellationIncome += actual
       forfeited += Math.max(scheduled - actual, 0)
       continue
     }
@@ -148,19 +161,21 @@ export function totalMoney(
   const general = sumExpenses(generalExpenses)
 
   return {
-    gross: round2(gross),
+    gross: round2(gross + cancellationIncome),
+    grossWorked: round2(gross),
+    cancellationIncome: round2(cancellationIncome),
     scheduledActive: round2(scheduledActive),
     scheduledAll: round2(scheduledAll),
     forfeited: round2(forfeited),
     bonus: round2(bonus),
     unscheduledIncome: round2(unscheduledIncome),
-    netFeeVariance: round2(scheduledAll - gross),
+    netFeeVariance: round2(scheduledAll - gross - cancellationIncome),
     tolls: round2(tolls),
     expenses: round2(expenses),
     deductibleExpenses: round2(deductibleExpenses),
     generalExpenses: round2(general.total),
     deductibleGeneralExpenses: round2(general.deductible),
-    net: round2(gross - tolls - expenses - general.total),
+    net: round2(gross + cancellationIncome - tolls - expenses - general.total),
     travelFees: round2(travelFees),
     activeGames,
     cancelledGames,
@@ -207,7 +222,7 @@ export function computeRates(
         const minutes = time.byModel[m]
         const gross = time.grossByModel[m]
         if (minutes <= 0) return [m, null]
-        const share = money.gross > 0 ? gross / money.gross : 0
+        const share = money.grossWorked > 0 ? gross / money.grossWorked : 0
         const amount = useNet ? gross - deductions * share : gross
         return [m, round2((amount / minutes) * 60)]
       }),
@@ -223,9 +238,9 @@ export function computeRates(
     netPerHourByModel: perHour(true),
     tripsCountedByModel,
     tripsTotal: trips.length,
-    perGame: money.activeGames > 0 ? round2(money.gross / money.activeGames) : null,
-    perTrip: trips.length > 0 ? round2(money.gross / trips.length) : null,
-    perMile: miles > 0 ? round2(money.gross / miles) : null,
+    perGame: money.activeGames > 0 ? round2(money.grossWorked / money.activeGames) : null,
+    perTrip: trips.length > 0 ? round2(money.grossWorked / trips.length) : null,
+    perMile: miles > 0 ? round2(money.grossWorked / miles) : null,
   }
 }
 
