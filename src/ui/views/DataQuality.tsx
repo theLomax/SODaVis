@@ -374,7 +374,7 @@ function UntaggedSports() {
                       style={selectStyle}
                     >
                       <option value="">Tag as…</option>
-                      {derived.snapshot.sports.map((s) => (
+                      {derived.trackedSports.map((s) => (
                         <option key={s.code} value={s.code}>
                           {s.label}
                         </option>

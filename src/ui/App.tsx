@@ -11,6 +11,7 @@
 
 import { StoreProvider, useStore, type ViewId } from './store'
 import { FilterBar } from './components/Controls'
+import { HiddenSportsNotice } from './components/HiddenSportsNotice'
 import { Overview } from './views/Overview'
 import { Venues, Partners, Leagues } from './views/Breakdowns'
 import { Trips } from './views/Trips'
@@ -82,6 +83,7 @@ function Shell() {
       </header>
 
       {current.filtered ? <FilterBar /> : null}
+      {current.filtered ? <HiddenSportsNotice /> : null}
 
       {/* A chart click narrows the filter and changes view in one step, so the
           reader needs telling what they are looking at and a way straight back. */}

@@ -49,7 +49,8 @@ export function Gear() {
   const [error, setError] = useState<string | null>(null)
 
   if (!derived) return null
-  const { gearProducts, gearItems, gearSets, sports } = derived.snapshot
+  const { gearProducts, gearItems, gearSets } = derived.snapshot
+  const sports = derived.trackedSports
   const products = new Map(gearProducts.map((p) => [p.id, p]))
 
   /** Every write goes through here, so a refusal from the repo shows as a message. */

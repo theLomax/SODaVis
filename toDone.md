@@ -6,6 +6,25 @@ lose and expensive to rediscover.
 
 ## Features
 
+- **Choose the sports you officiate.** Soccer, Volleyball, Football and Basketball join
+  the sports list, offered but untracked; the four from the sample stay tracked. A
+  *Track* checkbox per sport (*Reference data → Sports & gear*) decides what the app
+  shows: only tracked sports appear in the filter chips, charts and every sport picker
+  (trip and Data Quality tags, gear sets, general expenses). Existing installs gain
+  the new sports on their next start without losing edits — the seed now adds rows
+  it is missing, not only fills an empty table.
+
+  Games in an untracked sport are left out of every dashboard view, and a notice under
+  the filter bar says how many, with a one-click *Track* per sport. That includes a
+  sport code the app has never seen (a league exporting "C-SOC", say), which becomes a
+  sport of its own when tracked. The Tax view is the exception and counts every game,
+  since a payor's 1099 does. A general expense bought only for untracked sports goes
+  with them.
+
+  Sport colors are now given among tracked sports only, in the fixed order, so four
+  tracked sports get four distinct colors however many the app knows; the last slot
+  stays reserved for games with no sport code.
+
 - **Multiple vehicles.** A *Reference data → Vehicles* list (name, year/make/model,
   notes) with one default, kept in Settings; the first vehicle added becomes it. A
   trip uses its own vehicle, set in the trip editor, or else the default. The Tax

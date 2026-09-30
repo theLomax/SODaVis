@@ -29,8 +29,9 @@ export function Tax() {
     if (!derived) return null
     return taxYear(
       activeYear,
-      derived.allResolved,
-      derived.allTrips,
+      // Every game, untracked sports included: a payor's 1099 counts them all.
+      derived.taxResolved,
+      derived.taxTrips,
       new Map(derived.snapshot.tripAnnotations.map((a) => [a.key, a])),
       derived.snapshot.settings,
       derived.snapshot.generalExpenses,
