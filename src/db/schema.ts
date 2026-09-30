@@ -81,7 +81,13 @@ export async function seedReferenceData(database: AppDatabase = db): Promise<voi
     async () => {
       for (const spec of seeded) {
         const table = database.table(spec.name)
-        if ((await table.count()) === 0) await table.bulkPut(spec.seedRows!)
+        if ((await table.count()) === 0) {
+          await table.bulkPut(spec.seedRows!)
+        } else if (spec.seedMissing && spec.keyOf) {
+          const have = new Set((await table.toArray()).map((r) => spec.keyOf!(r as Record<string, unknown>)))
+          const missing = spec.seedRows!.filter((r) => !have.has(spec.keyOf!(r as Record<string, unknown>)))
+          if (missing.length) await table.bulkPut(missing)
+        }
       }
     },
   )

@@ -177,7 +177,7 @@ export function Trips() {
                           <TripDetail
                             trip={trip}
                             onReviewFlag={() => setFlagKey(trip.key)}
-                            sports={derived.snapshot.sports}
+                            sports={derived.trackedSports}
                             gearLevels={derived.snapshot.gearLevels}
                             gearModifiers={derived.snapshot.gearModifiers}
                             callTypes={derived.snapshot.callTypes}

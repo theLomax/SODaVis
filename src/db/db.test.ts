@@ -688,3 +688,22 @@ describe('vehicles', () => {
     expect(validateBackup(backup).ok).toBe(true)
   })
 })
+
+describe('seeded sports on an existing install', () => {
+  it('adds sports the seed has gained, without touching the user’s edits', async () => {
+    // An install from before the new sports: only the original four, one edited.
+    await db.sports.clear()
+    await db.sports.bulkPut([
+      { code: 'C-BB', label: 'Baseball', prepMinutes: 40, wrapMinutes: 10 },
+      { code: 'C-FP', label: 'Fastpitch Softball', prepMinutes: 25, wrapMinutes: 10 },
+      { code: 'C-SP', label: 'Slowpitch Softball', prepMinutes: 15, wrapMinutes: 5 },
+      { code: 'C-KB', label: 'Kickball', prepMinutes: 15, wrapMinutes: 5 },
+    ])
+    await seedReferenceData(db)
+    const sports = await db.sports.toArray()
+    expect(sports.map((s) => s.code).sort()).toEqual(['BKB', 'C-BB', 'C-FP', 'C-KB', 'C-SP', 'FB', 'SOC', 'VB'])
+    expect(sports.find((s) => s.code === 'C-BB')!.prepMinutes).toBe(40)
+    // The new ones are offered, not switched on.
+    expect(sports.filter((s) => s.tracked === false).map((s) => s.code).sort()).toEqual(['BKB', 'FB', 'SOC', 'VB'])
+  })
+})

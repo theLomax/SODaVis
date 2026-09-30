@@ -21,7 +21,13 @@ import {
 } from 'react'
 
 import type { Game } from '../model/game'
-import { UNSPECIFIED_SPORT, type TimeModelId } from '../model/reference'
+import {
+  UNSPECIFIED_SPORT,
+  isTrackedSport,
+  orderSportCodes,
+  type SportProfile,
+  type TimeModelId,
+} from '../model/reference'
 import { tripKey } from '../model/annotation'
 import { db, seedReferenceData } from '../db/schema'
 import { loadSnapshot, type AppSnapshot } from '../db/repo'
@@ -98,6 +104,16 @@ export type DerivedState = {
   rates: Rates
   timeCtx: TimeContext
   breakdownCtx: BreakdownContext
+  /** Sports the user officiates, in canonical order: what every picker, filter and chart offers. */
+  trackedSports: SportProfile[]
+  /** Games left out because their sport is not tracked, by code. */
+  hiddenSports: { code: string; label: string; known: boolean; games: number }[]
+  /**
+   * Every game and trip, untracked sports included. For the Tax view only: income
+   * reported by a payor has to be counted whatever the user tracks.
+   */
+  taxResolved: ResolvedGame[]
+  taxTrips: Trip[]
 }
 
 type Store = {
@@ -314,7 +330,12 @@ export function derive(snapshot: AppSnapshot, filter: Filter): DerivedState {
     ),
   }
 
-  const allResolved = resolveGames(snapshot.games, resolveCtx)
+  // Games in a sport the user does not officiate are hidden from every
+  // dashboard view — kept, and counted in the Tax view, but never mixed in.
+  const everyResolved = resolveGames(snapshot.games, resolveCtx)
+  const trackedCodes = new Set(snapshot.sports.filter(isTrackedSport).map((s) => s.code))
+  const isHidden = (r: ResolvedGame) => r.sportCode != null && !trackedCodes.has(r.sportCode)
+  const allResolved = everyResolved.filter((r) => !isHidden(r))
   const resolved = allResolved.filter((r) => matches(r, filter))
 
   const tripAnnotations = new Map(snapshot.tripAnnotations.map((a) => [a.key, a]))
@@ -327,6 +348,8 @@ export function derive(snapshot: AppSnapshot, filter: Filter): DerivedState {
   }
   const { trips, unplaceable, cancelled, uncountedDrives } = buildTrips(resolved, tripCtx)
   const { trips: allTrips } = buildTrips(allResolved, tripCtx)
+  const hiddenCount = everyResolved.length - allResolved.length
+  const taxTrips = hiddenCount ? buildTrips(everyResolved, tripCtx).trips : allTrips
 
   const timeCtx: TimeContext = {
     sports: new Map(snapshot.sports.map((s) => [s.code, s])),
@@ -351,7 +374,11 @@ export function derive(snapshot: AppSnapshot, filter: Filter): DerivedState {
     trips,
     tripAnnotations,
     snapshot.settings,
-    generalExpensesInScope(snapshot.generalExpenses, filter),
+    generalExpensesInScope(
+      // An expense bought only for sports the user does not track goes with them.
+      snapshot.generalExpenses.filter((e) => !e.sportCodes?.length || e.sportCodes.some((c) => trackedCodes.has(c))),
+      filter,
+    ),
   )
   const time = totalTime(trips, timeCtx)
   const rates = computeRates(money, trips, timeCtx)
@@ -370,7 +397,26 @@ export function derive(snapshot: AppSnapshot, filter: Filter): DerivedState {
     rates,
     timeCtx,
     breakdownCtx: { trips, timeCtx, model: filter.model, tripAnnotations },
+    trackedSports: orderSportCodes([...trackedCodes]).map((c) => snapshot.sports.find((s) => s.code === c)!),
+    hiddenSports: tallyHidden(everyResolved.filter(isHidden), snapshot.sports),
+    taxResolved: hiddenCount ? everyResolved : allResolved,
+    taxTrips,
   }
+}
+
+/** Hidden games by sport code, most first, for the notice that offers to track them. */
+function tallyHidden(
+  hidden: ResolvedGame[],
+  sports: SportProfile[],
+): { code: string; label: string; known: boolean; games: number }[] {
+  const counts = new Map<string, number>()
+  for (const r of hidden) counts.set(r.sportCode!, (counts.get(r.sportCode!) ?? 0) + 1)
+  return [...counts.entries()]
+    .map(([code, games]) => {
+      const sport = sports.find((s) => s.code === code)
+      return { code, label: sport?.label ?? code, known: Boolean(sport), games }
+    })
+    .sort((a, b) => b.games - a.games || a.label.localeCompare(b.label))
 }
 
 /**

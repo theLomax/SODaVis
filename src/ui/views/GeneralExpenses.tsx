@@ -27,9 +27,11 @@ export function GeneralExpenses({ year }: { year: number }) {
   const [error, setError] = useState<string | null>(null)
 
   if (!derived) return null
-  const { generalExpenses, sports, settings } = derived.snapshot
+  const { generalExpenses, settings } = derived.snapshot
+  const sports = derived.trackedSports
   const currency = settings.currency
-  const sportLabel = (code: string) => sports.find((s) => s.code === code)?.label ?? code
+  // Labels from every sport: an old expense may name one no longer tracked.
+  const sportLabel = (code: string) => derived.snapshot.sports.find((s) => s.code === code)?.label ?? code
 
   const inYear = generalExpenses
     .filter((e) => e.date.startsWith(String(year)))

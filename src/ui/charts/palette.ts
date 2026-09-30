@@ -16,7 +16,7 @@
  *   → ALL CHECKS PASS (worst pair CVD ΔE 9.4, normal-vision 20.9)
  */
 
-import { sportRank } from '../../model/reference'
+import { DEFAULT_TRACKED_SPORTS, UNSPECIFIED_SPORT as NO_SPORT, orderSportCodes } from '../../model/reference'
 
 export { UNSPECIFIED_SPORT } from '../../model/reference'
 
@@ -58,19 +58,25 @@ export const needsRelief = (slot: number): boolean => RELIEF_REQUIRED_SLOTS.incl
  * rank.
  */
 /**
- * Sport code -> slot, taken straight from the model's `SPORT_ORDER` so grouping
- * and colour can never disagree. Each of the four sports holds a fixed slot, and
- * anything unrecognized — including the unspecified bucket — takes slot 5.
+ * Sport code -> slot, by the sport's place among the sports the user tracks, in
+ * the model's canonical order — so grouping and color never disagree, and a
+ * sport keeps its color when a filter hides another. Untracked sports never
+ * appear, so they take no slot: four tracked sports get four distinct colors
+ * however many the app knows.
  *
- * Kickball and "no sport code" previously both landed on slot 4 and rendered
- * identically in a split chart; slot 5 exists to prevent that collision.
+ * The last slot is kept for "no sport code" and anything unrecognized. Kickball
+ * and the unspecified bucket once shared a slot and drew identically in a split
+ * chart; reserving it prevents that. Past four tracked sports the first four
+ * slots repeat, which is the palette's limit, not a choice.
  */
-export function sportSlot(code: string | undefined): number {
-  return Math.min(sportRank(code), CATEGORICAL_SLOTS)
+export function sportSlot(code: string | undefined, tracked: readonly string[] = DEFAULT_TRACKED_SPORTS): number {
+  if (!code || code === NO_SPORT) return CATEGORICAL_SLOTS
+  const i = orderSportCodes(tracked).indexOf(code)
+  return i === -1 ? CATEGORICAL_SLOTS : (i % (CATEGORICAL_SLOTS - 1)) + 1
 }
 
-export function sportColor(code: string | undefined): string {
-  return seriesVar(sportSlot(code))
+export function sportColor(code: string | undefined, tracked?: readonly string[]): string {
+  return seriesVar(sportSlot(code, tracked))
 }
 
 /**
