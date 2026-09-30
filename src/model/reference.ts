@@ -63,6 +63,20 @@ export const ORGANIZATION_KINDS: { id: OrganizationKind; label: string }[] = [
   { id: 'direct', label: 'Direct contract' },
 ]
 
+/**
+ * A vehicle driven to games. The standard mileage deduction is claimed per
+ * vehicle, and a toll statement is per transponder, which means per vehicle — so
+ * a trip records which one it was.
+ */
+export type Vehicle = {
+  id: string
+  /** The user's own name for it: "Blue Civic", "Work truck". */
+  name: string
+  /** Year, make and model, free text. */
+  details?: string
+  notes?: string
+}
+
 export type DurationOrigin = 'extracted' | 'manual'
 
 export type AgeGroupDuration = {
@@ -198,6 +212,8 @@ export type Settings = {
    * never uses it.
    */
   rushHour: RushHourWindow
+  /** The vehicle a trip used unless one is set on the trip. Unset: trips have none. */
+  defaultVehicleId?: string
 }
 
 // ---------------------------------------------------------------------------

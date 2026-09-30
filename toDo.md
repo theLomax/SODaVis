@@ -11,8 +11,6 @@ the data model.
 - **Multi-park day editor** — list every venue for that day together, so the mileage can be adjudicated across them rather than one field at a time.
 - **One-way leg entry for multi-park days.** Round trip is the wrong model when the
   day is home→A→B→home. Depends on the editor above, so they land together.
-- **Multiple vehicles** with a default and per-trip attribution. A new reference
-  entity and an optional trip field; the mileage layer changes very little.
 
 ## Large — changes the data model
 

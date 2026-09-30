@@ -22,6 +22,7 @@ import type { ResolvedGame } from '../../derive/resolve'
 import type {
   CallType,
   Organization,
+  Vehicle,
   GearLevel,
   GearLevelId,
   GearModifier,
@@ -181,6 +182,7 @@ export function Trips() {
                             gearModifiers={derived.snapshot.gearModifiers}
                             callTypes={derived.snapshot.callTypes}
                             organizations={derived.snapshot.organizations}
+                            vehicles={derived.snapshot.vehicles}
                             annotation={annotations.get(trip.key)}
                             committedMinutes={t.byModel['committed']}
                             prepMinutes={t.prepMinutes}
@@ -260,6 +262,7 @@ function TripDetail({
   gearModifiers,
   callTypes,
   organizations,
+  vehicles,
   annotation,
   committedMinutes,
   prepMinutes,
@@ -276,6 +279,7 @@ function TripDetail({
   gearModifiers: GearModifier[]
   callTypes: CallType[]
   organizations: Organization[]
+  vehicles: Vehicle[]
   annotation: TripAnnotation | undefined
   committedMinutes: number | null
   prepMinutes: number
@@ -290,6 +294,8 @@ function TripDetail({
   const [prep, setPrep] = useState(annotation?.prepMinutesOverride?.toString() ?? '')
   const [wrap, setWrap] = useState(annotation?.wrapMinutesOverride?.toString() ?? '')
   const [notes, setNotes] = useState(annotation?.notes ?? '')
+  /** '' = no vehicle on the trip itself, so the default applies. */
+  const [vehicle, setVehicle] = useState(annotation?.vehicleId ?? '')
   const [expenses, setExpenses] = useState<Expense[]>(annotation?.expenses ?? [])
   const [amount, setAmount] = useState('')
   const [category, setCategory] = useState<ExpenseCategory>('parking')
@@ -302,10 +308,13 @@ function TripDetail({
     return v.trim() && Number.isFinite(n) ? n : undefined
   }
 
-  async function save(nextExpenses = expenses) {
+  // Rebuilds the whole annotation from this form, so every field it owns —
+  // the vehicle included — must be held here, or a save would drop it.
+  async function save(nextExpenses = expenses, nextVehicle = vehicle) {
     setSaving(true)
     try {
       const next: TripAnnotation = { key: trip.key, expenses: nextExpenses }
+      if (nextVehicle) next.vehicleId = nextVehicle
       const m = num(miles)
       const t = num(tolls)
       const d = num(drive)
@@ -481,6 +490,34 @@ function TripDetail({
               <TextInput value={wrap} onChange={setWrap} type="number" placeholder={String(wrapMinutes)} ariaLabel="Wrap minutes override" />
             </Labeled>
           </div>
+          {vehicles.length > 0 ? (
+            <Labeled label="Vehicle">
+              <select
+                value={vehicle}
+                disabled={saving}
+                onChange={(e) => {
+                  setVehicle(e.target.value)
+                  void save(expenses, e.target.value)
+                }}
+                className="rounded-md px-2 py-1 text-xs"
+                style={selectStyle}
+                aria-label="Vehicle driven on this trip"
+              >
+                <option value="">
+                  {trip.vehicleSource === 'default'
+                    ? `Default: ${vehicles.find((v) => v.id === trip.vehicleId)?.name ?? ''}`
+                    : 'None (no default set)'}
+                </option>
+                {[...vehicles]
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.name}
+                    </option>
+                  ))}
+              </select>
+            </Labeled>
+          ) : null}
           <Labeled label="Trip notes">
             <TextInput value={notes} onChange={setNotes} ariaLabel="Trip notes" />
           </Labeled>

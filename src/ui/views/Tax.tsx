@@ -34,6 +34,7 @@ export function Tax() {
       new Map(derived.snapshot.tripAnnotations.map((a) => [a.key, a])),
       derived.snapshot.settings,
       derived.snapshot.generalExpenses,
+      derived.snapshot.vehicles,
     )
   }, [derived, activeYear])
 
@@ -187,6 +188,42 @@ export function Tax() {
           <Row label="Rate for this year" value={`${summary.mileage.rate.toFixed(3)} per mile`} />
           <Row label="Standard mileage deduction" value={formatMoney(summary.mileage.deduction, currency)} />
           <Row label="Trips with a manual mileage figure" value={String(summary.mileage.tripsWithOverride)} />
+          {/* The deduction is claimed per vehicle; the rate is the same for each, so
+              these rows add up to the figures above. */}
+          {summary.mileage.byVehicle.length > 0 ? (
+            <table className="mt-1 w-full border-collapse text-xs">
+              <thead>
+                <tr>
+                  {['Vehicle', 'Trips', 'Miles', 'Deduction'].map((h, i) => (
+                    <th
+                      key={h}
+                      scope="col"
+                      className="px-2 py-1.5 font-medium"
+                      style={{
+                        textAlign: i === 0 ? 'left' : 'right',
+                        color: 'var(--text-secondary)',
+                        borderBottom: '1px solid var(--gridline)',
+                      }}
+                    >
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {summary.mileage.byVehicle.map((v) => (
+                  <tr key={v.vehicleId ?? 'none'} style={{ borderBottom: '1px solid var(--gridline)' }}>
+                    <td className="px-2 py-1.5" style={{ color: v.vehicleId ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                      {v.name}
+                    </td>
+                    <td className="num-tabular px-2 py-1.5 text-right">{v.trips}</td>
+                    <td className="num-tabular px-2 py-1.5 text-right">{v.miles.toLocaleString()}</td>
+                    <td className="num-tabular px-2 py-1.5 text-right">{formatMoney(v.deduction, currency)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : null}
           {summary.mileage.tripsMissingMiles > 0 ? (
             <div className="flex items-center gap-2">
               <StatusChip

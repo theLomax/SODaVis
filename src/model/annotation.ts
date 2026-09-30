@@ -186,6 +186,8 @@ export type TripAnnotation = {
   driveMinutesOverride?: number
   prepMinutesOverride?: number
   wrapMinutesOverride?: number
+  /** The vehicle driven, when not the default one. */
+  vehicleId?: string
   expenses: Expense[]
   notes?: string
 }
@@ -227,6 +229,10 @@ export function mergeTripAnnotations(
     if (v != null) out[k] = v
     else delete out[k]
   }
+  // The surviving park's vehicle wins, like its figures.
+  const vehicleId = keep.vehicleId ?? merge.vehicleId
+  if (vehicleId) out.vehicleId = vehicleId
+  else delete out.vehicleId
   if (notes) out.notes = notes
   else delete out.notes
   return out

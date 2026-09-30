@@ -6,6 +6,7 @@
 import type { Game, ImportRun } from '../model/game'
 import type {
   AgeGroupDuration,
+  Vehicle,
   Organization,
   CallType,
   GearLevel,
@@ -53,6 +54,7 @@ export type AppSnapshot = {
   gameAnnotations: GameAnnotation[]
   tripAnnotations: TripAnnotation[]
   organizations: Organization[]
+  vehicles: Vehicle[]
   generalExpenses: GeneralExpense[]
   gearProducts: GearProduct[]
   gearItems: GearItem[]
@@ -487,6 +489,7 @@ export async function saveTripAnnotation(
     annotation.driveMinutesOverride == null &&
     annotation.prepMinutesOverride == null &&
     annotation.wrapMinutesOverride == null &&
+    !annotation.vehicleId &&
     annotation.expenses.length === 0 &&
     !annotation.notes?.trim()
   if (isEmpty) await database.tripAnnotations.delete(annotation.key)
@@ -662,6 +665,60 @@ export async function setImportOrganization(
     const { organizationId: _old, ...rest } = run
     void _old
     await database.imports.put(organizationId ? { ...rest, organizationId } : rest)
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Vehicles
+// ---------------------------------------------------------------------------
+
+export async function saveVehicle(vehicle: Vehicle, database: AppDatabase = db): Promise<void> {
+  await database.vehicles.put(vehicle)
+}
+
+export async function patchVehicle(
+  id: string,
+  patch: Partial<Omit<Vehicle, 'id'>>,
+  database: AppDatabase = db,
+): Promise<void> {
+  await patchRow<Vehicle>(database.vehicles, (fn) => database.transaction('rw', database.vehicles, fn), id, patch)
+}
+
+export class VehicleInUseError extends Error {
+  constructor(readonly trips: number) {
+    super(
+      `This vehicle is set on ${trips} trip${trips === 1 ? '' : 's'}. Move ${trips === 1 ? 'it' : 'them'} to another vehicle first, so the mileage stays attributed.`,
+    )
+  }
+}
+
+/**
+ * Deletes a vehicle no trip names. One that is named is refused, rather than
+ * cleared: its trips would silently fall to the default vehicle, moving mileage
+ * between vehicles in the tax records. If it was the default, the default is
+ * cleared in the same transaction.
+ */
+export async function deleteVehicle(id: string, database: AppDatabase = db): Promise<void> {
+  await database.transaction('rw', [database.vehicles, database.tripAnnotations, database.settings], async () => {
+    const using = (await database.tripAnnotations.toArray()).filter((a) => a.vehicleId === id)
+    if (using.length) throw new VehicleInUseError(using.length)
+    await database.vehicles.delete(id)
+    const settings = await database.settings.get('settings')
+    if (settings?.defaultVehicleId === id) {
+      const { defaultVehicleId: _drop, ...rest } = settings
+      void _drop
+      await database.settings.put(rest)
+    }
+  })
+}
+
+/** Sets, or clears with `undefined`, the vehicle a trip uses unless it names one. */
+export async function setDefaultVehicle(id: string | undefined, database: AppDatabase = db): Promise<void> {
+  await database.transaction('rw', database.settings, async () => {
+    const current = { ...SEED_SETTINGS, ...((await database.settings.get('settings')) ?? {}) }
+    const { defaultVehicleId: _old, ...rest } = current
+    void _old
+    await database.settings.put(id ? { ...rest, defaultVehicleId: id } : rest)
   })
 }
 

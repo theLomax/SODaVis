@@ -21,8 +21,13 @@ import {
   deleteGearProduct,
   loadSnapshot,
   deleteOrganization,
+  deleteVehicle,
   patchGameAnnotation,
   saveOrganization,
+  saveTripAnnotation,
+  saveVehicle,
+  setDefaultVehicle,
+  VehicleInUseError,
   setImportOrganization,
   saveGameAnnotation,
   patchGearItem,
@@ -33,6 +38,7 @@ import {
 } from './repo'
 import { exportBackup, restoreBackup, validateBackup } from './backup'
 import { SEED_SETTINGS } from '../model/reference'
+import { mergeTripAnnotations } from '../model/annotation'
 import type { GearItem, GearProduct } from '../model/gear'
 
 let db: AppDatabase
@@ -628,6 +634,57 @@ describe('organizations', () => {
     expect(await db.organizations.get('o-1')).toMatchObject({ aliases: ['H&B Officials'] })
 
     delete (backup.data as { organizations?: unknown }).organizations
+    expect(validateBackup(backup).ok).toBe(true)
+  })
+})
+
+/**
+ * Vehicles are named from trip annotations and from settings (the default), so
+ * both the save path and the delete path have to know about them.
+ */
+describe('vehicles', () => {
+  const sedan = { id: 'v-1', name: 'Blue sedan' }
+
+  it('keeps a trip annotation that carries only a vehicle', async () => {
+    await saveTripAnnotation({ key: '2026-09-12|park', expenses: [], vehicleId: 'v-1' }, db)
+    expect((await db.tripAnnotations.get('2026-09-12|park'))!.vehicleId).toBe('v-1')
+  })
+
+  it('refuses to delete a vehicle a trip names', async () => {
+    await saveVehicle(sedan, db)
+    await saveTripAnnotation({ key: '2026-09-12|park', expenses: [], vehicleId: 'v-1' }, db)
+    await expect(deleteVehicle('v-1', db)).rejects.toBeInstanceOf(VehicleInUseError)
+    expect(await db.vehicles.get('v-1')).toBeDefined()
+  })
+
+  it('clears the default when the default vehicle is deleted', async () => {
+    await saveVehicle(sedan, db)
+    await setDefaultVehicle('v-1', db)
+    expect((await loadSnapshot(db)).settings.defaultVehicleId).toBe('v-1')
+    await deleteVehicle('v-1', db)
+    expect((await loadSnapshot(db)).settings).not.toHaveProperty('defaultVehicleId')
+    // The rest of the settings survive the edit.
+    expect((await loadSnapshot(db)).settings.fallbackMph).toBe(SEED_SETTINGS.fallbackMph)
+  })
+
+  it('keeps the vehicle when a park merge folds two trips together', () => {
+    const merged = mergeTripAnnotations(
+      { key: 'a', expenses: [] },
+      { key: 'b', expenses: [], vehicleId: 'v-1' },
+    )
+    expect(merged.vehicleId).toBe('v-1')
+    expect(mergeTripAnnotations({ key: 'a', expenses: [], vehicleId: 'v-2' }, { key: 'b', expenses: [], vehicleId: 'v-1' }).vehicleId).toBe('v-2')
+  })
+
+  it('round-trips vehicles and the default through a backup', async () => {
+    await saveVehicle(sedan, db)
+    await setDefaultVehicle('v-1', db)
+    const backup = await exportBackup(db)
+    expect(backup.counts.vehicles).toBe(1)
+    await restoreBackup(backup, 'replace', db)
+    expect(await db.vehicles.get('v-1')).toEqual(sedan)
+    expect((await loadSnapshot(db)).settings.defaultVehicleId).toBe('v-1')
+    delete (backup.data as { vehicles?: unknown }).vehicles
     expect(validateBackup(backup).ok).toBe(true)
   })
 })

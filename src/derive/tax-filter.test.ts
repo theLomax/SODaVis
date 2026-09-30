@@ -55,6 +55,7 @@ function fixtureSnapshot(): AppSnapshot {
     gameAnnotations: [],
     tripAnnotations: [],
     organizations: [],
+    vehicles: [],
     generalExpenses: [],
     gearProducts: [],
     gearItems: [],
