@@ -17,6 +17,7 @@ import type {
   SportProfile,
 } from '../model/reference'
 import type { CancelStage, GameAnnotation } from '../model/annotation'
+import { findOrganizationByName } from '../model/organizations'
 import {
   extractDurationMinutes,
   matchesIdentity,
@@ -332,11 +333,6 @@ export function resolveGearLevel(
 // Organization
 // ---------------------------------------------------------------------------
 
-/** Case and spacing aside, so "H&B  Officials" and "h&b officials" are one name. */
-function normalizeName(name: string | undefined): string {
-  return (name ?? '').trim().replace(/\s+/g, ' ').toLowerCase()
-}
-
 /** Where a game's organization came from, strongest first. */
 export type OrganizationSource = 'manual' | 'payor' | 'import'
 
@@ -364,13 +360,8 @@ export function resolveOrganization(
     return { id: annotation.organizationId, source: 'manual' }
   }
 
-  const payor = normalizeName(game.payor)
-  if (payor) {
-    const named = organizations.find((org) =>
-      [org.name, ...(org.aliases ?? [])].some((n) => normalizeName(n) === payor),
-    )
-    if (named) return { id: named.id, source: 'payor' }
-  }
+  const named = findOrganizationByName(game.payor, organizations)
+  if (named) return { id: named.id, source: 'payor' }
 
   const fromImport = importOrganizations.get(game.source.importId)
   if (fromImport && known.has(fromImport)) return { id: fromImport, source: 'import' }

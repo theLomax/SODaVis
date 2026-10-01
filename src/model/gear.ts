@@ -270,10 +270,15 @@ export function describeProduct(p: GearProduct): string {
  * form can refuse it rather than save a typo. `$12.50` and `12.5` both read.
  */
 export function parsePricePaid(text: string): number | undefined | null {
-  const t = text.trim().replace(/^\$/, '').replace(/,/g, '')
+  const t = text.trim()
   if (!t) return undefined
-  const n = Number(t)
-  return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : null
+  // A minus sign or accounting parentheses: a negative price is a typo.
+  if (/[-(]/.test(t)) return null
+  // Any currency symbol or code goes ("$", "£", "CA$", "USD"); thousands commas too.
+  const cleaned = t.replace(/[^0-9.,]/g, '').replace(/,/g, '')
+  if (!/\d/.test(cleaned)) return null
+  const n = Number(cleaned)
+  return Number.isFinite(n) ? Math.round(n * 100) / 100 : null
 }
 
 export function isRetired(item: GearItem): boolean {

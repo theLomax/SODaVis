@@ -8,6 +8,8 @@
 
 import { useState } from 'react'
 import { selectStyle } from '../../components/Controls'
+import { formatMoney } from '../../../derive/money'
+import { parseMoney } from '../../../import/transforms'
 
 export function TextCell({
   value,
@@ -31,6 +33,49 @@ export function TextCell({
       onBlur={() => onCommit(text.trim() || undefined)}
       className={width ? 'rounded-md px-1.5 py-0.5 text-xs' : 'w-28 rounded-md px-1.5 py-0.5 text-xs'}
       style={width ? { ...selectStyle, width } : selectStyle}
+    />
+  )
+}
+
+/**
+ * An amount of money, shown formatted in the user's currency ("$39.99") and
+ * edited as a plain number: the formatting is dropped on focus and the typed text
+ * read on blur. "$1,249.50" reads as 1249.5; text with no number in it is
+ * treated as a slip and the field goes back to the stored amount.
+ */
+export function MoneyCell({
+  value,
+  currency,
+  onCommit,
+  ariaLabel,
+}: {
+  value: number | undefined
+  currency: string
+  onCommit: (v: number | undefined) => void
+  ariaLabel: string
+}) {
+  const [editing, setEditing] = useState(false)
+  const [text, setText] = useState('')
+  const shown = editing ? text : value == null ? '' : formatMoney(value, currency)
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      value={shown}
+      aria-label={ariaLabel}
+      onFocus={() => {
+        setText(value == null ? '' : String(value))
+        setEditing(true)
+      }}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => {
+        setEditing(false)
+        if (!text.trim()) return onCommit(undefined)
+        const n = parseMoney(text)
+        if (n != null) onCommit(Math.round(n * 100) / 100)
+      }}
+      className="num-tabular w-24 rounded-md px-1.5 py-0.5 text-right text-xs"
+      style={selectStyle}
     />
   )
 }

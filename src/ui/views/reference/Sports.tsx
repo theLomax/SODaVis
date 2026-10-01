@@ -88,17 +88,20 @@ export function SportsEditor() {
                 </td>
                 <td className="px-2 py-1.5">
                   <select
-                    value={sport.defaultGearLevel}
+                    value={sport.defaultGearLevel ?? ''}
                     onChange={async (e) => {
-                      await saveSports([
-                        { ...sport, defaultGearLevel: e.target.value as typeof sport.defaultGearLevel },
-                      ])
+                      // "None" stores no default, rather than an empty string.
+                      const { defaultGearLevel: _old, ...rest } = sport
+                      void _old
+                      const level = e.target.value as NonNullable<typeof sport.defaultGearLevel> | ''
+                      await saveSports([level ? { ...rest, defaultGearLevel: level } : rest])
                       await reload()
                     }}
                     className="rounded-md px-2 py-1 text-xs"
                     style={selectStyle}
                     aria-label={`Default gear for ${sport.label}`}
                   >
+                    <option value="">None</option>
                     {gearLevels.map((g) => (
                       <option key={g.id} value={g.id}>
                         {g.label}

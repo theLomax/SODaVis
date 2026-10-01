@@ -191,6 +191,21 @@ export type Identity = {
 export type TimeModelId = 'game' | 'game-drive' | 'committed'
 
 /**
+ * Currencies offered in Settings. Choosing one changes how amounts are shown and
+ * the currency new imports are stamped with; it never converts a figure already
+ * stored. The list matches the planned locales (US, UK, Canada, and Spanish and
+ * French speakers), plus the euro and the Australian dollar.
+ */
+export const CURRENCIES: { code: string; label: string }[] = [
+  { code: 'USD', label: 'US dollar' },
+  { code: 'CAD', label: 'Canadian dollar' },
+  { code: 'GBP', label: 'British pound' },
+  { code: 'EUR', label: 'Euro' },
+  { code: 'MXN', label: 'Mexican peso' },
+  { code: 'AUD', label: 'Australian dollar' },
+]
+
+/**
  * When a drive is treated as rush hour.
  *
  * Applies to both legs, each judged on its own clock: the outbound leg by the

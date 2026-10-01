@@ -13,6 +13,7 @@ import { useState } from 'react'
 import { useStore } from '../store'
 import { Button, TextInput, selectStyle } from '../components/Controls'
 import { Card } from '../components/Tiles'
+import { formatMoney } from '../../derive/money'
 import {
   deleteGearItem,
   deleteGearProduct,
@@ -42,7 +43,7 @@ import {
   type GearSet,
   type VendorSku,
 } from '../../model/gear'
-import { NumberCell, TextCell } from './reference/cells'
+import { MoneyCell, TextCell } from './reference/cells'
 
 export function Gear() {
   const { derived, reload } = useStore()
@@ -72,7 +73,13 @@ export function Gear() {
         </p>
       ) : null}
       <SetsCard sets={gearSets} items={gearItems} products={products} sports={sports} run={run} />
-      <ItemsCard items={gearItems} products={gearProducts} sets={gearSets} run={run} />
+      <ItemsCard
+        items={gearItems}
+        products={gearProducts}
+        sets={gearSets}
+        currency={derived.snapshot.settings.currency}
+        run={run}
+      />
       <CatalogCard products={gearProducts} items={gearItems} run={run} />
     </div>
   )
@@ -315,11 +322,13 @@ function ItemsCard({
   items,
   products,
   sets,
+  currency,
   run,
 }: {
   items: GearItem[]
   products: GearProduct[]
   sets: GearSet[]
+  currency: string
   run: Run
 }) {
   const [productId, setProductId] = useState('')
@@ -431,9 +440,9 @@ function ItemsCard({
                       />
                     </td>
                     <td className="px-2 py-1.5">
-                      <NumberCell
+                      <MoneyCell
                         value={item.pricePaid}
-                        step="0.01"
+                        currency={currency}
                         ariaLabel={`Price paid for ${item.label}`}
                         onCommit={(v) => {
                           // A negative price is a typo, not a refund; leave the figure alone.
@@ -541,8 +550,8 @@ function ItemsCard({
           <TextInput value={size} onChange={setSize} width={70} placeholder="L" ariaLabel="Size of the new item" />
         </label>
         <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-          Price paid (optional)
-          <TextInput value={price} onChange={setPrice} type="number" step="0.01" width={90} ariaLabel="Price paid for the new item" />
+          Price paid, {currency} (optional)
+          <TextInput value={price} onChange={setPrice} width={90} placeholder={formatMoney(0, currency)} ariaLabel="Price paid for the new item" />
         </label>
         <Button onClick={() => void add()} disabled={!productId || !label.trim() || pricePaid === null}>
           Add item

@@ -129,6 +129,22 @@ lose and expensive to rediscover.
 
 ## Quick wins
 
+- **Every import gets an organization.** The review step's organization choice now
+  always offers *Decide later*, your organizations, *Direct contract (freelance)* and
+  *+ Add new organization…*. "Later" files the games under a numbered placeholder
+  ("Organization 001") to rename afterwards, unless every game's payor already names
+  one of your organizations, in which case nothing would use it; the review says which
+  before committing. Direct contract reuses one organization rather than making one per
+  import. From the note in `toDo.md`.
+
+- **Money in your currency.** *Settings* gains a currency (USD, CAD, GBP, EUR, MXN, AUD)
+  that sets how amounts are shown and what new imports are recorded in; nothing stored
+  is converted. Gear prices show formatted ("$39.99") and edit as a number, and accept
+  any currency symbol when typed ("£12.50", "CA$ 1,000"). From the note in `toDo.md`.
+
+- **A sport can have no default position.** The *Default gear* dropdown showed
+  "Plate" for sports with none, having no empty option; it now offers *None*.
+
 - **"Net variance" showed no sign.** `netFeeVariance` is `scheduled - gross`, so it
   is *positive* when money was lost — printing it with a naive `+` would have
   inverted the meaning. Negated at the display boundary instead, so a shortfall
