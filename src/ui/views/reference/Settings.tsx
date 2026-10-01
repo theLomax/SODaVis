@@ -10,6 +10,7 @@ import { Card } from '../../components/Tiles'
 import { saveSettings } from '../../../db/repo'
 import { minutesToTime, timeToMinutes } from '../../../import/transforms'
 import { NumberCell } from './cells'
+import { CURRENCIES } from '../../../model/reference'
 
 /** Indexed 0 = Monday, matching `RushHourWindow.weekdays`. */
 const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -125,6 +126,28 @@ export function SettingsEditor() {
               <option value="light">Light</option>
               <option value="dark">Dark</option>
             </select>
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              Currency
+            </span>
+            <select
+              value={s.currency}
+              onChange={(e) => void patch({ currency: e.target.value })}
+              className="rounded-md px-2 py-1 text-xs"
+              style={selectStyle}
+              aria-label="Currency"
+            >
+              {/* An unlisted code from an older install stays selectable as itself. */}
+              {(CURRENCIES.some((c) => c.code === s.currency) ? CURRENCIES : [{ code: s.currency, label: s.currency }, ...CURRENCIES]).map((c) => (
+                <option key={c.code} value={c.code}>
+                  {c.code} — {c.label}
+                </option>
+              ))}
+            </select>
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
+              How amounts are shown, and the currency new imports are recorded in. Nothing already stored is converted.
+            </span>
           </label>
         </div>
       </Card>

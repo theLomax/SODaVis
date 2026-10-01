@@ -52,6 +52,12 @@ export type TableSpec = {
   merge: 'key' | 'dedupe' | 'identity' | 'settings'
   /** Written on first run, and after a replace that left the table empty. */
   seedRows?: unknown[]
+  /**
+   * Also add seed rows missing by key on every start, never touching rows already
+   * there. For a table whose seed grows between versions — new sports — so an
+   * existing install gains them without losing its own edits.
+   */
+  seedMissing?: boolean
   /** Include this table's length in `backup.counts`. */
   inCounts?: boolean
 }
@@ -147,6 +153,7 @@ export const TABLES: readonly TableSpec[] = [
     keyOf: (row) => row.code as string,
     merge: 'key',
     seedRows: SEED_SPORT_PROFILES,
+    seedMissing: true,
   },
   {
     name: 'gearLevels',
@@ -301,6 +308,18 @@ export const TABLES: readonly TableSpec[] = [
     indexes: 'id, name',
     kind: 'rows',
     rowSchema: z.object({ id: z.string(), name: z.string(), kind: z.string() }).loose(),
+    backupShape: 'array',
+    optionalInBackup: true,
+    keyOf: (row) => row.id as string,
+    merge: 'key',
+    inCounts: true,
+  },
+  {
+    name: 'vehicles',
+    since: 7,
+    indexes: 'id, name',
+    kind: 'rows',
+    rowSchema: z.object({ id: z.string(), name: z.string() }).loose(),
     backupShape: 'array',
     optionalInBackup: true,
     keyOf: (row) => row.id as string,

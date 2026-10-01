@@ -23,6 +23,7 @@ import type { AppSnapshot } from '../db/repo'
 import { derive, type Filter } from '../ui/store'
 import { NO_ORGANIZATION, byOrganization } from './metrics'
 import { resolveOrganization, seedAgeGroupDurations } from './resolve'
+import { planImportOrganization } from '../model/organizations'
 import { readFixtureSample } from '../../test/sample-data'
 import { FIXTURE_PARKS } from '../../test/sample/parks'
 
@@ -59,6 +60,7 @@ function snapshot(parts: Partial<AppSnapshot>): AppSnapshot {
     gearItems: [],
     gearSets: [],
     organizations: [],
+    vehicles: [],
     imports: [],
     customProfiles: [],
     ...parts,
@@ -164,5 +166,42 @@ describe('organizations through derive', () => {
     expect(keys).toContain(NO_ORGANIZATION)
     const total = rows.reduce((n, r) => n + r.gross, 0)
     expect(total).toBeCloseTo(d.trips.flatMap((t) => t.games).reduce((n, g) => n + (g.game.fees.actual ?? 0), 0), 2)
+  })
+})
+
+describe('the organization chosen at import', () => {
+  const payors = ['H&B Officials', 'H&B Officials', 'Riverbend Parks Dept']
+
+  it('files an unassigned file under a numbered placeholder', () => {
+    const plan = planImportOrganization({ kind: 'later' }, payors, [harbor])
+    expect(plan.create).toMatchObject({ name: 'Organization 001', kind: 'association' })
+    expect(plan.organizationId).toBe(plan.create!.id)
+  })
+
+  it('takes the next free placeholder number', () => {
+    const first: Organization = { id: 'o-1', name: 'Organization 001', kind: 'association' }
+    expect(planImportOrganization({ kind: 'later' }, ['Anyone'], [first]).create!.name).toBe('Organization 002')
+  })
+
+  it('needs no placeholder when every payor already names an organization', () => {
+    expect(planImportOrganization({ kind: 'later' }, payors, [harbor, riverbend])).toEqual({})
+  })
+
+  it('reuses one "Direct contract" organization rather than making another each time', () => {
+    const first = planImportOrganization({ kind: 'direct' }, payors, [])
+    expect(first.create).toMatchObject({ name: 'Direct contract', kind: 'direct' })
+    expect(planImportOrganization({ kind: 'direct' }, payors, [first.create!])).toEqual({ organizationId: first.create!.id })
+  })
+
+  it('adds a new organization by name, or picks the one that name already belongs to', () => {
+    expect(planImportOrganization({ kind: 'new', name: ' Lakeside Officials ' }, payors, [harbor]).create).toMatchObject({
+      name: 'Lakeside Officials',
+      kind: 'association',
+    })
+    expect(planImportOrganization({ kind: 'new', name: 'h&b officials' }, payors, [harbor])).toEqual({ organizationId: 'o-harbor' })
+  })
+
+  it('records an existing organization as chosen', () => {
+    expect(planImportOrganization({ kind: 'existing', id: 'o-harbor' }, payors, [harbor])).toEqual({ organizationId: 'o-harbor' })
   })
 })

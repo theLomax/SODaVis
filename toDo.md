@@ -2,17 +2,14 @@
 
 Completed items move to `toDone.md`.
 
-Grouped by effort. Estimates are from reading the code, not guessing. The quick-win
-section is empty for now — what remains genuinely needs a new mechanism or touches
-the data model.
+Grouped by effort. Estimates are from reading the code, not guessing. What remains
+generally needs a new mechanism or touches the data model.
 
 ## Medium — needs a new mechanism, but a contained one
 
 - **Multi-park day editor** — list every venue for that day together, so the mileage can be adjudicated across them rather than one field at a time.
 - **One-way leg entry for multi-park days.** Round trip is the wrong model when the
   day is home→A→B→home. Depends on the editor above, so they land together.
-- **Multiple vehicles** with a default and per-trip attribution. A new reference
-  entity and an optional trip field; the mileage layer changes very little.
 
 ## Large — changes the data model
 
@@ -23,15 +20,19 @@ the data model.
   item most likely to make the app worse. A donut only works at six segments or
   fewer, and radar is genuinely poor for comparing magnitudes — it is worth picking
   the right alternate form per chart rather than offering a universal switcher.
-- **API support** (Assignr, RefTown), with credentials, OAuth/JWT and cloud storage.
-  Still the big lift you called it. The import profile abstraction means the parsing
-  half is ready; the blocker is that a browser cannot hold a client secret, so this
-  needs a local helper or a backend.
+
+## Not planned
+
+- **API support** (Assignr, RefTown). Not needed: the Assignr CSV and RefTown Excel
+  imports already bring the data in, and an API would need a local helper or a backend
+  to hold a client secret, which a browser cannot. RefTown publishes no API in any case.
+  Revisit only if exporting by hand becomes the bottleneck.
 
 ## Testing
-- 161 of 317 tests need the private submodules and skip without them, so a fresh
-  clone runs 156 (measured, not estimated). If a second contributor joins, decide
-  whether the public sample should grow to cover more cases first.
+- 161 of 459 tests need the private submodules and skip without them, so a fresh
+  clone runs 298 (measured 2026-10-01 with `SODAVIS_DATA` pointed elsewhere and
+  `test/private` excluded). If a second contributor joins, decide whether the public
+  sample should grow to cover more cases first.
 
 ## Data errors
 
@@ -105,5 +106,4 @@ None open.
 - Anonymized global data tracking: collect and track all metrics across all users, but anonymized to protect user privacy. This will allow us to track popular brands for gear, frequency of calls, contrast those frequencies by region, age, and other demographic factors.
 - consider other user metrics, like age, sex, years of experience. Offer users to opt-out, but reinforce that it's anonymized, and used for general analytics and trend tracking.
 - Demographic reviews: consider an option for officials to rate gear, brands, fields, leagues (with breakdowns for players, coaches, parents, boardmembers, surrounding neighborhoods, etc.), rulesets, concessions, facilities, and other elements.
-- Data imports may not identify their source organization. For example, the Assignr .csv assumes the organization, as it comes from that org within the Assignr platform. We should prompt the user to supply the organization upon upload. Previously identified organizations (for that user) should be available as a dropdown selection, with "Add new organization" as a permanent selection option, as well as "Direct Contract" or some freelance descriptor. All game entries should be associated with an organization - If no org is selected, a placeholder should be used (like "Organization 001"), to be updated later.
-- "Price Paid" should be listed in local currency, set in the user's profile. Costs should display in the proper curency format, instead of `#.#`.
+

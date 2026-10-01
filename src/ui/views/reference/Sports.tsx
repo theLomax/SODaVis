@@ -7,28 +7,33 @@ import { selectStyle } from '../../components/Controls'
 import { Card } from '../../components/Tiles'
 import { saveGearLevels, saveGearModifiers, saveSports } from '../../../db/repo'
 import { NumberCell } from './cells'
+import { isTrackedSport, orderSportCodes } from '../../../model/reference'
 
 export function SportsEditor() {
   const { derived, reload } = useStore()
   if (!derived) return null
-  const { sports, gearLevels, gearModifiers } = derived.snapshot
+  const { gearLevels, gearModifiers } = derived.snapshot
+  // Canonical order, not storage order, so the list reads the same every visit.
+  const sports = orderSportCodes(derived.snapshot.sports.map((s) => s.code)).map(
+    (code) => derived.snapshot.sports.find((s) => s.code === code)!,
+  )
 
   return (
     <div className="flex flex-col gap-4">
       <Card
         title="Sports"
-        subtitle="Prep and wrap are charged once per trip. The arrival floor in Settings is a minimum on prep."
+        subtitle="Tick the sports you officiate. Only those appear in filters, charts and pickers, and games in any other sport are left out of the dashboard (the Tax view still counts them). Prep and wrap are charged once per trip; the arrival floor in Settings is a minimum on prep."
       >
         <table className="w-full border-collapse text-xs">
           <thead>
             <tr>
-              {['Code', 'Label', 'Prep min', 'Wrap min', 'Default gear'].map((h, i) => (
+              {['Track', 'Code', 'Label', 'Prep min', 'Wrap min', 'Default gear'].map((h, i) => (
                 <th
                   key={h}
                   scope="col"
                   className="px-2 py-1.5 font-medium"
                   style={{
-                    textAlign: i === 2 || i === 3 ? 'right' : 'left',
+                    textAlign: i === 3 || i === 4 ? 'right' : 'left',
                     color: 'var(--text-secondary)',
                     borderBottom: '1px solid var(--gridline)',
                   }}
@@ -40,7 +45,21 @@ export function SportsEditor() {
           </thead>
           <tbody>
             {sports.map((sport) => (
-              <tr key={sport.code} style={{ borderBottom: '1px solid var(--gridline)' }}>
+              <tr
+                key={sport.code}
+                style={{ borderBottom: '1px solid var(--gridline)', opacity: isTrackedSport(sport) ? 1 : 0.55 }}
+              >
+                <td className="px-2 py-1.5">
+                  <input
+                    type="checkbox"
+                    checked={isTrackedSport(sport)}
+                    onChange={async (e) => {
+                      await saveSports([{ ...sport, tracked: e.target.checked }])
+                      await reload()
+                    }}
+                    aria-label={`Track ${sport.label}`}
+                  />
+                </td>
                 <td className="px-2 py-1.5" style={{ color: 'var(--text-secondary)' }}>
                   {sport.code}
                 </td>
@@ -69,17 +88,20 @@ export function SportsEditor() {
                 </td>
                 <td className="px-2 py-1.5">
                   <select
-                    value={sport.defaultGearLevel}
+                    value={sport.defaultGearLevel ?? ''}
                     onChange={async (e) => {
-                      await saveSports([
-                        { ...sport, defaultGearLevel: e.target.value as typeof sport.defaultGearLevel },
-                      ])
+                      // "None" stores no default, rather than an empty string.
+                      const { defaultGearLevel: _old, ...rest } = sport
+                      void _old
+                      const level = e.target.value as NonNullable<typeof sport.defaultGearLevel> | ''
+                      await saveSports([level ? { ...rest, defaultGearLevel: level } : rest])
                       await reload()
                     }}
                     className="rounded-md px-2 py-1 text-xs"
                     style={selectStyle}
                     aria-label={`Default gear for ${sport.label}`}
                   >
+                    <option value="">None</option>
                     {gearLevels.map((g) => (
                       <option key={g.id} value={g.id}>
                         {g.label}

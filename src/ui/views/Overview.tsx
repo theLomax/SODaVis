@@ -97,6 +97,7 @@ export function Overview() {
 
   const currency = money.currency
   const sportLabel = (code: string) => sportLabelFrom(snapshot.sports, code)
+  const snapshotTracked = derived.trackedSports.map((s) => s.code)
   const selectedModel = TIME_MODELS.find((m) => m.id === filter.model)!
   const perHour = rates.grossPerHourByModel[filter.model]
   const netPerHour = rates.netPerHourByModel[filter.model]
@@ -236,7 +237,7 @@ export function Overview() {
             series={monthsBySport.series.map((code) => ({
               key: code,
               label: sportLabel(code),
-              slot: sportSlot(code),
+              slot: sportSlot(code, snapshotTracked),
             }))}
             format={(n) => formatMoneyCompact(n, currency)}
             action={

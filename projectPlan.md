@@ -259,8 +259,9 @@ Offer the app in **EN-US** (the base language), **EN-UK**, **EN-CA**, **Spanish*
 These three share one blocker, and it runs against the app's founding rule: *"Everything
 runs in the browser and stays on your machine."*
 
-- **API support (Assignr, RefTown)** needs a place to hold a client secret, which means a
-  local helper or a backend. The import-profile abstraction means parsing is ready.
+- ~~**API support (Assignr, RefTown)**~~ — *not planned (2026-10-01).* The Assignr CSV and
+  RefTown Excel imports already bring the data in, so this no longer needs the decision
+  below; what remains blocked on it is the two cross-user items.
 - **Anonymized global analytics** and **demographic metrics** need a server that collects
   data from many users, plus a privacy design: opt-in or opt-out, what counts as anonymized
   at small regional sample sizes, and retention.

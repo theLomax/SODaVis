@@ -63,6 +63,20 @@ export const ORGANIZATION_KINDS: { id: OrganizationKind; label: string }[] = [
   { id: 'direct', label: 'Direct contract' },
 ]
 
+/**
+ * A vehicle driven to games. The standard mileage deduction is claimed per
+ * vehicle, and a toll statement is per transponder, which means per vehicle — so
+ * a trip records which one it was.
+ */
+export type Vehicle = {
+  id: string
+  /** The user's own name for it: "Blue Civic", "Work truck". */
+  name: string
+  /** Year, make and model, free text. */
+  details?: string
+  notes?: string
+}
+
 export type DurationOrigin = 'extracted' | 'manual'
 
 export type AgeGroupDuration = {
@@ -150,6 +164,17 @@ export type SportProfile = {
   wrapMinutes: number
   /** The position usually worked in this sport, if any. */
   defaultGearLevel?: GearLevelId
+  /**
+   * Whether the user officiates this sport. An untracked sport is left out of
+   * every picker, filter and chart, and its games out of every dashboard view —
+   * though not the Tax view, which has to match what a payor reports. Absent
+   * means tracked, so rows saved before this existed keep their sports.
+   */
+  tracked?: boolean
+}
+
+export function isTrackedSport(sport: SportProfile): boolean {
+  return sport.tracked !== false
 }
 
 /**
@@ -164,6 +189,21 @@ export type Identity = {
 }
 
 export type TimeModelId = 'game' | 'game-drive' | 'committed'
+
+/**
+ * Currencies offered in Settings. Choosing one changes how amounts are shown and
+ * the currency new imports are stamped with; it never converts a figure already
+ * stored. The list matches the planned locales (US, UK, Canada, and Spanish and
+ * French speakers), plus the euro and the Australian dollar.
+ */
+export const CURRENCIES: { code: string; label: string }[] = [
+  { code: 'USD', label: 'US dollar' },
+  { code: 'CAD', label: 'Canadian dollar' },
+  { code: 'GBP', label: 'British pound' },
+  { code: 'EUR', label: 'Euro' },
+  { code: 'MXN', label: 'Mexican peso' },
+  { code: 'AUD', label: 'Australian dollar' },
+]
 
 /**
  * When a drive is treated as rush hour.
@@ -198,6 +238,8 @@ export type Settings = {
    * never uses it.
    */
   rushHour: RushHourWindow
+  /** The vehicle a trip used unless one is set on the trip. Unset: trips have none. */
+  defaultVehicleId?: string
 }
 
 // ---------------------------------------------------------------------------
@@ -267,6 +309,13 @@ export const SEED_SPORT_PROFILES: SportProfile[] = [
   // No default position: kickball and slowpitch do not imply one, and the base
   // umpire wears no plate gear in either.
   { code: 'C-KB', label: 'Kickball', prepMinutes: 15, wrapMinutes: 5 },
+  // Offered, not assumed: off until the user says they officiate it. The codes are
+  // the app's own; a source using a different one (say "C-SOC") shows up as a
+  // sport to track in its own right, from the hidden-games notice.
+  { code: 'SOC', label: 'Soccer', prepMinutes: 20, wrapMinutes: 10, tracked: false },
+  { code: 'VB', label: 'Volleyball', prepMinutes: 20, wrapMinutes: 10, tracked: false },
+  { code: 'FB', label: 'Football', prepMinutes: 25, wrapMinutes: 15, tracked: false },
+  { code: 'BKB', label: 'Basketball', prepMinutes: 20, wrapMinutes: 10, tracked: false },
 ]
 
 /**
@@ -274,7 +323,7 @@ export const SEED_SPORT_PROFILES: SportProfile[] = [
  * derive layer and colour assignment in the UI. Fixed, so a sport keeps its place
  * (and therefore its hue) regardless of what else is on screen.
  */
-export const SPORT_ORDER = ['C-BB', 'C-FP', 'C-SP', 'C-KB'] as const
+export const SPORT_ORDER = ['C-BB', 'C-FP', 'C-SP', 'C-KB', 'SOC', 'VB', 'FB', 'BKB'] as const
 
 /**
  * A rare call worth tagging on a game — Infield Fly, Fourth Out, and the rest.
@@ -305,6 +354,16 @@ export function callTypeId(label: string): string {
 
 /** The key a game with no sport code is grouped under. */
 export const UNSPECIFIED_SPORT = '(none)'
+
+/** Sport codes in the canonical order: `SPORT_ORDER` first, then any others by code. */
+export function orderSportCodes(codes: readonly string[]): string[] {
+  return [...codes].sort((a, b) => sportRank(a) - sportRank(b) || a.localeCompare(b))
+}
+
+/** The sports tracked on a fresh install, for callers that are not handed a list. */
+export const DEFAULT_TRACKED_SPORTS: readonly string[] = SEED_SPORT_PROFILES.filter(
+  (s) => s.tracked !== false,
+).map((s) => s.code)
 
 /** Position in `SPORT_ORDER`, 1-based. Anything unrecognized sorts last. */
 export function sportRank(code: string | undefined): number {

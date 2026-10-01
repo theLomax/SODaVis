@@ -33,6 +33,11 @@ describe('gear helpers', () => {
     expect(parsePricePaid('0')).toBe(0)
     expect(parsePricePaid('-5')).toBeNull()
     expect(parsePricePaid('twelve')).toBeNull()
+    // Whatever the currency setting, its symbol or code is not part of the number.
+    expect(parsePricePaid('£12.50')).toBe(12.5)
+    expect(parsePricePaid('CA$ 1,000')).toBe(1000)
+    expect(parsePricePaid('45 USD')).toBe(45)
+    expect(parsePricePaid('(5.00)')).toBeNull()
   })
 
   it('checks a UPC by its last digit, for UPC-A, EAN-13 and EAN-8', () => {

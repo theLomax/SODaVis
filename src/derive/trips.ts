@@ -21,7 +21,7 @@
 
 import type { DataQualityFlag } from '../model/game'
 import { isActive, isCancelled } from '../model/game'
-import type { Park, Settings } from '../model/reference'
+import type { Park, Settings, Vehicle } from '../model/reference'
 import type { TripAnnotation } from '../model/annotation'
 import { parseTripKey, tripKey } from '../model/annotation'
 import { minutesToTime, timeToMinutes } from '../import/transforms'
@@ -76,6 +76,9 @@ export type Trip = {
   isWastedTrip: boolean
   /** Cancelled games on this trip whose drive was confirmed. */
   cancelledGames: number
+  /** The vehicle driven: set on the trip, or else the default. Unset if neither. */
+  vehicleId?: string
+  vehicleSource?: 'trip' | 'default'
   flags: DataQualityFlag[]
 }
 
@@ -83,6 +86,21 @@ export type TripContext = {
   parks: Map<string, Park>
   tripAnnotations: Map<string, TripAnnotation>
   settings: Settings
+  /** Known vehicles, so a trip naming one since deleted falls back rather than dangling. */
+  vehicles?: Map<string, Vehicle>
+}
+
+/** The trip's own vehicle if it names a known one, else the default if that is known. */
+export function resolveVehicle(
+  annotation: TripAnnotation | undefined,
+  settings: Settings,
+  vehicles: Map<string, Vehicle>,
+): { id: string; source: 'trip' | 'default' } | undefined {
+  if (annotation?.vehicleId && vehicles.has(annotation.vehicleId)) return { id: annotation.vehicleId, source: 'trip' }
+  if (settings.defaultVehicleId && vehicles.has(settings.defaultVehicleId)) {
+    return { id: settings.defaultVehicleId, source: 'default' }
+  }
+  return undefined
 }
 
 /**
@@ -282,8 +300,13 @@ function buildTrip(
     isMultiTripDay,
     isWastedTrip: played.length === 0,
     cancelledGames: games.length - played.length,
+    ...vehicleFields(resolveVehicle(annotation, ctx.settings, ctx.vehicles ?? new Map())),
     flags,
   }
+}
+
+function vehicleFields(v: { id: string; source: 'trip' | 'default' } | undefined): Pick<Trip, 'vehicleId' | 'vehicleSource'> {
+  return v ? { vehicleId: v.id, vehicleSource: v.source } : {}
 }
 
 /**

@@ -19,6 +19,7 @@ import {
   type OrganizationKind,
 } from '../../../model/reference'
 import { TextCell } from './cells'
+import { newOrganizationId } from '../../../model/organizations'
 
 /** "HOG, H&B Officials" → ['HOG', 'H&B Officials']. */
 function parseNames(text: string | undefined): string[] {
@@ -29,13 +30,6 @@ function parseNames(text: string | undefined): string[] {
 }
 
 const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
-
-function newOrganizationId(name: string, taken: Set<string>): string {
-  const base = `org-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'org'}`
-  let id = base
-  for (let n = 2; taken.has(id); n++) id = `${base}-${n}`
-  return id
-}
 
 export function OrganizationsEditor() {
   const { derived, reload } = useStore()

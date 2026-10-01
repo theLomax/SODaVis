@@ -45,7 +45,7 @@ export function FilterBar() {
     const present = new Set(
       derived.allResolved.map((r) => r.sportCode ?? UNSPECIFIED_SPORT),
     )
-    return derived.snapshot.sports
+    return derived.trackedSports
       .filter((s) => present.has(s.code))
       .map((s) => ({ code: s.code, label: s.label }))
       .concat(
@@ -54,6 +54,8 @@ export function FilterBar() {
           : [],
       )
   }, [derived])
+
+  const trackedCodes = derived?.trackedSports.map((s) => s.code) ?? []
 
   /** Today, as an ISO date in the viewer's own timezone. */
   const today = useMemo(() => {
@@ -190,7 +192,7 @@ export function FilterBar() {
                   <span
                     aria-hidden="true"
                     className="inline-block shrink-0 rounded-sm"
-                    style={{ width: 8, height: 8, background: sportColor(s.code) }}
+                    style={{ width: 8, height: 8, background: sportColor(s.code, trackedCodes) }}
                   />
                 ) : null}
                 {s.label}

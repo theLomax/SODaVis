@@ -25,6 +25,7 @@ import {
 import { CANONICAL_FIELDS, type CanonicalField } from '../../model/game'
 import {
   commitImport,
+  saveOrganization,
   setImportOrganization,
   saveCustomProfile,
   seedDurations,
@@ -32,6 +33,11 @@ import {
   undoImport,
 } from '../../db/repo'
 import type { ImportRun } from '../../model/game'
+import {
+  DIRECT_CONTRACT_NAME,
+  planImportOrganization,
+  type ImportOrganizationChoice,
+} from '../../model/organizations'
 import { Dialog } from '../components/Dialog'
 import { seedAgeGroupDurations } from '../../derive/resolve'
 import { formatMoney } from '../../derive/money'
@@ -55,8 +61,8 @@ export function ImportView() {
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<string | null>(null)
   const [acceptConflicts, setAcceptConflicts] = useState(true)
-  /** The organization this file's games default to; '' leaves it to each game's payor. */
-  const [organizationId, setOrganizationId] = useState('')
+  /** Who this file's games were for. "Later" still leaves every game with one; see `planImportOrganization`. */
+  const [organization, setOrganization] = useState<ImportOrganizationChoice>({ kind: 'later' })
   const inputRef = useRef<HTMLInputElement>(null)
 
   const profiles = useMemo(
@@ -118,6 +124,14 @@ export function ImportView() {
         ? stage.recon.conflicts.map((c) => resolveToIncoming(c.stored, c.incoming))
         : []
 
+      // Create the organization first if the choice needs one, so the run can name it.
+      const plan = planImportOrganization(
+        organization,
+        stage.mapped.games.map((g) => g.payor),
+        snapshot?.organizations ?? [],
+      )
+      if (plan.create) await saveOrganization(plan.create)
+
       const run = await commitImport({
         inserts: stage.recon.inserts,
         updates,
@@ -128,7 +142,7 @@ export function ImportView() {
         profileLabel: stage.profile.label,
         rowsInFile: stage.parsed.rows.length,
         rowsSkipped: stage.mapped.nonDataRows + stage.mapped.skipped.length,
-        ...(organizationId ? { organizationId } : {}),
+        ...(plan.organizationId ? { organizationId: plan.organizationId } : {}),
       })
 
       // Seed age-group durations from whatever the new rows state, without
@@ -232,9 +246,17 @@ export function ImportView() {
             setAcceptConflicts={setAcceptConflicts}
             currency={snapshot?.settings.currency ?? 'USD'}
           />
-          <OrganizationChoice value={organizationId} onChange={setOrganizationId} />
+          <OrganizationChoice
+            value={organization}
+            onChange={setOrganization}
+            payors={stage.mapped.games.map((g) => g.payor)}
+          />
           <div className="flex items-center gap-3">
-            <Button variant="primary" onClick={() => void commit()} disabled={busy}>
+            <Button
+              variant="primary"
+              onClick={() => void commit()}
+              disabled={busy || (organization.kind === 'new' && !organization.name.trim())}
+            >
               {busy
                 ? 'Importing…'
                 : `Commit ${stage.recon.inserts.length} new${
@@ -860,36 +882,71 @@ function ImportLog({ onUndone }: { onUndone: () => Promise<void> }) {
  * mixes organizations is better left to each game's payor, and it can be set later
  * from the import history.
  */
-function OrganizationChoice({ value, onChange }: { value: string; onChange: (id: string) => void }) {
+function OrganizationChoice({
+  value,
+  onChange,
+  payors,
+}: {
+  value: ImportOrganizationChoice
+  onChange: (choice: ImportOrganizationChoice) => void
+  payors: (string | undefined)[]
+}) {
   const { snapshot } = useImportContext()
   const organizations = [...(snapshot?.organizations ?? [])].sort((a, b) => a.name.localeCompare(b.name))
-  if (organizations.length === 0) {
-    return (
-      <p className="m-0 text-xs" style={{ color: 'var(--text-muted)' }}>
-        To record which organization these games were for, add it under Reference data → Organizations. It can be
-        set on this import afterwards, from Import history.
-      </p>
-    )
-  }
+  // What "decide later" would do with this file, said before it happens.
+  const later = planImportOrganization({ kind: 'later' }, payors, organizations)
+  const selectValue = value.kind === 'existing' ? `org:${value.id}` : value.kind
+
   return (
-    <label className="flex flex-wrap items-center gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
-      Organization for these games
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        aria-label="Organization for the games in this file"
-        className="rounded-md px-2 py-1 text-xs"
-        style={selectStyle}
-      >
-        <option value="">None — use each game's payor</option>
-        {organizations.map((o) => (
-          <option key={o.id} value={o.id}>
-            {o.name}
-          </option>
-        ))}
-      </select>
-      <span style={{ color: 'var(--text-muted)' }}>A game set by hand, or whose payor names an organization, keeps its own.</span>
-    </label>
+    <div className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-secondary)' }}>
+      <label className="flex flex-wrap items-center gap-2">
+        Organization for these games
+        <select
+          value={selectValue}
+          onChange={(e) => {
+            const v = e.target.value
+            if (v.startsWith('org:')) onChange({ kind: 'existing', id: v.slice(4) })
+            else if (v === 'new') onChange({ kind: 'new', name: '' })
+            else if (v === 'direct') onChange({ kind: 'direct' })
+            else onChange({ kind: 'later' })
+          }}
+          aria-label="Organization for the games in this file"
+          className="rounded-md px-2 py-1 text-xs"
+          style={selectStyle}
+        >
+          <option value="later">Decide later</option>
+          {organizations.length ? (
+            <optgroup label="Your organizations">
+              {organizations.map((o) => (
+                <option key={o.id} value={`org:${o.id}`}>
+                  {o.name}
+                </option>
+              ))}
+            </optgroup>
+          ) : null}
+          <option value="direct">{DIRECT_CONTRACT_NAME} (freelance)</option>
+          <option value="new">+ Add new organization…</option>
+        </select>
+        {value.kind === 'new' ? (
+          <TextInput
+            value={value.name}
+            onChange={(name) => onChange({ kind: 'new', name })}
+            width={200}
+            placeholder="Organization name"
+            ariaLabel="Name of the new organization"
+          />
+        ) : null}
+      </label>
+      <span style={{ color: 'var(--text-muted)' }}>
+        {value.kind === 'later'
+          ? later.create
+            ? `These games will be filed under a placeholder, "${later.create.name}", to rename under Reference data → Organizations.`
+            : 'Every game’s payor already names one of your organizations, so none is needed.'
+          : value.kind === 'new' && !value.name.trim()
+            ? 'Type a name for the new organization.'
+            : 'A game set by hand, or whose payor names an organization, keeps its own.'}
+      </span>
+    </div>
   )
 }
 

@@ -10,7 +10,7 @@
  */
 
 import { isActive, isCancelled } from '../model/game'
-import type { Settings } from '../model/reference'
+import type { Settings, Vehicle } from '../model/reference'
 import type { Expense, ExpenseCategory, GeneralExpense, TripAnnotation } from '../model/annotation'
 import type { ResolvedGame } from './resolve'
 import type { Trip } from './trips'
@@ -36,6 +36,12 @@ export type MileageDeduction = {
   tripsWithOverride: number
   /** Multi-trip days where round-trip-per-park overcounts unless overridden. */
   multiTripDaysNeedingReview: number
+  /**
+   * The same miles split by the vehicle driven, which is how the deduction is
+   * claimed. `vehicleId` is null for trips naming no vehicle. Empty when the
+   * user keeps no vehicles.
+   */
+  byVehicle: { vehicleId: string | null; name: string; trips: number; miles: number; deduction: number }[]
 }
 
 export type ExpenseLine = {
@@ -73,6 +79,8 @@ export function taxYear(
   settings: Settings,
   /** Every general expense; this picks the year's by purchase date. */
   generalExpenses: GeneralExpense[] = [],
+  /** For naming the rows of `mileage.byVehicle`. */
+  vehicles: Vehicle[] = [],
 ): TaxYear {
   const prefix = String(year)
   const inYear = resolved.filter((r) => r.game.date.startsWith(prefix))
@@ -164,7 +172,12 @@ export function taxYear(
   let multiTripDaysNeedingReview = 0
   const flaggedDates = new Set<string>()
 
+  const perVehicle = new Map<string | null, { trips: number; miles: number }>()
   for (const trip of tripsInYear) {
+    const v = perVehicle.get(trip.vehicleId ?? null) ?? { trips: 0, miles: 0 }
+    v.trips++
+    v.miles += trip.miles ?? 0
+    perVehicle.set(trip.vehicleId ?? null, v)
     if (trip.miles == null) tripsMissingMiles++
     else miles += trip.miles
     if (trip.milesSource === 'override') tripsWithOverride++
@@ -206,6 +219,18 @@ export function taxYear(
       tripsMissingMiles,
       tripsWithOverride,
       multiTripDaysNeedingReview,
+      // Only once a vehicle is in use: a single row of "no vehicle" says nothing.
+      byVehicle: [...perVehicle.keys()].some((k) => k !== null)
+        ? [...perVehicle.entries()]
+            .map(([vehicleId, v]) => {
+              const m = Math.round(v.miles * 10) / 10
+              const name = vehicleId
+                ? (vehicles.find((x) => x.id === vehicleId)?.name ?? 'Unknown vehicle')
+                : 'No vehicle recorded'
+              return { vehicleId, name, trips: v.trips, miles: m, deduction: round2(m * rate) }
+            })
+            .sort((a, b) => b.miles - a.miles)
+        : [],
     },
     netAfterDeductions: round2(gross - deductibleExpenses - deduction),
     activeGames,
@@ -257,6 +282,11 @@ export function taxYearToCsv(t: TaxYear): string {
     ['Mileage', 'Business miles', esc(`rate ${t.mileage.rate.toFixed(3)}/mile`), t.mileage.miles.toFixed(1)].join(','),
   )
   lines.push(['Mileage', 'Standard mileage deduction', '', t.mileage.deduction.toFixed(2)].join(','))
+  for (const v of t.mileage.byVehicle) {
+    lines.push(
+      ['Mileage by vehicle', esc(v.name), esc(`${v.trips} trips, ${v.miles.toFixed(1)} miles`), v.deduction.toFixed(2)].join(','),
+    )
+  }
   if (t.mileage.tripsMissingMiles > 0) {
     lines.push(
       ['Mileage', 'Trips with no mileage on record', esc('figure above is a floor, not a total'), t.mileage.tripsMissingMiles].join(','),
