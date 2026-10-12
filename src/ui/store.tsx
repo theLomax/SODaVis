@@ -57,6 +57,7 @@ export type ViewId =
   | 'import'
   | 'reference'
   | 'quality'
+  | 'backup'
   /** Opened from the header avatar, not from the view switcher. */
   | 'profile'
 

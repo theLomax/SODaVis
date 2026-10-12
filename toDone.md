@@ -6,6 +6,18 @@ lose and expensive to rediscover.
 
 ## Features
 
+- **Navigation in three groups.** Eleven tabs in the order they were built became three
+  groups, Insights, Data and Reference, plus the Profile behind the avatar. The second row
+  shows the selected group's pages: Insights holds the five comparison views; Data holds
+  Trips and Gear, then Tax, then Import, Data quality and Backup, with a hairline between
+  those three sections; Reference's own tabs are its second row, so there is never a third.
+  Backup moved from Reference to Data, since it concerns all the data rather than the
+  lookups. No page changed and no view id changed, so every warning's fix link still
+  lands where it did. A group reopens on the page last used in it. On a phone the second
+  row is one line that scrolls sideways and keeps the current page in view, and the
+  header drops the title and game count to stay on one line. Copy that named a path
+  ("Reference data → Parks & mileage") now uses the new names.
+
 - **Vehicles moved to the Profile page.** What you drive is about you rather than the
   games, so the Vehicles editor left the Reference tabs and sits on the Profile page
   (`ui/views/profile/Vehicles.tsx`). Nothing about the data, the trip editor's vehicle

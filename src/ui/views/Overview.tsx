@@ -476,7 +476,7 @@ function UntimedTripsDialog({
                       go({
                         view: 'reference',
                         tab: 'parks',
-                        label: 'Reference data → Parks & mileage',
+                        label: 'Reference → Parks & mileage',
                         focus: t.parkId,
                       })
                     }
@@ -493,7 +493,7 @@ function UntimedTripsDialog({
                       go({
                         view: 'reference',
                         tab: 'durations',
-                        label: 'Reference data → Game durations',
+                        label: 'Reference → Game durations',
                         // The first group is where the reader lands; the rest sort
                         // to the top of that table anyway, since it puts unfilled
                         // rows first.

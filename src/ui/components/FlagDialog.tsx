@@ -105,7 +105,7 @@ export function FlagDialog({
 /**
  * The one place these flags are fixed, or nothing.
  *
- * Distinct destinations cancel out: a footer button reading "Go to Reference data"
+ * Distinct destinations cancel out: a footer button reading "Go to Reference"
  * beside a flag fixed on Trips would send the reader to the wrong field.
  */
 function singleFixTarget(flags: DataQualityFlag[]): FixTarget | undefined {

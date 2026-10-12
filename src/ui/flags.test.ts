@@ -84,14 +84,14 @@ describe('flag registry covers the model', () => {
     expect(FLAG_INFO['missing-duration'].fixTarget).toEqual({
       view: 'reference',
       tab: 'durations',
-      label: 'Reference data → Game durations',
+      label: 'Reference → Game durations',
     })
     // Mileage and drive time are both the park's own figures, one tab.
     for (const code of ['missing-mileage', 'missing-drive-time'] as const) {
       expect(FLAG_INFO[code].fixTarget).toEqual({
         view: 'reference',
         tab: 'parks',
-        label: 'Reference data → Parks & mileage',
+        label: 'Reference → Parks & mileage',
       })
     }
   })

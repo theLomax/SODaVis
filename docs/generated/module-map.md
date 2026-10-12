@@ -250,12 +250,13 @@ Layer 2 — Reference data. User-owned, editable, and never written by import.
 
 ## `ui/`
 
-### `ui/App.tsx` · S
+### `ui/App.tsx` · M
 
-App shell. One filter row above everything it scopes, and a view switcher.
+App shell. Two rows of navigation, then one filter row above everything it scopes.
 
 - **Exports:** `App()`
-- **Imports:** `ui/components/Avatar.tsx`, `ui/components/Controls.tsx`, `ui/components/HiddenSportsNotice.tsx`, `ui/store.tsx`, `ui/views/Breakdowns.tsx`, `ui/views/Cancellations.tsx`, `ui/views/DataQuality.tsx`, `ui/views/Gear.tsx`, `ui/views/Import.tsx`, `ui/views/Overview.tsx`, `ui/views/Profile.tsx`, `ui/views/Reference.tsx`, `ui/views/Tax.tsx`, `ui/views/Trips.tsx`
+- **Imports:** `ui/components/Avatar.tsx`, `ui/components/Controls.tsx`, `ui/components/HiddenSportsNotice.tsx`, `ui/components/SubNav.tsx`, `ui/store.tsx`, `ui/views/Breakdowns.tsx`, `ui/views/Cancellations.tsx`, `ui/views/DataQuality.tsx`, `ui/views/Gear.tsx`, `ui/views/Import.tsx`, `ui/views/Overview.tsx`, `ui/views/Profile.tsx`, `ui/views/Reference.tsx`, `ui/views/Tax.tsx`, `ui/views/Trips.tsx`, `ui/views/reference/Backup.tsx`
+- **Packages:** react
 - **Imported by:** `main.tsx`
 
 ### `ui/flags.ts` · M
@@ -347,6 +348,14 @@ Says when games are being left out because their sport is not tracked, and offer
 - **Packages:** react
 - **Imported by:** `ui/App.tsx`
 
+### `ui/components/SubNav.tsx` · S
+
+The second row of navigation: the pages of the selected group, or the tabs of Reference.
+
+- **Exports:** `SubNavItem`, `SubNav()`
+- **Packages:** react
+- **Imported by:** `ui/App.tsx`
+
 ### `ui/components/Tiles.tsx` · M
 
 Figures — the form to reach for when the story is a number, not a shape.
@@ -433,8 +442,8 @@ The user's profile, opened from the header avatar: who the app thinks you are, a
 
 Reference data editors. This is the user's own knowledge, and it is the part the spreadsheet could never keep straight — mileage and tolls that disagreed bet…
 
-- **Exports:** `Reference()`
-- **Imports:** `ui/store.tsx`, `ui/views/reference/Backup.tsx`, `ui/views/reference/Calls.tsx`, `ui/views/reference/Durations.tsx`, `ui/views/reference/Identity.tsx`, `ui/views/reference/Organizations.tsx`, `ui/views/reference/Parks.tsx`, `ui/views/reference/Settings.tsx`, `ui/views/reference/Sports.tsx`
+- **Exports:** `ReferenceTab`, `REFERENCE_TABS`, `Reference()`
+- **Imports:** `ui/store.tsx`, `ui/views/reference/Calls.tsx`, `ui/views/reference/Durations.tsx`, `ui/views/reference/Identity.tsx`, `ui/views/reference/Organizations.tsx`, `ui/views/reference/Parks.tsx`, `ui/views/reference/Settings.tsx`, `ui/views/reference/Sports.tsx`
 - **Packages:** react
 - **Imported by:** `ui/App.tsx`
 
@@ -476,7 +485,7 @@ Backup & restore. Everything lives in this browser's IndexedDB; a JSON export ke
 - **Exports:** `BackupPanel()`
 - **Imports:** `db/backup.ts`, `ui/components/Controls.tsx`, `ui/components/Dialog.tsx`, `ui/components/Tiles.tsx`, `ui/store.tsx`
 - **Packages:** react
-- **Imported by:** `ui/views/Reference.tsx`
+- **Imported by:** `ui/App.tsx`
 
 ### `ui/views/reference/Calls.tsx` · S
 

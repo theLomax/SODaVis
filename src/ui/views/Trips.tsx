@@ -1021,7 +1021,7 @@ function CallCell({
   }
 
   if (types.length === 0) {
-    return <span style={{ color: 'var(--text-muted)' }}>Add call types in Reference data</span>
+    return <span style={{ color: 'var(--text-muted)' }}>Add call types under Reference</span>
   }
 
   return (

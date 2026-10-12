@@ -210,7 +210,7 @@ function buildTrip(
     flags.push({
       code: 'missing-mileage',
       severity: 'warning',
-      message: `No mileage on record for ${park?.name ?? parkId}. Add one-way miles in Reference data, or enter a trip override.`,
+      message: `No mileage on record for ${park?.name ?? parkId}. Add one-way miles under Reference, or enter a trip override.`,
       context: park?.name ?? parkId,
     })
   }

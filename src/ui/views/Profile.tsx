@@ -33,8 +33,8 @@ export function Profile() {
             </span>
             <span className="text-xs" style={{ color: 'var(--text-muted)' }}>
               {name
-                ? 'Your display name, from Reference data → Identity.'
-                : 'Add a display name under Reference data → Identity and your initials appear on the avatar.'}
+                ? 'Your display name, from Reference → Identity.'
+                : 'Add a display name under Reference → Identity and your initials appear on the avatar.'}
             </span>
           </div>
         </div>
@@ -49,7 +49,7 @@ export function Profile() {
         <ul className="m-0 flex list-none flex-col gap-2 p-0">
           {LINKS.map((l) => (
             <li key={l.tab} className="flex flex-wrap items-center gap-3 text-xs">
-              <Button onClick={() => navigate({ view: 'reference', tab: l.tab, label: `Reference data → ${l.label}` })}>
+              <Button onClick={() => navigate({ view: 'reference', tab: l.tab, label: `Reference → ${l.label}` })}>
                 {l.label}
               </Button>
               <span style={{ color: 'var(--text-secondary)' }}>{l.hint}</span>

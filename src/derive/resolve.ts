@@ -481,7 +481,7 @@ export function resolveGame(stored: Game, ctx: ResolveContext): ResolvedGame {
     flags.push({
       code: 'missing-duration',
       severity: 'warning',
-      message: `No duration known for age group "${game.ageGroupRaw}". Enter one in Reference data.`,
+      message: `No duration known for age group "${game.ageGroupRaw}". Enter one under Reference.`,
       context: game.ageGroupRaw,
     })
   }

@@ -285,19 +285,24 @@ Decisions and what they rule out:
 - **Sync** means shared generic data coming down (catalog, sports and call-type lists,
   rates) and the user's anonymized data going up. Both wait on the Phase 7 decision.
 
-Defaults assumed until the owner says otherwise:
+- **Shape: a second row of sub-tabs** under the selected group, not dropdown menus. On a
+  phone the row stays one line and scrolls sideways, keeping the current page in view,
+  rather than wrapping to three; the header drops the app title and the game count so the
+  groups and the avatar fit one line. If a group outgrows a scrolling row, the next step is
+  a menu button for that group's pages on narrow screens.
 
-- *Shape:* a second row of sub-tabs under the selected group, as Reference works today,
-  rather than dropdown menus.
+Default assumed until the owner says otherwise:
+
 - *Sync* is left out of the navigation until there is something for it to do.
 
 The filter bar applies to Insights and to Trips, as it does now.
 
 **Build order.** Each step moves pages rather than rewriting them, and ships on its own.
 
-1. **The shell.** Group the existing views under the three headings with sub-tabs. No page
-   changes; `ViewId` values stay, so every `navigate()` and flag fix-link keeps working.
-   Backup and Data quality become Data sub-pages.
+1. **The shell.** *Done.* The existing views grouped under the three headings with
+   sub-tabs. No page changes; `ViewId` values stay, so every `navigate()` and flag fix-link
+   keeps working. Backup and Data quality are Data sub-pages, and Reference's own tabs are
+   its second row. Identity and Settings stay under Reference until steps 2 and 3.
 2. **Preferences to the Profile.** Split the Settings tab as above.
 3. **Identity and tracked sports to the Profile.** The Sports table keeps prep, wrap and
    default position; the Profile gets the list of sports to tick.

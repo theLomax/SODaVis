@@ -55,7 +55,7 @@ export const FLAG_INFO: Record<DataQualityFlagCode, FlagPresentation> = {
     what: 'This game’s venue string does not match any park, by alias or by pattern.',
     why: 'A game with no park forms no trip, so it contributes no mileage, no tolls and no drive time. Its income still counts.',
     fix: 'Add the venue string as an alias of an existing park, or create a park from it. An unmatched venue is never turned into its own park automatically, because that would split one park into several.',
-    fixTarget: { view: 'reference', tab: 'parks', label: 'Reference data → Parks & mileage' },
+    fixTarget: { view: 'reference', tab: 'parks', label: 'Reference → Parks & mileage' },
   },
   'missing-duration': {
     title: 'No game duration',
@@ -63,7 +63,7 @@ export const FLAG_INFO: Record<DataQualityFlagCode, FlagPresentation> = {
     what: 'No game length is on record for this age group, and the source string does not state one.',
     why: 'The game is excluded from every time model and from rate-per-hour — along with its income, so the rate is not diluted. It still counts toward income and games worked.',
     fix: 'Enter a duration for the age group. One figure covers every game in that group.',
-    fixTarget: { view: 'reference', tab: 'durations', label: 'Reference data → Game durations' },
+    fixTarget: { view: 'reference', tab: 'durations', label: 'Reference → Game durations' },
   },
   'crew-pattern-mismatch': {
     title: 'Crew size mismatch',
@@ -86,7 +86,7 @@ export const FLAG_INFO: Record<DataQualityFlagCode, FlagPresentation> = {
     what: 'No one-way distance is on record for this park.',
     why: 'This trip adds nothing to the mileage total, so both the total and the IRS mileage deduction are a floor rather than a figure. Drive time cannot be estimated either.',
     fix: 'Add one-way miles to the park, which then covers every trip there, or enter a one-off override on this trip.',
-    fixTarget: { view: 'reference', tab: 'parks', label: 'Reference data → Parks & mileage' },
+    fixTarget: { view: 'reference', tab: 'parks', label: 'Reference → Parks & mileage' },
   },
   'missing-drive-time': {
     title: 'No drive time',
@@ -94,7 +94,7 @@ export const FLAG_INFO: Record<DataQualityFlagCode, FlagPresentation> = {
     what: 'This park has no stored drive time, and no mileage to estimate one from.',
     why: 'The trip is excluded from the game + drive and committed time models, along with its income.',
     fix: 'Add one-way miles or a one-way drive time to the park. With miles present, drive time is estimated from the fallback speed in Settings.',
-    fixTarget: { view: 'reference', tab: 'parks', label: 'Reference data → Parks & mileage' },
+    fixTarget: { view: 'reference', tab: 'parks', label: 'Reference → Parks & mileage' },
   },
   'self-not-found': {
     title: 'You were not found in the crew',
@@ -102,7 +102,7 @@ export const FLAG_INFO: Record<DataQualityFlagCode, FlagPresentation> = {
     what: 'None of the officials on this game matched your identity patterns.',
     why: 'Without knowing which slot is yours, no partner can be derived, so this game is missing from the Partners view.',
     fix: 'Add or widen an identity pattern. Patterns are matched case-insensitively and are meant to tolerate a rotating season suffix such as (F25) or (S26).',
-    fixTarget: { view: 'reference', tab: 'identity', label: 'Reference data → Identity' },
+    fixTarget: { view: 'reference', tab: 'identity', label: 'Reference → Identity' },
   },
   'missing-sport-code': {
     title: 'No sport code',
@@ -117,7 +117,7 @@ export const FLAG_INFO: Record<DataQualityFlagCode, FlagPresentation> = {
     what: 'No organization is recorded for this game: none was set on it, no organization’s match rule fits it, and the import it came from has none.',
     why: 'Income by organization leaves it out, so what an organization reports paying you cannot be checked against these games.',
     fix: 'Set the organization on the import it came from, add a match rule to the organization, or set it on the game in Trips.',
-    fixTarget: { view: 'reference', tab: 'organizations', label: 'Reference data → Organizations' },
+    fixTarget: { view: 'reference', tab: 'organizations', label: 'Reference → Organizations' },
   },
   'duplicate-dedupe-key': {
     title: 'Duplicate identity key',

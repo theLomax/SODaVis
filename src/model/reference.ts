@@ -392,7 +392,7 @@ export const SEED_IDENTITY: Identity = {
   id: 'self',
   // Empty, deliberately. A name here would ship one person's identity as every
   // installation's default, and this file is public. The pattern is set in
-  // Reference data → Identity on first run, or loaded from a local seed file
+  // Reference → Identity on first run, or loaded from a local seed file
   // (see `loadLocalReference` in db/schema.ts).
   patterns: [],
   displayName: '',

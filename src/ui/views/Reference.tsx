@@ -5,22 +5,24 @@
  *
  * Nothing here is ever written by an import. Each tab lives in its own file
  * under `./reference/` so later work on one editor does not load the others.
+ *
+ * The tabs are the Reference group's row of the app navigation, so the shell
+ * draws them and owns which is showing; this view only renders it.
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { useStore } from '../store'
 import { ParksEditor } from './reference/Parks'
 import { DurationsEditor } from './reference/Durations'
 import { SportsEditor } from './reference/Sports'
 import { IdentityEditor } from './reference/Identity'
 import { SettingsEditor } from './reference/Settings'
-import { BackupPanel } from './reference/Backup'
 import { CallsEditor } from './reference/Calls'
 import { OrganizationsEditor } from './reference/Organizations'
 
-type Tab = 'parks' | 'durations' | 'sports' | 'calls' | 'organizations' | 'identity' | 'settings' | 'backup'
+export type ReferenceTab = 'parks' | 'durations' | 'sports' | 'calls' | 'organizations' | 'identity' | 'settings'
 
-const TABS: { id: Tab; label: string }[] = [
+export const REFERENCE_TABS: { id: ReferenceTab; label: string }[] = [
   { id: 'parks', label: 'Parks & mileage' },
   { id: 'durations', label: 'Game durations' },
   { id: 'sports', label: 'Sports & gear' },
@@ -28,51 +30,30 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'organizations', label: 'Organizations' },
   { id: 'identity', label: 'Identity' },
   { id: 'settings', label: 'Settings' },
-  { id: 'backup', label: 'Backup' },
 ]
 
-export function Reference() {
+export function Reference({ tab, onTab }: { tab: ReferenceTab; onTab: (tab: ReferenceTab) => void }) {
   const { pendingFocus, clearPendingFocus } = useStore()
-  const [tab, setTab] = useState<Tab>('parks')
 
   /**
    * A navigation into this view names the tab the field lives on. Adopting it in
-   * an effect rather than as initial state means arriving here a second time, from
-   * a different warning, still switches tabs.
+   * an effect means arriving here a second time, from a different warning, still
+   * switches tabs.
    *
    * The focus itself is left in the store for the editor below to consume — it is
    * the only thing that knows how to find its own row. Only Parks and Durations do
    * that; for any other tab the request is spent once the tab is showing, and is
-   * cleared here so a later plain visit opens on the first tab again.
+   * cleared here so it cannot pull a later visit back to that tab.
    */
   const wantedTab = pendingFocus?.view === 'reference' ? pendingFocus.tab : undefined
   useEffect(() => {
     if (!wantedTab) return
-    setTab(wantedTab)
+    onTab(wantedTab)
     if (wantedTab !== 'parks' && wantedTab !== 'durations') clearPendingFocus()
-  }, [wantedTab, clearPendingFocus])
+  }, [wantedTab, onTab, clearPendingFocus])
 
   return (
-    <div className="flex flex-col gap-4">
-      <nav className="flex flex-wrap gap-1">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            aria-current={tab === t.id}
-            onClick={() => setTab(t.id)}
-            className="rounded-md px-3 py-1.5 text-xs"
-            style={{
-              background: tab === t.id ? 'var(--gridline)' : 'transparent',
-              color: tab === t.id ? 'var(--text-primary)' : 'var(--text-secondary)',
-              border: '1px solid var(--border-hairline)',
-            }}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
-
+    <>
       {tab === 'parks' ? <ParksEditor /> : null}
       {tab === 'durations' ? <DurationsEditor /> : null}
       {tab === 'sports' ? <SportsEditor /> : null}
@@ -80,7 +61,6 @@ export function Reference() {
       {tab === 'organizations' ? <OrganizationsEditor /> : null}
       {tab === 'identity' ? <IdentityEditor /> : null}
       {tab === 'settings' ? <SettingsEditor /> : null}
-      {tab === 'backup' ? <BackupPanel /> : null}
-    </div>
+    </>
   )
 }

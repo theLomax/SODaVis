@@ -240,7 +240,7 @@ export function Tax() {
                 }
               />
               <span style={{ color: 'var(--text-secondary)' }}>
-                Add one-way miles for those parks in Reference data to complete the figure.
+                Add one-way miles for those parks under Reference to complete the figure.
               </span>
             </div>
           ) : null}

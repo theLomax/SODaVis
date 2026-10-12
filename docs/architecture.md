@@ -48,6 +48,7 @@ Dependencies point down this table. Known exceptions are listed under
 | Games, imports, reference, annotations | IndexedDB, via `db/repo.ts` | Facts are written by import only; reference and annotations by the user only. |
 | Loaded snapshot | `StoreProvider` (`ui/store.tsx`) | Replaced wholesale by `reload()` after every write. |
 | Filter, view, drill-down, pending focus | `StoreProvider` | `setFilter` clears a drill-down; `navigate()` sets `pendingFocus` for the destination view to consume. `Reference` clears a tab request itself unless the tab's editor consumes a row focus (Parks, Durations). |
+| Navigation groups, the Reference tab, each group's last page | `Shell` (`ui/App.tsx`) | `GROUPS` maps every `ViewId` to Insights, Data or Reference. The second nav row (`components/SubNav.tsx`) shows the group's pages, or Reference's tabs; `Reference` is controlled by the shell. |
 | Theme | `StoreProvider` + `localStorage` | Not in IndexedDB, so not in backups. |
 | Everything computed | `derive()` → `DerivedState` | Recomputed on any snapshot or filter change. Includes `trackedSports`, `hiddenSports`, and `taxResolved`/`taxTrips` (every game, for Tax only). |
 | Form drafts, import stage machine | Component state | `TripDetail` rebuilds its whole annotation on save — see the trap below. |
@@ -116,14 +117,16 @@ fullest example), listed in `BUILT_IN_PROFILES`. Set `fileTypes`, `exportSteps`,
 **A new Profile section**: a component in `ui/views/profile/` (Vehicles is the example),
 rendered from `views/Profile.tsx`. For what is the user's own rather than the games'.
 
-**A new Reference tab**: a component in `ui/views/reference/`, added to `Tab` and `TABS` in
-`views/Reference.tsx`. If a flag's fix button should open it, also widen `FixTarget`
+**A new Reference tab**: a component in `ui/views/reference/`, added to `ReferenceTab` and
+`REFERENCE_TABS` in `views/Reference.tsx`; the shell draws the tab row from that list. If a flag's fix button should open it, also widen `FixTarget`
 (`ui/flags.ts`) and `PendingFocus` (`ui/store.tsx`).
 
-**A new view**: the id in `ViewId` (`ui/store.tsx`), a render line in `ui/App.tsx`, and an
-entry in `VIEWS` there with `filtered` set to whether the filter bar applies. A view opened
-some other way (the Profile, from the header avatar) skips `VIEWS` and falls back to
-unfiltered.
+**A new view**: the id in `ViewId` (`ui/store.tsx`), a render line in `ui/App.tsx`, and a
+page in one of the `GROUPS` there (Insights, Data, Reference) with `filtered` set to whether
+the filter bar applies; `divider` starts a new section of the group's row. A view opened
+some other way (the Profile, from the header avatar) belongs to no group, shows no second
+row, and falls back to unfiltered. The nav labels are also listed in `go()` in
+`test/private/e2e.mjs`.
 
 **A new data-quality flag**: the code in `DataQualityFlagCode` (`model/game.ts`) and its copy
 in `FLAG_INFO` (`ui/flags.ts`); `flags.test.ts` fails until both exist.

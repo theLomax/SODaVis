@@ -147,7 +147,7 @@ export function Venues() {
           valueHeader="Per hour"
           slot={1}
           maxRows={16}
-          footnote="Parks whose games have no known duration are omitted; enter durations in Reference data to include them."
+          footnote="Parks whose games have no known duration are omitted; enter durations under Reference to include them."
           drill={parkDrill}
         />
       </div>
@@ -273,7 +273,7 @@ export function Leagues() {
         <div className="grid gap-4 xl:grid-cols-2">
           <HorizontalBar
             title="Income by organization"
-            subtitle="Who hired and paid you. Set under Reference data → Organizations"
+            subtitle="Who hired and paid you. Set under Reference → Organizations"
             rows={organizations.map((r) => ({ key: r.key, label: r.label, value: r.gross }))}
             format={(n) => formatMoneyCompact(n, currency)}
             valueHeader="Income"
@@ -314,7 +314,7 @@ export function Leagues() {
         <Card title="Calls recorded" subtitle="Rare calls tagged on a game.">
           <p className="m-0 text-xs" style={{ color: 'var(--text-muted)' }}>
             None tagged yet. Open a trip and tick the calls that happened, or add types under
-            Reference data → Call types.
+            Reference → Call types.
           </p>
         </Card>
       ) : (
