@@ -20,6 +20,22 @@ function newVehicleId(name: string, taken: Set<string>): string {
   return id
 }
 
+/**
+ * A field's name in the stacked phone layout, where the column headers are
+ * hidden. Decorative: every control already carries its own label.
+ */
+function StackedLabel({ children, inline }: { children: string; inline?: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={inline ? 'sm:hidden' : 'mb-1 block sm:hidden'}
+      style={{ color: 'var(--text-muted)' }}
+    >
+      {children}
+    </span>
+  )
+}
+
 export function VehiclesEditor() {
   const { derived, reload } = useStore()
   const [name, setName] = useState('')
@@ -91,8 +107,10 @@ export function VehiclesEditor() {
         </p>
       ) : (
         <div className="overflow-auto">
-          <table className="w-full border-collapse text-xs">
-            <thead>
+          {/* A table from `sm` up. Below it each vehicle is a stacked block, its
+              fields labeled one above the next, so nothing runs off a phone. */}
+          <table className="block w-full border-collapse text-xs sm:table">
+            <thead className="hidden sm:table-header-group">
               <tr>
                 {['Default', 'Name', 'Year, make and model', 'Notes', 'Trips', 'Miles', ''].map((h, i) => (
                   <th
@@ -110,12 +128,16 @@ export function VehiclesEditor() {
                 ))}
               </tr>
             </thead>
-            <tbody>
+            <tbody className="block sm:table-row-group">
               {vehicles.map((v) => {
                 const u = usage.get(v.id)
                 return (
-                  <tr key={v.id} style={{ borderBottom: '1px solid var(--gridline)' }}>
-                    <td className="px-2 py-1.5">
+                  <tr
+                    key={v.id}
+                    className="flex flex-col gap-2 px-2 py-3 sm:table-row"
+                    style={{ borderBottom: '1px solid var(--gridline)' }}
+                  >
+                    <td className="flex items-center gap-2 sm:table-cell sm:px-2 sm:py-1.5">
                       <input
                         type="radio"
                         name="default-vehicle"
@@ -123,44 +145,56 @@ export function VehiclesEditor() {
                         onChange={() => void run(() => setDefaultVehicle(v.id))}
                         aria-label={`Make ${v.name} the default vehicle`}
                       />
+                      <StackedLabel inline>Default vehicle</StackedLabel>
                     </td>
-                    <td className="px-2 py-1.5">
+                    <td className="block sm:table-cell sm:min-w-[150px] sm:px-2 sm:py-1.5">
+                      <StackedLabel>Name</StackedLabel>
                       <TextCell
                         value={v.name}
-                        width={150}
+                        fill
                         ariaLabel={`Name of ${v.name}`}
                         onCommit={(next) => {
                           if (next && next !== v.name) void run(() => patchVehicle(v.id, { name: next }))
                         }}
                       />
                     </td>
-                    <td className="px-2 py-1.5">
+                    <td className="block sm:table-cell sm:min-w-[180px] sm:px-2 sm:py-1.5">
+                      <StackedLabel>Year, make and model</StackedLabel>
                       <TextCell
                         value={v.details}
-                        width={180}
+                        fill
                         ariaLabel={`Year, make and model of ${v.name}`}
                         onCommit={(next) => {
                           if (next !== v.details) void run(() => patchVehicle(v.id, { details: next }))
                         }}
                       />
                     </td>
-                    <td className="px-2 py-1.5">
+                    <td className="block sm:table-cell sm:min-w-[180px] sm:px-2 sm:py-1.5">
+                      <StackedLabel>Notes</StackedLabel>
                       <TextCell
                         value={v.notes}
-                        width={180}
+                        fill
                         ariaLabel={`Notes on ${v.name}`}
                         onCommit={(next) => {
                           if (next !== v.notes) void run(() => patchVehicle(v.id, { notes: next }))
                         }}
                       />
                     </td>
-                    <td className="num-tabular px-2 py-1.5 text-right" style={{ color: 'var(--text-secondary)' }}>
+                    <td
+                      className="num-tabular flex justify-between sm:table-cell sm:px-2 sm:py-1.5 sm:text-right"
+                      style={{ color: 'var(--text-secondary)' }}
+                    >
+                      <StackedLabel inline>Trips</StackedLabel>
                       {u?.trips ?? 0}
                     </td>
-                    <td className="num-tabular px-2 py-1.5 text-right" style={{ color: 'var(--text-secondary)' }}>
+                    <td
+                      className="num-tabular flex justify-between sm:table-cell sm:px-2 sm:py-1.5 sm:text-right"
+                      style={{ color: 'var(--text-secondary)' }}
+                    >
+                      <StackedLabel inline>Miles</StackedLabel>
                       {u ? (Math.round(u.miles * 10) / 10).toLocaleString() : 0}
                     </td>
-                    <td className="px-2 py-1.5 text-right">
+                    <td className="block text-right sm:table-cell sm:px-2 sm:py-1.5">
                       <button
                         type="button"
                         onClick={() => void run(() => deleteVehicle(v.id))}

@@ -16,12 +16,15 @@ export function TextCell({
   onCommit,
   ariaLabel,
   width,
+  fill,
 }: {
   value: string | undefined
   onCommit: (v: string | undefined) => void
   ariaLabel: string
   /** Pixel width, for a column whose values run longer than a park's city. */
   width?: number
+  /** Take the cell's width instead, for a layout that sizes the cell itself. */
+  fill?: boolean
 }) {
   const [text, setText] = useState(value ?? '')
   return (
@@ -31,8 +34,8 @@ export function TextCell({
       aria-label={ariaLabel}
       onChange={(e) => setText(e.target.value)}
       onBlur={() => onCommit(text.trim() || undefined)}
-      className={width ? 'rounded-md px-1.5 py-0.5 text-xs' : 'w-28 rounded-md px-1.5 py-0.5 text-xs'}
-      style={width ? { ...selectStyle, width } : selectStyle}
+      className={`${fill ? 'w-full ' : width ? '' : 'w-28 '}rounded-md px-1.5 py-0.5 text-xs`}
+      style={width && !fill ? { ...selectStyle, width } : selectStyle}
     />
   )
 }
