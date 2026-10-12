@@ -57,6 +57,8 @@ export type ViewId =
   | 'import'
   | 'reference'
   | 'quality'
+  /** Opened from the header avatar, not from the view switcher. */
+  | 'profile'
 
 /**
  * A navigation request: where to go, plus optionally which row to land on.
@@ -149,7 +151,7 @@ type Store = {
 export type PendingFocus = {
   view: ViewId
   /** Only set for a Reference target. */
-  tab?: 'parks' | 'durations' | 'identity' | 'organizations'
+  tab?: 'parks' | 'durations' | 'identity' | 'organizations' | 'sports' | 'settings'
   /** Park id, age-group key or trip key, per the destination. */
   focus?: string
 }

@@ -34,7 +34,7 @@ const TABS: { id: Tab; label: string }[] = [
 ]
 
 export function Reference() {
-  const { pendingFocus } = useStore()
+  const { pendingFocus, clearPendingFocus } = useStore()
   const [tab, setTab] = useState<Tab>('parks')
 
   /**
@@ -43,12 +43,16 @@ export function Reference() {
    * a different warning, still switches tabs.
    *
    * The focus itself is left in the store for the editor below to consume — it is
-   * the only thing that knows how to find its own row.
+   * the only thing that knows how to find its own row. Only Parks and Durations do
+   * that; for any other tab the request is spent once the tab is showing, and is
+   * cleared here so a later plain visit opens on the first tab again.
    */
   const wantedTab = pendingFocus?.view === 'reference' ? pendingFocus.tab : undefined
   useEffect(() => {
-    if (wantedTab) setTab(wantedTab)
-  }, [wantedTab])
+    if (!wantedTab) return
+    setTab(wantedTab)
+    if (wantedTab !== 'parks' && wantedTab !== 'durations') clearPendingFocus()
+  }, [wantedTab, clearPendingFocus])
 
   return (
     <div className="flex flex-col gap-4">

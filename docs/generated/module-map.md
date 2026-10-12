@@ -245,8 +245,8 @@ Organization names, and the choice made at import.
 
 Layer 2 — Reference data. User-owned, editable, and never written by import.
 
-- **Exports:** `Park`, `OrganizationKind`, `Organization`, `ORGANIZATION_KINDS`, `Vehicle`, `DurationOrigin`, `AgeGroupDuration`, `GearLevelId`, `GearLevel`, `GEAR_LEVEL_ORDER`, `sortGearLevels()`, `GearModifierId`, `GearModifier`, `GEAR_MODIFIER_ORDER`, `sortGearModifiers()`, `SportProfile`, `isTrackedSport()`, `Identity`, `TimeModelId`, `CURRENCIES`, `RushHourWindow`, `Settings`, `GEAR_LEVELS`, `GEAR_MODIFIERS`, `SEED_SPORT_PROFILES`, `SPORT_ORDER`, `CallType`, `SEED_CALL_TYPES`, `callTypeId()`, `UNSPECIFIED_SPORT`, `orderSportCodes()`, `DEFAULT_TRACKED_SPORTS`, `sportRank()`, `SEED_IDENTITY`, `SEED_SETTINGS`, `SEED_PARKS`
-- **Imported by:** `db/backup.ts`, `db/repo.ts`, `db/schema.ts`, `db/tables.ts`, `derive/metrics.ts`, `derive/money.ts`, `derive/resolve.ts`, `derive/tax.ts`, `derive/time.ts`, `derive/trips.ts`, `import/map.ts`, `model/annotation.ts`, `model/organizations.ts`, `ui/charts/palette.ts`, `ui/store.tsx`, `ui/views/Overview.tsx`, `ui/views/Trips.tsx`, `ui/views/reference/Calls.tsx`, `ui/views/reference/Durations.tsx`, `ui/views/reference/Organizations.tsx`, `ui/views/reference/Parks.tsx`, `ui/views/reference/Settings.tsx`, `ui/views/reference/Sports.tsx`, `ui/views/reference/Vehicles.tsx`
+- **Exports:** `Park`, `OrganizationKind`, `Organization`, `ORGANIZATION_KINDS`, `Vehicle`, `DurationOrigin`, `AgeGroupDuration`, `GearLevelId`, `GearLevel`, `GEAR_LEVEL_ORDER`, `sortGearLevels()`, `GearModifierId`, `GearModifier`, `GEAR_MODIFIER_ORDER`, `sortGearModifiers()`, `SportProfile`, `isTrackedSport()`, `Identity`, `initialsOf()`, `TimeModelId`, `CURRENCIES`, `RushHourWindow`, `Settings`, `GEAR_LEVELS`, `GEAR_MODIFIERS`, `SEED_SPORT_PROFILES`, `SPORT_ORDER`, `CallType`, `SEED_CALL_TYPES`, `callTypeId()`, `UNSPECIFIED_SPORT`, `orderSportCodes()`, `DEFAULT_TRACKED_SPORTS`, `sportRank()`, `SEED_IDENTITY`, `SEED_SETTINGS`, `SEED_PARKS`
+- **Imported by:** `db/backup.ts`, `db/repo.ts`, `db/schema.ts`, `db/tables.ts`, `derive/metrics.ts`, `derive/money.ts`, `derive/resolve.ts`, `derive/tax.ts`, `derive/time.ts`, `derive/trips.ts`, `import/map.ts`, `model/annotation.ts`, `model/organizations.ts`, `ui/charts/palette.ts`, `ui/components/Avatar.tsx`, `ui/store.tsx`, `ui/views/Overview.tsx`, `ui/views/Trips.tsx`, `ui/views/reference/Calls.tsx`, `ui/views/reference/Durations.tsx`, `ui/views/reference/Organizations.tsx`, `ui/views/reference/Parks.tsx`, `ui/views/reference/Settings.tsx`, `ui/views/reference/Sports.tsx`, `ui/views/reference/Vehicles.tsx`
 
 ## `ui/`
 
@@ -255,7 +255,7 @@ Layer 2 — Reference data. User-owned, editable, and never written by import.
 App shell. One filter row above everything it scopes, and a view switcher.
 
 - **Exports:** `App()`
-- **Imports:** `ui/components/Controls.tsx`, `ui/components/HiddenSportsNotice.tsx`, `ui/store.tsx`, `ui/views/Breakdowns.tsx`, `ui/views/Cancellations.tsx`, `ui/views/DataQuality.tsx`, `ui/views/Gear.tsx`, `ui/views/Import.tsx`, `ui/views/Overview.tsx`, `ui/views/Reference.tsx`, `ui/views/Tax.tsx`, `ui/views/Trips.tsx`
+- **Imports:** `ui/components/Avatar.tsx`, `ui/components/Controls.tsx`, `ui/components/HiddenSportsNotice.tsx`, `ui/store.tsx`, `ui/views/Breakdowns.tsx`, `ui/views/Cancellations.tsx`, `ui/views/DataQuality.tsx`, `ui/views/Gear.tsx`, `ui/views/Import.tsx`, `ui/views/Overview.tsx`, `ui/views/Profile.tsx`, `ui/views/Reference.tsx`, `ui/views/Tax.tsx`, `ui/views/Trips.tsx`
 - **Imported by:** `main.tsx`
 
 ### `ui/flags.ts` · M
@@ -273,7 +273,7 @@ App state. Holds the loaded snapshot, the current filter and the current view, a
 - **Exports:** `ViewId`, `NavTarget`, `Filter`, `DerivedState`, `PendingFocus`, `DrillTarget`, `Drill`, `StoreProvider()`, `useStore()`, `useDerived()`, `derive()`, `dateInFilterPeriod()`, `gameTripKey()`, `gameLabel()`
 - **Imports:** `db/repo.ts`, `db/schema.ts`, `derive/metrics.ts`, `derive/money.ts`, `derive/resolve.ts`, `derive/time.ts`, `derive/trips.ts`, `model/annotation.ts`, `model/game.ts`, `model/reference.ts`, `ui/flags.ts`
 - **Packages:** react
-- **Imported by:** `ui/App.tsx`, `ui/components/Controls.tsx`, `ui/components/FlagDialog.tsx`, `ui/components/HiddenSportsNotice.tsx`, `ui/views/Breakdowns.tsx`, `ui/views/Cancellations.tsx`, `ui/views/DataQuality.tsx`, `ui/views/Gear.tsx`, `ui/views/GeneralExpenses.tsx`, `ui/views/Import.tsx`, `ui/views/Overview.tsx`, `ui/views/Reference.tsx`, `ui/views/Tax.tsx`, `ui/views/Trips.tsx`, `ui/views/reference/Backup.tsx`, `ui/views/reference/Calls.tsx`, `ui/views/reference/Durations.tsx`, `ui/views/reference/Identity.tsx`, `ui/views/reference/Organizations.tsx`, `ui/views/reference/Parks.tsx`, `ui/views/reference/Settings.tsx`, `ui/views/reference/Sports.tsx`, `ui/views/reference/Vehicles.tsx`
+- **Imported by:** `ui/App.tsx`, `ui/components/Controls.tsx`, `ui/components/FlagDialog.tsx`, `ui/components/HiddenSportsNotice.tsx`, `ui/views/Breakdowns.tsx`, `ui/views/Cancellations.tsx`, `ui/views/DataQuality.tsx`, `ui/views/Gear.tsx`, `ui/views/GeneralExpenses.tsx`, `ui/views/Import.tsx`, `ui/views/Overview.tsx`, `ui/views/Profile.tsx`, `ui/views/Reference.tsx`, `ui/views/Tax.tsx`, `ui/views/Trips.tsx`, `ui/views/reference/Backup.tsx`, `ui/views/reference/Calls.tsx`, `ui/views/reference/Durations.tsx`, `ui/views/reference/Identity.tsx`, `ui/views/reference/Organizations.tsx`, `ui/views/reference/Parks.tsx`, `ui/views/reference/Settings.tsx`, `ui/views/reference/Sports.tsx`, `ui/views/reference/Vehicles.tsx`
 
 ## `ui/charts/`
 
@@ -305,6 +305,14 @@ Palette. Values validated with `scripts/validate_palette.js` against both surfac
 
 ## `ui/components/`
 
+### `ui/components/Avatar.tsx` · S
+
+The user's avatar: their initials in a circle, or a person icon when no display name is set.
+
+- **Exports:** `Avatar()`
+- **Imports:** `model/reference.ts`
+- **Imported by:** `ui/App.tsx`, `ui/views/Profile.tsx`
+
 ### `ui/components/Controls.tsx` · M
 
 The filter row. One row above everything it scopes, never per-chart filters, so every chart on a view re-renders against the same slice.
@@ -312,7 +320,7 @@ The filter row. One row above everything it scopes, never per-chart filters, so 
 - **Exports:** `withBound()`, `FilterBar()`, `selectStyle`, `TextInput()`, `Button()`, `ChartOption()`
 - **Imports:** `derive/metrics.ts`, `derive/time.ts`, `ui/charts/palette.ts`, `ui/store.tsx`
 - **Packages:** react
-- **Imported by:** `ui/App.tsx`, `ui/views/DataQuality.tsx`, `ui/views/Gear.tsx`, `ui/views/GeneralExpenses.tsx`, `ui/views/Import.tsx`, `ui/views/Overview.tsx`, `ui/views/Tax.tsx`, `ui/views/Trips.tsx`, `ui/views/reference/Backup.tsx`, `ui/views/reference/Calls.tsx`, `ui/views/reference/Durations.tsx`, `ui/views/reference/Identity.tsx`, `ui/views/reference/Organizations.tsx`, `ui/views/reference/Parks.tsx`, `ui/views/reference/Settings.tsx`, `ui/views/reference/Sports.tsx`, `ui/views/reference/Vehicles.tsx`, `ui/views/reference/cells.tsx`
+- **Imported by:** `ui/App.tsx`, `ui/views/DataQuality.tsx`, `ui/views/Gear.tsx`, `ui/views/GeneralExpenses.tsx`, `ui/views/Import.tsx`, `ui/views/Overview.tsx`, `ui/views/Profile.tsx`, `ui/views/Tax.tsx`, `ui/views/Trips.tsx`, `ui/views/reference/Backup.tsx`, `ui/views/reference/Calls.tsx`, `ui/views/reference/Durations.tsx`, `ui/views/reference/Identity.tsx`, `ui/views/reference/Organizations.tsx`, `ui/views/reference/Parks.tsx`, `ui/views/reference/Settings.tsx`, `ui/views/reference/Sports.tsx`, `ui/views/reference/Vehicles.tsx`, `ui/views/reference/cells.tsx`
 
 ### `ui/components/Dialog.tsx` · S
 
@@ -346,7 +354,7 @@ Figures — the form to reach for when the story is a number, not a shape.
 - **Exports:** `StatTile()`, `HeroFigure()`, `StatusChip()`, `Meter()`, `Card()`, `EmptyState()`
 - **Imports:** `ui/charts/palette.ts`
 - **Packages:** react
-- **Imported by:** `ui/views/Breakdowns.tsx`, `ui/views/Cancellations.tsx`, `ui/views/DataQuality.tsx`, `ui/views/Gear.tsx`, `ui/views/GeneralExpenses.tsx`, `ui/views/Import.tsx`, `ui/views/Overview.tsx`, `ui/views/Tax.tsx`, `ui/views/Trips.tsx`, `ui/views/reference/Backup.tsx`, `ui/views/reference/Calls.tsx`, `ui/views/reference/Durations.tsx`, `ui/views/reference/Identity.tsx`, `ui/views/reference/Organizations.tsx`, `ui/views/reference/Parks.tsx`, `ui/views/reference/Settings.tsx`, `ui/views/reference/Sports.tsx`, `ui/views/reference/Vehicles.tsx`
+- **Imported by:** `ui/views/Breakdowns.tsx`, `ui/views/Cancellations.tsx`, `ui/views/DataQuality.tsx`, `ui/views/Gear.tsx`, `ui/views/GeneralExpenses.tsx`, `ui/views/Import.tsx`, `ui/views/Overview.tsx`, `ui/views/Profile.tsx`, `ui/views/Tax.tsx`, `ui/views/Trips.tsx`, `ui/views/reference/Backup.tsx`, `ui/views/reference/Calls.tsx`, `ui/views/reference/Durations.tsx`, `ui/views/reference/Identity.tsx`, `ui/views/reference/Organizations.tsx`, `ui/views/reference/Parks.tsx`, `ui/views/reference/Settings.tsx`, `ui/views/reference/Sports.tsx`, `ui/views/reference/Vehicles.tsx`
 
 ## `ui/views/`
 
@@ -411,6 +419,14 @@ Overview. A hero net take-home, a KPI row, income by month as columns, and the $
 - **Exports:** `Overview()`, `sportLabelFrom()`
 - **Imports:** `derive/metrics.ts`, `derive/money.ts`, `derive/time.ts`, `model/reference.ts`, `ui/charts/Charts.tsx`, `ui/charts/palette.ts`, `ui/components/Controls.tsx`, `ui/components/Dialog.tsx`, `ui/components/Tiles.tsx`, `ui/flags.ts`, `ui/store.tsx`
 - **Packages:** react
+- **Imported by:** `ui/App.tsx`
+
+### `ui/views/Profile.tsx` · S
+
+The user's profile, opened from the header avatar.
+
+- **Exports:** `Profile()`
+- **Imports:** `ui/components/Avatar.tsx`, `ui/components/Controls.tsx`, `ui/components/Tiles.tsx`, `ui/store.tsx`
 - **Imported by:** `ui/App.tsx`
 
 ### `ui/views/Reference.tsx` · S

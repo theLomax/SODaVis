@@ -188,6 +188,22 @@ export type Identity = {
   displayName: string
 }
 
+/**
+ * Up to two initials for the profile avatar: the first letters of the first and
+ * last words of the display name. Empty when there is no name, so the avatar can
+ * fall back to an icon rather than show a guess.
+ */
+export function initialsOf(displayName: string | undefined): string {
+  const words = (displayName ?? '')
+    .split(/\s+/)
+    .map((w) => w.replace(/[^\p{L}\p{N}]/gu, ''))
+    .filter(Boolean)
+  if (words.length === 0) return ''
+  const first = [...words[0]!][0]!
+  const last = words.length > 1 ? [...words[words.length - 1]!][0]! : ''
+  return (first + last).toUpperCase()
+}
+
 export type TimeModelId = 'game' | 'game-drive' | 'committed'
 
 /**

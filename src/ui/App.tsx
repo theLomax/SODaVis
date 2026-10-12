@@ -7,11 +7,15 @@
  * Views that show metrics sit under the filter bar; Gear, Import, Reference and
  * Data quality do not, because a date filter on an import screen would be
  * misleading.
+ *
+ * The avatar at the end of the header opens the user's profile, a view with no
+ * entry in the switcher.
  */
 
 import { StoreProvider, useStore, type ViewId } from './store'
 import { FilterBar } from './components/Controls'
 import { HiddenSportsNotice } from './components/HiddenSportsNotice'
+import { Avatar } from './components/Avatar'
 import { Overview } from './views/Overview'
 import { Venues, Partners, Leagues } from './views/Breakdowns'
 import { Trips } from './views/Trips'
@@ -21,6 +25,7 @@ import { Gear } from './views/Gear'
 import { ImportView } from './views/Import'
 import { Reference } from './views/Reference'
 import { DataQuality } from './views/DataQuality'
+import { Profile } from './views/Profile'
 
 const VIEWS: { id: ViewId; label: string; filtered: boolean }[] = [
   { id: 'overview', label: 'Overview', filtered: true },
@@ -48,7 +53,10 @@ function Shell() {
   // The view is store state, not local state: a warning on one view has to be
   // able to send the reader to the field on another that clears it.
   const { loading, error, derived, view, setView, drill, endDrill } = useStore()
-  const current = VIEWS.find((v) => v.id === view)!
+  // The profile is opened from the avatar, not the switcher, so it has no entry
+  // in VIEWS; like the other non-metric views it sits outside the filter bar.
+  const current = VIEWS.find((v) => v.id === view) ?? { id: view, label: 'Profile', filtered: false }
+  const displayName = derived?.snapshot.identity.displayName.trim() ?? ''
   const drillFrom = drill ? VIEWS.find((v) => v.id === drill.from)?.label : undefined
 
   return (
@@ -80,6 +88,21 @@ function Shell() {
         <span className="ml-auto text-xs" style={{ color: 'var(--text-muted)' }}>
           {derived ? `${derived.snapshot.games.length} games on this machine` : ''}
         </span>
+        <button
+          type="button"
+          onClick={() => setView('profile')}
+          aria-current={view === 'profile' ? 'page' : undefined}
+          aria-label={displayName ? `Your profile: ${displayName}` : 'Your profile'}
+          title={displayName ? `Your profile: ${displayName}` : 'Your profile'}
+          className="rounded-full"
+          style={{
+            // A ring while the profile is open, as the switcher highlights its view.
+            outline: view === 'profile' ? '2px solid var(--series-1)' : 'none',
+            outlineOffset: 2,
+          }}
+        >
+          <Avatar displayName={displayName} />
+        </button>
       </header>
 
       {current.filtered ? <FilterBar /> : null}
@@ -133,6 +156,7 @@ function Shell() {
             {view === 'import' ? <ImportView /> : null}
             {view === 'reference' ? <Reference /> : null}
             {view === 'quality' ? <DataQuality /> : null}
+            {view === 'profile' ? <Profile /> : null}
           </div>
         )}
       </main>

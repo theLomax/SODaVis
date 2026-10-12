@@ -39,6 +39,11 @@ generally needs a new mechanism or touches the data model.
 None open.
 
 ## Features
+- **User profile and a per-user interface.** The header avatar opens a Profile page that
+  is a placeholder today. Next: gather the user's own preferences there (display name,
+  sports officiated, currency, appearance, time model), which now live under Reference
+  data → Identity, Sports & gear and Settings. Eventually the interface itself should be
+  customizable per user: which views and dashboard tiles show, and in what order.
 - **Gear inventory, collections and per-game gear.** Replaces the two rough gear
   ideas that were here (user-made items and presets; per-item tracking such as mask 1 /
   mask 2).

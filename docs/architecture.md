@@ -47,7 +47,7 @@ Dependencies point down this table. Known exceptions are listed under
 |---|---|---|
 | Games, imports, reference, annotations | IndexedDB, via `db/repo.ts` | Facts are written by import only; reference and annotations by the user only. |
 | Loaded snapshot | `StoreProvider` (`ui/store.tsx`) | Replaced wholesale by `reload()` after every write. |
-| Filter, view, drill-down, pending focus | `StoreProvider` | `setFilter` clears a drill-down; `navigate()` sets `pendingFocus` for the destination view to consume. |
+| Filter, view, drill-down, pending focus | `StoreProvider` | `setFilter` clears a drill-down; `navigate()` sets `pendingFocus` for the destination view to consume. `Reference` clears a tab request itself unless the tab's editor consumes a row focus (Parks, Durations). |
 | Theme | `StoreProvider` + `localStorage` | Not in IndexedDB, so not in backups. |
 | Everything computed | `derive()` → `DerivedState` | Recomputed on any snapshot or filter change. Includes `trackedSports`, `hiddenSports`, and `taxResolved`/`taxTrips` (every game, for Tax only). |
 | Form drafts, import stage machine | Component state | `TripDetail` rebuilds its whole annotation on save — see the trap below. |
@@ -116,6 +116,11 @@ fullest example), listed in `BUILT_IN_PROFILES`. Set `fileTypes`, `exportSteps`,
 **A new Reference tab**: a component in `ui/views/reference/`, added to `Tab` and `TABS` in
 `views/Reference.tsx`. If a flag's fix button should open it, also widen `FixTarget`
 (`ui/flags.ts`) and `PendingFocus` (`ui/store.tsx`).
+
+**A new view**: the id in `ViewId` (`ui/store.tsx`), a render line in `ui/App.tsx`, and an
+entry in `VIEWS` there with `filtered` set to whether the filter bar applies. A view opened
+some other way (the Profile, from the header avatar) skips `VIEWS` and falls back to
+unfiltered.
 
 **A new data-quality flag**: the code in `DataQualityFlagCode` (`model/game.ts`) and its copy
 in `FLAG_INFO` (`ui/flags.ts`); `flags.test.ts` fails until both exist.

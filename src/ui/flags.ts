@@ -23,7 +23,12 @@ import { STATUS, STATUS_ICON } from './charts/palette'
  * from wherever the flag was noticed.
  */
 export type FixTarget =
-  | { view: 'reference'; tab: 'parks' | 'durations' | 'identity' | 'organizations'; label: string }
+  | {
+      view: 'reference'
+      // 'sports' and 'settings' are not flag fixes; the Profile page links to them.
+      tab: 'parks' | 'durations' | 'identity' | 'organizations' | 'sports' | 'settings'
+      label: string
+    }
   | { view: 'trips'; label: string }
   | { view: 'quality'; label: string }
   | { view: 'import'; label: string }

@@ -6,6 +6,14 @@ lose and expensive to rediscover.
 
 ## Features
 
+- **A profile avatar in the header.** A round button at the end of the header shows the
+  user's initials, from the display name under Identity, or a person icon until one is
+  set. It opens a Profile view that has no entry in the view switcher; the avatar is its
+  entry point and carries a ring while the page is open. The page is a placeholder: the
+  name, and links to where a profile's contents are edited today (Identity, Sports &
+  gear, Settings). `Reference` now clears a tab request once the tab is showing, so a
+  later plain visit opens on the first tab rather than the last one linked to.
+
 - **Choose the sports you officiate.** Soccer, Volleyball, Football and Basketball join
   the sports list, offered but untracked; the four from the sample stay tracked. A
   *Track* checkbox per sport (*Reference data → Sports & gear*) decides what the app
