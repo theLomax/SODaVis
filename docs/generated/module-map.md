@@ -24,7 +24,7 @@ Data access. Every write that could touch imported facts goes through here, so t
 
 - **Exports:** `AppSnapshot`, `loadSnapshot()`, `CommitPlan`, `commitImport()`, `undoBlockers()`, `ImportUndoBlockedError (class)`, `undoImport()`, `saveParks()`, `deletePark()`, `mergeParks()`, `reattachTripAnnotation()`, `deleteTripAnnotation()`, `saveDurations()`, `deleteDuration()`, `seedDurations()`, `saveSports()`, `saveGearLevels()`, `saveGearModifiers()`, `saveIdentity()`, `saveSettings()`, `saveCallTypes()`, `deleteCallType()`, `saveGameAnnotation()`, `patchGameAnnotation()`, `acknowledgeAnomaly()`, `saveTripAnnotation()`, `saveGeneralExpense()`, `deleteGeneralExpense()`, `saveGearProduct()`, `deleteGearProduct()`, `saveGearItem()`, `patchGearItem()`, `patchGearProduct()`, `deleteGearItem()`, `saveGearSet()`, `deleteGearSet()`, `saveOrganization()`, `patchOrganization()`, `deleteOrganization()`, `setImportOrganization()`, `saveVehicle()`, `patchVehicle()`, `VehicleInUseError (class)`, `deleteVehicle()`, `setDefaultVehicle()`, `saveCustomProfile()`, `deleteCustomProfile()`, `clearAll()`
 - **Imports:** `db/schema.ts`, `db/tables.ts`, `import/profiles/index.ts`, `model/annotation.ts`, `model/game.ts`, `model/gear.ts`, `model/reference.ts`
-- **Imported by:** `db/backup.ts`, `ui/components/HiddenSportsNotice.tsx`, `ui/store.tsx`, `ui/views/DataQuality.tsx`, `ui/views/Gear.tsx`, `ui/views/GeneralExpenses.tsx`, `ui/views/Import.tsx`, `ui/views/Trips.tsx`, `ui/views/reference/Calls.tsx`, `ui/views/reference/Durations.tsx`, `ui/views/reference/Identity.tsx`, `ui/views/reference/Organizations.tsx`, `ui/views/reference/Parks.tsx`, `ui/views/reference/Settings.tsx`, `ui/views/reference/Sports.tsx`, `ui/views/reference/Vehicles.tsx`
+- **Imported by:** `db/backup.ts`, `ui/components/HiddenSportsNotice.tsx`, `ui/store.tsx`, `ui/views/DataQuality.tsx`, `ui/views/Gear.tsx`, `ui/views/GeneralExpenses.tsx`, `ui/views/Import.tsx`, `ui/views/Trips.tsx`, `ui/views/profile/Vehicles.tsx`, `ui/views/reference/Calls.tsx`, `ui/views/reference/Durations.tsx`, `ui/views/reference/Identity.tsx`, `ui/views/reference/Organizations.tsx`, `ui/views/reference/Parks.tsx`, `ui/views/reference/Settings.tsx`, `ui/views/reference/Sports.tsx`
 
 ### `db/schema.ts` · S
 
@@ -246,7 +246,7 @@ Organization names, and the choice made at import.
 Layer 2 — Reference data. User-owned, editable, and never written by import.
 
 - **Exports:** `Park`, `OrganizationKind`, `Organization`, `ORGANIZATION_KINDS`, `Vehicle`, `DurationOrigin`, `AgeGroupDuration`, `GearLevelId`, `GearLevel`, `GEAR_LEVEL_ORDER`, `sortGearLevels()`, `GearModifierId`, `GearModifier`, `GEAR_MODIFIER_ORDER`, `sortGearModifiers()`, `SportProfile`, `isTrackedSport()`, `Identity`, `initialsOf()`, `TimeModelId`, `CURRENCIES`, `RushHourWindow`, `Settings`, `GEAR_LEVELS`, `GEAR_MODIFIERS`, `SEED_SPORT_PROFILES`, `SPORT_ORDER`, `CallType`, `SEED_CALL_TYPES`, `callTypeId()`, `UNSPECIFIED_SPORT`, `orderSportCodes()`, `DEFAULT_TRACKED_SPORTS`, `sportRank()`, `SEED_IDENTITY`, `SEED_SETTINGS`, `SEED_PARKS`
-- **Imported by:** `db/backup.ts`, `db/repo.ts`, `db/schema.ts`, `db/tables.ts`, `derive/metrics.ts`, `derive/money.ts`, `derive/resolve.ts`, `derive/tax.ts`, `derive/time.ts`, `derive/trips.ts`, `import/map.ts`, `model/annotation.ts`, `model/organizations.ts`, `ui/charts/palette.ts`, `ui/components/Avatar.tsx`, `ui/store.tsx`, `ui/views/Overview.tsx`, `ui/views/Trips.tsx`, `ui/views/reference/Calls.tsx`, `ui/views/reference/Durations.tsx`, `ui/views/reference/Organizations.tsx`, `ui/views/reference/Parks.tsx`, `ui/views/reference/Settings.tsx`, `ui/views/reference/Sports.tsx`, `ui/views/reference/Vehicles.tsx`
+- **Imported by:** `db/backup.ts`, `db/repo.ts`, `db/schema.ts`, `db/tables.ts`, `derive/metrics.ts`, `derive/money.ts`, `derive/resolve.ts`, `derive/tax.ts`, `derive/time.ts`, `derive/trips.ts`, `import/map.ts`, `model/annotation.ts`, `model/organizations.ts`, `ui/charts/palette.ts`, `ui/components/Avatar.tsx`, `ui/store.tsx`, `ui/views/Overview.tsx`, `ui/views/Trips.tsx`, `ui/views/profile/Vehicles.tsx`, `ui/views/reference/Calls.tsx`, `ui/views/reference/Durations.tsx`, `ui/views/reference/Organizations.tsx`, `ui/views/reference/Parks.tsx`, `ui/views/reference/Settings.tsx`, `ui/views/reference/Sports.tsx`
 
 ## `ui/`
 
@@ -273,7 +273,7 @@ App state. Holds the loaded snapshot, the current filter and the current view, a
 - **Exports:** `ViewId`, `NavTarget`, `Filter`, `DerivedState`, `PendingFocus`, `DrillTarget`, `Drill`, `StoreProvider()`, `useStore()`, `useDerived()`, `derive()`, `dateInFilterPeriod()`, `gameTripKey()`, `gameLabel()`
 - **Imports:** `db/repo.ts`, `db/schema.ts`, `derive/metrics.ts`, `derive/money.ts`, `derive/resolve.ts`, `derive/time.ts`, `derive/trips.ts`, `model/annotation.ts`, `model/game.ts`, `model/reference.ts`, `ui/flags.ts`
 - **Packages:** react
-- **Imported by:** `ui/App.tsx`, `ui/components/Controls.tsx`, `ui/components/FlagDialog.tsx`, `ui/components/HiddenSportsNotice.tsx`, `ui/views/Breakdowns.tsx`, `ui/views/Cancellations.tsx`, `ui/views/DataQuality.tsx`, `ui/views/Gear.tsx`, `ui/views/GeneralExpenses.tsx`, `ui/views/Import.tsx`, `ui/views/Overview.tsx`, `ui/views/Profile.tsx`, `ui/views/Reference.tsx`, `ui/views/Tax.tsx`, `ui/views/Trips.tsx`, `ui/views/reference/Backup.tsx`, `ui/views/reference/Calls.tsx`, `ui/views/reference/Durations.tsx`, `ui/views/reference/Identity.tsx`, `ui/views/reference/Organizations.tsx`, `ui/views/reference/Parks.tsx`, `ui/views/reference/Settings.tsx`, `ui/views/reference/Sports.tsx`, `ui/views/reference/Vehicles.tsx`
+- **Imported by:** `ui/App.tsx`, `ui/components/Controls.tsx`, `ui/components/FlagDialog.tsx`, `ui/components/HiddenSportsNotice.tsx`, `ui/views/Breakdowns.tsx`, `ui/views/Cancellations.tsx`, `ui/views/DataQuality.tsx`, `ui/views/Gear.tsx`, `ui/views/GeneralExpenses.tsx`, `ui/views/Import.tsx`, `ui/views/Overview.tsx`, `ui/views/Profile.tsx`, `ui/views/Reference.tsx`, `ui/views/Tax.tsx`, `ui/views/Trips.tsx`, `ui/views/profile/Vehicles.tsx`, `ui/views/reference/Backup.tsx`, `ui/views/reference/Calls.tsx`, `ui/views/reference/Durations.tsx`, `ui/views/reference/Identity.tsx`, `ui/views/reference/Organizations.tsx`, `ui/views/reference/Parks.tsx`, `ui/views/reference/Settings.tsx`, `ui/views/reference/Sports.tsx`
 
 ## `ui/charts/`
 
@@ -320,7 +320,7 @@ The filter row. One row above everything it scopes, never per-chart filters, so 
 - **Exports:** `withBound()`, `FilterBar()`, `selectStyle`, `TextInput()`, `Button()`, `ChartOption()`
 - **Imports:** `derive/metrics.ts`, `derive/time.ts`, `ui/charts/palette.ts`, `ui/store.tsx`
 - **Packages:** react
-- **Imported by:** `ui/App.tsx`, `ui/views/DataQuality.tsx`, `ui/views/Gear.tsx`, `ui/views/GeneralExpenses.tsx`, `ui/views/Import.tsx`, `ui/views/Overview.tsx`, `ui/views/Profile.tsx`, `ui/views/Tax.tsx`, `ui/views/Trips.tsx`, `ui/views/reference/Backup.tsx`, `ui/views/reference/Calls.tsx`, `ui/views/reference/Durations.tsx`, `ui/views/reference/Identity.tsx`, `ui/views/reference/Organizations.tsx`, `ui/views/reference/Parks.tsx`, `ui/views/reference/Settings.tsx`, `ui/views/reference/Sports.tsx`, `ui/views/reference/Vehicles.tsx`, `ui/views/reference/cells.tsx`
+- **Imported by:** `ui/App.tsx`, `ui/views/DataQuality.tsx`, `ui/views/Gear.tsx`, `ui/views/GeneralExpenses.tsx`, `ui/views/Import.tsx`, `ui/views/Overview.tsx`, `ui/views/Profile.tsx`, `ui/views/Tax.tsx`, `ui/views/Trips.tsx`, `ui/views/profile/Vehicles.tsx`, `ui/views/reference/Backup.tsx`, `ui/views/reference/Calls.tsx`, `ui/views/reference/Durations.tsx`, `ui/views/reference/Identity.tsx`, `ui/views/reference/Organizations.tsx`, `ui/views/reference/Parks.tsx`, `ui/views/reference/Settings.tsx`, `ui/views/reference/Sports.tsx`, `ui/views/reference/cells.tsx`
 
 ### `ui/components/Dialog.tsx` · S
 
@@ -354,7 +354,7 @@ Figures — the form to reach for when the story is a number, not a shape.
 - **Exports:** `StatTile()`, `HeroFigure()`, `StatusChip()`, `Meter()`, `Card()`, `EmptyState()`
 - **Imports:** `ui/charts/palette.ts`
 - **Packages:** react
-- **Imported by:** `ui/views/Breakdowns.tsx`, `ui/views/Cancellations.tsx`, `ui/views/DataQuality.tsx`, `ui/views/Gear.tsx`, `ui/views/GeneralExpenses.tsx`, `ui/views/Import.tsx`, `ui/views/Overview.tsx`, `ui/views/Profile.tsx`, `ui/views/Tax.tsx`, `ui/views/Trips.tsx`, `ui/views/reference/Backup.tsx`, `ui/views/reference/Calls.tsx`, `ui/views/reference/Durations.tsx`, `ui/views/reference/Identity.tsx`, `ui/views/reference/Organizations.tsx`, `ui/views/reference/Parks.tsx`, `ui/views/reference/Settings.tsx`, `ui/views/reference/Sports.tsx`, `ui/views/reference/Vehicles.tsx`
+- **Imported by:** `ui/views/Breakdowns.tsx`, `ui/views/Cancellations.tsx`, `ui/views/DataQuality.tsx`, `ui/views/Gear.tsx`, `ui/views/GeneralExpenses.tsx`, `ui/views/Import.tsx`, `ui/views/Overview.tsx`, `ui/views/Profile.tsx`, `ui/views/Tax.tsx`, `ui/views/Trips.tsx`, `ui/views/profile/Vehicles.tsx`, `ui/views/reference/Backup.tsx`, `ui/views/reference/Calls.tsx`, `ui/views/reference/Durations.tsx`, `ui/views/reference/Identity.tsx`, `ui/views/reference/Organizations.tsx`, `ui/views/reference/Parks.tsx`, `ui/views/reference/Settings.tsx`, `ui/views/reference/Sports.tsx`
 
 ## `ui/views/`
 
@@ -423,10 +423,10 @@ Overview. A hero net take-home, a KPI row, income by month as columns, and the $
 
 ### `ui/views/Profile.tsx` · S
 
-The user's profile, opened from the header avatar.
+The user's profile, opened from the header avatar: who the app thinks you are, and what is yours rather than the games' — so far, your vehicles.
 
 - **Exports:** `Profile()`
-- **Imports:** `ui/components/Avatar.tsx`, `ui/components/Controls.tsx`, `ui/components/Tiles.tsx`, `ui/store.tsx`
+- **Imports:** `ui/components/Avatar.tsx`, `ui/components/Controls.tsx`, `ui/components/Tiles.tsx`, `ui/store.tsx`, `ui/views/profile/Vehicles.tsx`
 - **Imported by:** `ui/App.tsx`
 
 ### `ui/views/Reference.tsx` · S
@@ -434,7 +434,7 @@ The user's profile, opened from the header avatar.
 Reference data editors. This is the user's own knowledge, and it is the part the spreadsheet could never keep straight — mileage and tolls that disagreed bet…
 
 - **Exports:** `Reference()`
-- **Imports:** `ui/store.tsx`, `ui/views/reference/Backup.tsx`, `ui/views/reference/Calls.tsx`, `ui/views/reference/Durations.tsx`, `ui/views/reference/Identity.tsx`, `ui/views/reference/Organizations.tsx`, `ui/views/reference/Parks.tsx`, `ui/views/reference/Settings.tsx`, `ui/views/reference/Sports.tsx`, `ui/views/reference/Vehicles.tsx`
+- **Imports:** `ui/store.tsx`, `ui/views/reference/Backup.tsx`, `ui/views/reference/Calls.tsx`, `ui/views/reference/Durations.tsx`, `ui/views/reference/Identity.tsx`, `ui/views/reference/Organizations.tsx`, `ui/views/reference/Parks.tsx`, `ui/views/reference/Settings.tsx`, `ui/views/reference/Sports.tsx`
 - **Packages:** react
 - **Imported by:** `ui/App.tsx`
 
@@ -455,6 +455,17 @@ Trips. A table with drill-down, which is the right form here: the interesting th
 - **Imports:** `db/repo.ts`, `derive/money.ts`, `derive/resolve.ts`, `derive/time.ts`, `derive/trips.ts`, `model/annotation.ts`, `model/game.ts`, `model/reference.ts`, `ui/charts/palette.ts`, `ui/components/Controls.tsx`, `ui/components/FlagDialog.tsx`, `ui/components/Tiles.tsx`, `ui/flags.ts`, `ui/store.tsx`
 - **Packages:** react
 - **Imported by:** `ui/App.tsx`
+
+## `ui/views/profile/`
+
+### `ui/views/profile/Vehicles.tsx` · M
+
+Vehicles driven to games. The standard mileage deduction is claimed per vehicle, so a trip records which one it was: its own, or else the default.
+
+- **Exports:** `VehiclesEditor()`
+- **Imports:** `db/repo.ts`, `model/reference.ts`, `ui/components/Controls.tsx`, `ui/components/Tiles.tsx`, `ui/store.tsx`, `ui/views/reference/cells.tsx`
+- **Packages:** react
+- **Imported by:** `ui/views/Profile.tsx`
 
 ## `ui/views/reference/`
 
@@ -529,15 +540,6 @@ Sports, positions and gear. Prep and wrap are charged once per trip.
 - **Imports:** `db/repo.ts`, `model/reference.ts`, `ui/components/Controls.tsx`, `ui/components/Tiles.tsx`, `ui/store.tsx`, `ui/views/reference/cells.tsx`
 - **Imported by:** `ui/views/Reference.tsx`
 
-### `ui/views/reference/Vehicles.tsx` · M
-
-Vehicles driven to games. The standard mileage deduction is claimed per vehicle, so a trip records which one it was: its own, or else the default.
-
-- **Exports:** `VehiclesEditor()`
-- **Imports:** `db/repo.ts`, `model/reference.ts`, `ui/components/Controls.tsx`, `ui/components/Tiles.tsx`, `ui/store.tsx`, `ui/views/reference/cells.tsx`
-- **Packages:** react
-- **Imported by:** `ui/views/Reference.tsx`
-
 ### `ui/views/reference/cells.tsx` · S
 
 Shared inline editors used by the parks, durations, sports and settings tabs.
@@ -545,4 +547,4 @@ Shared inline editors used by the parks, durations, sports and settings tabs.
 - **Exports:** `TextCell()`, `MoneyCell()`, `NumberCell()`
 - **Imports:** `derive/money.ts`, `import/transforms.ts`, `ui/components/Controls.tsx`
 - **Packages:** react
-- **Imported by:** `ui/views/Gear.tsx`, `ui/views/reference/Durations.tsx`, `ui/views/reference/Organizations.tsx`, `ui/views/reference/Parks.tsx`, `ui/views/reference/Settings.tsx`, `ui/views/reference/Sports.tsx`, `ui/views/reference/Vehicles.tsx`
+- **Imported by:** `ui/views/Gear.tsx`, `ui/views/profile/Vehicles.tsx`, `ui/views/reference/Durations.tsx`, `ui/views/reference/Organizations.tsx`, `ui/views/reference/Parks.tsx`, `ui/views/reference/Settings.tsx`, `ui/views/reference/Sports.tsx`

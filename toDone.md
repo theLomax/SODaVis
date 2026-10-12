@@ -6,6 +6,13 @@ lose and expensive to rediscover.
 
 ## Features
 
+- **Vehicles moved to the Profile page.** What you drive is about you rather than the
+  games, so the Vehicles editor left the Reference tabs and sits on the Profile page
+  (`ui/views/profile/Vehicles.tsx`). Nothing about the data, the trip editor's vehicle
+  choice or the Tax view's per-vehicle table changed. The trip editor only offers a
+  vehicle once one exists, so the Tax view's mileage card says where to add them until
+  one is in use.
+
 - **A profile avatar in the header.** A round button at the end of the header shows the
   user's initials, from the display name under Identity, or a person icon until one is
   set. It opens a Profile view that has no entry in the view switcher; the avatar is its

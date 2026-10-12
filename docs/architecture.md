@@ -113,6 +113,9 @@ Each lists every place the change touches; skipping one has bitten before.
 fullest example), listed in `BUILT_IN_PROFILES`. Set `fileTypes`, `exportSteps`, and
 `defaultStatus` if the format has no status column. Detection ignores official columns.
 
+**A new Profile section**: a component in `ui/views/profile/` (Vehicles is the example),
+rendered from `views/Profile.tsx`. For what is the user's own rather than the games'.
+
 **A new Reference tab**: a component in `ui/views/reference/`, added to `Tab` and `TABS` in
 `views/Reference.tsx`. If a flag's fix button should open it, also widen `FixTarget`
 (`ui/flags.ts`) and `PendingFocus` (`ui/store.tsx`).

@@ -1,13 +1,14 @@
 /**
- * The user's profile, opened from the header avatar. A placeholder for now: it
- * shows who the app thinks you are and points to where the profile's future
- * contents live today. Per-user preferences will be gathered here.
+ * The user's profile, opened from the header avatar: who the app thinks you are,
+ * and what is yours rather than the games' — so far, your vehicles. It also points
+ * to where the rest of a profile's contents live today; they will be gathered here.
  */
 
 import { useStore } from '../store'
 import { Avatar } from '../components/Avatar'
 import { Button } from '../components/Controls'
 import { Card } from '../components/Tiles'
+import { VehiclesEditor } from './profile/Vehicles'
 
 /** Where the things a profile will hold are edited today. */
 const LINKS = [
@@ -38,6 +39,8 @@ export function Profile() {
           </div>
         </div>
       </Card>
+
+      <VehiclesEditor />
 
       <Card
         title="Coming to this page"

@@ -1,6 +1,8 @@
 /**
  * Vehicles driven to games. The standard mileage deduction is claimed per
  * vehicle, so a trip records which one it was: its own, or else the default.
+ *
+ * Shown on the Profile page: what you drive is about you, not about the games.
  */
 
 import { useMemo, useState } from 'react'
@@ -9,7 +11,7 @@ import { Button, TextInput } from '../../components/Controls'
 import { Card } from '../../components/Tiles'
 import { VehicleInUseError, deleteVehicle, patchVehicle, saveVehicle, setDefaultVehicle } from '../../../db/repo'
 import type { Vehicle } from '../../../model/reference'
-import { TextCell } from './cells'
+import { TextCell } from '../reference/cells'
 
 function newVehicleId(name: string, taken: Set<string>): string {
   const base = `veh-${name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'vehicle'}`

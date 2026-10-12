@@ -224,7 +224,11 @@ export function Tax() {
                 ))}
               </tbody>
             </table>
-          ) : null}
+          ) : (
+            <p className="m-0" style={{ color: 'var(--text-muted)' }}>
+              To split mileage by vehicle, add your vehicles on your profile (the avatar at the top right).
+            </p>
+          )}
           {summary.mileage.tripsMissingMiles > 0 ? (
             <div className="flex items-center gap-2">
               <StatusChip
