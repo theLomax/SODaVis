@@ -43,7 +43,9 @@ import {
   type GearSet,
   type VendorSku,
 } from '../../model/gear'
-import { MoneyCell, TextCell } from './reference/cells'
+import { toggledIn } from '../components/LockableCard'
+import { TextCell } from './reference/cells'
+import { GearItemCard } from './gear/GearItemCard'
 
 export function Gear() {
   const { derived, reload } = useStore()
@@ -337,6 +339,8 @@ function ItemsCard({
   const [size, setSize] = useState('')
   const [price, setPrice] = useState('')
   const [showRetired, setShowRetired] = useState(false)
+  /** The cards open for editing. Every card starts locked. */
+  const [unlocked, setUnlocked] = useState<ReadonlySet<string>>(new Set())
 
   const byProduct = new Map(products.map((p) => [p.id, p]))
   const setCount = (id: string) => sets.filter((s) => s.itemIds.includes(id)).length
@@ -378,12 +382,10 @@ function ItemsCard({
     setPrice('')
   }
 
-  const today = new Date().toISOString().slice(0, 10)
-
   return (
     <Card
       title="My gear"
-      subtitle="Each physical piece you own. Two of the same shirt are two items, so “Black V3 #1” and “#2” can be tracked apart."
+      subtitle="Each physical piece you own. Two of the same shirt are two items, so “Black V3 #1” and “#2” can be tracked apart. Choose Edit on an item to change, retire or delete it."
       action={
         retiredCount > 0 ? (
           <label className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--text-secondary)' }}>
@@ -400,109 +402,21 @@ function ItemsCard({
             : 'Every item is retired.'}
         </Muted>
       ) : (
-        <div className="overflow-auto">
-          <table className="w-full border-collapse text-xs">
-            <HeaderRow headers={['Item', 'Product', 'Size', 'Price paid', 'Acquired', 'In sets', 'Status', '']} />
-            <tbody>
-              {shown.map((item) => {
-                const product = byProduct.get(item.productId)
-                const retired = isRetired(item)
-                return (
-                  <tr key={item.id} style={{ ...rowStyle, opacity: retired ? 0.6 : 1 }}>
-                    <td className="px-2 py-1.5">
-                      <TextCell
-                        value={item.label}
-                        ariaLabel={`Name of ${item.label}`}
-                        width={220}
-                        onCommit={(v) => {
-                          if (v && v !== item.label) void run(() => patchGearItem(item.id, { label: v }))
-                        }}
-                      />
-                    </td>
-                    <td className="px-2 py-1.5" style={{ color: 'var(--text-secondary)' }}>
-                      {product ? (
-                        <>
-                          <span style={{ color: 'var(--text-muted)' }}>{gearCategoryLabel(product.category)} · </span>
-                          {describeProduct(product)}
-                        </>
-                      ) : (
-                        'Unknown product'
-                      )}
-                    </td>
-                    <td className="px-2 py-1.5">
-                      <TextCell
-                        value={item.size}
-                        ariaLabel={`Size of ${item.label}`}
-                        width={70}
-                        onCommit={(v) => {
-                          if (v !== item.size) void run(() => patchGearItem(item.id, { size: v }))
-                        }}
-                      />
-                    </td>
-                    <td className="px-2 py-1.5">
-                      <MoneyCell
-                        value={item.pricePaid}
-                        currency={currency}
-                        ariaLabel={`Price paid for ${item.label}`}
-                        onCommit={(v) => {
-                          // A negative price is a typo, not a refund; leave the figure alone.
-                          if (v === item.pricePaid || (v !== undefined && v < 0)) return
-                          void run(() => patchGearItem(item.id, { pricePaid: v }))
-                        }}
-                      />
-                    </td>
-                    <td className="px-2 py-1.5">
-                      <input
-                        type="date"
-                        value={item.acquiredOn ?? ''}
-                        onChange={(e) =>
-                          void run(() => patchGearItem(item.id, { acquiredOn: e.target.value || undefined }))
-                        }
-                        aria-label={`Date ${item.label} was acquired`}
-                        className="rounded-md px-1.5 py-0.5 text-xs"
-                        style={selectStyle}
-                      />
-                    </td>
-                    <td className="num-tabular px-2 py-1.5" style={{ color: 'var(--text-secondary)' }}>
-                      {setCount(item.id)}
-                    </td>
-                    <td className="px-2 py-1.5" style={{ color: 'var(--text-secondary)' }}>
-                      {retired ? `Retired ${item.retiredOn}` : 'In use'}
-                    </td>
-                    <td className="whitespace-nowrap px-2 py-1.5 text-right">
-                      {/* Retiring is the everyday exit and keeps history; delete is
-                          for a row entered by mistake. */}
-                      <span className="inline-flex gap-3">
-                        {retired ? (
-                          <RowAction
-                            onClick={() => void run(() => patchGearItem(item.id, { retiredOn: undefined }))}
-                            ariaLabel={`Return ${item.label} to use`}
-                          >
-                            Unretire
-                          </RowAction>
-                        ) : (
-                          <RowAction
-                            onClick={() => void run(() => patchGearItem(item.id, { retiredOn: today }))}
-                            ariaLabel={`Retire ${item.label}`}
-                          >
-                            Retire
-                          </RowAction>
-                        )}
-                        <RowAction
-                          danger
-                          onClick={() => void run(() => deleteGearItem(item.id))}
-                          ariaLabel={`Delete ${item.label}`}
-                        >
-                          Delete
-                        </RowAction>
-                      </span>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+        <ul className="m-0 grid list-none gap-3 p-0 sm:grid-cols-2 xl:grid-cols-3">
+          {shown.map((item) => (
+            <GearItemCard
+              key={item.id}
+              item={item}
+              product={byProduct.get(item.productId)}
+              setCount={setCount(item.id)}
+              currency={currency}
+              unlocked={unlocked.has(item.id)}
+              onToggle={() => setUnlocked((u) => toggledIn(u, item.id))}
+              onPatch={(patch) => void run(() => patchGearItem(item.id, patch))}
+              onDelete={() => void run(() => deleteGearItem(item.id))}
+            />
+          ))}
+        </ul>
       )}
 
       <div className="mt-3 flex flex-wrap items-end gap-2">

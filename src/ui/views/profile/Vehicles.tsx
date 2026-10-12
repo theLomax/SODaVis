@@ -12,6 +12,7 @@ import { useMemo, useState } from 'react'
 import { useStore } from '../../store'
 import { Button, TextInput } from '../../components/Controls'
 import { Card, StatusChip } from '../../components/Tiles'
+import { CardField, LockableCard, toggledIn } from '../../components/LockableCard'
 import { VehicleInUseError, deleteVehicle, patchVehicle, saveVehicle, setDefaultVehicle } from '../../../db/repo'
 import type { Vehicle } from '../../../model/reference'
 import { TextCell } from '../reference/cells'
@@ -45,38 +46,18 @@ function VehicleCard({
   onDelete: () => void
 }) {
   return (
-    <li
+    <LockableCard
       data-vehicle={v.id}
-      className="flex flex-col gap-3 rounded-lg p-3 text-xs"
-      style={{
-        border: `1px solid ${unlocked ? 'var(--series-1)' : 'var(--border-hairline)'}`,
-        background: 'var(--surface-1)',
-      }}
+      name={v.name}
+      badge={
+        isDefault ? (
+          <StatusChip role="good" label="default" title="Trips with no vehicle of their own count toward this one" />
+        ) : null
+      }
+      summary={unlocked ? null : (v.details ?? 'No year, make or model')}
+      unlocked={unlocked}
+      onToggle={onToggle}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex min-w-0 flex-col gap-1">
-          <span className="flex flex-wrap items-center gap-2 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-            {v.name}
-            {isDefault ? <StatusChip role="good" label="default" title="Trips with no vehicle of their own count toward this one" /> : null}
-          </span>
-          {unlocked ? null : <span style={{ color: 'var(--text-secondary)' }}>{v.details ?? 'No year, make or model'}</span>}
-        </div>
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-pressed={unlocked}
-          aria-label={unlocked ? `Done editing ${v.name}` : `Edit ${v.name}`}
-          className="shrink-0 rounded-md px-2.5 py-1 text-xs"
-          style={{
-            background: unlocked ? 'var(--series-1)' : 'var(--surface-1)',
-            color: unlocked ? '#ffffff' : 'var(--text-primary)',
-            border: `1px solid ${unlocked ? 'transparent' : 'var(--border-hairline)'}`,
-          }}
-        >
-          {unlocked ? 'Done' : 'Edit'}
-        </button>
-      </div>
-
       {unlocked ? (
         <div className="flex flex-col gap-2" style={{ color: 'var(--text-muted)' }}>
           <label className="flex flex-col gap-0.5">
@@ -120,18 +101,8 @@ function VehicleCard({
       ) : null}
 
       <dl className="m-0 grid grid-cols-2 gap-x-3">
-        <div className="flex flex-col gap-0.5">
-          <dt style={{ color: 'var(--text-muted)' }}>Trips</dt>
-          <dd className="num-tabular m-0" style={{ color: 'var(--text-primary)' }}>
-            {trips}
-          </dd>
-        </div>
-        <div className="flex flex-col gap-0.5">
-          <dt style={{ color: 'var(--text-muted)' }}>Miles</dt>
-          <dd className="num-tabular m-0" style={{ color: 'var(--text-primary)' }}>
-            {(Math.round(miles * 10) / 10).toLocaleString()}
-          </dd>
-        </div>
+        <CardField label="Trips">{trips}</CardField>
+        <CardField label="Miles">{(Math.round(miles * 10) / 10).toLocaleString()}</CardField>
       </dl>
 
       {unlocked ? (
@@ -151,7 +122,7 @@ function VehicleCard({
           </Button>
         </div>
       ) : null}
-    </li>
+    </LockableCard>
   )
 }
 
@@ -162,12 +133,7 @@ export function VehiclesEditor() {
   const [error, setError] = useState<string | null>(null)
   /** The cards open for editing. Every card starts locked. */
   const [unlocked, setUnlocked] = useState<ReadonlySet<string>>(new Set())
-  const toggleLock = (id: string) =>
-    setUnlocked((u) => {
-      const next = new Set(u)
-      if (!next.delete(id)) next.add(id)
-      return next
-    })
+  const toggleLock = (id: string) => setUnlocked((u) => toggledIn(u, id))
 
   const trips = derived?.allTrips
   const usage = useMemo(() => {

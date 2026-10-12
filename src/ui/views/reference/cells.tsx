@@ -51,11 +51,14 @@ export function MoneyCell({
   currency,
   onCommit,
   ariaLabel,
+  fill,
 }: {
   value: number | undefined
   currency: string
   onCommit: (v: number | undefined) => void
   ariaLabel: string
+  /** Take the cell's width, left-aligned, for a stacked layout rather than a column of figures. */
+  fill?: boolean
 }) {
   const [editing, setEditing] = useState(false)
   const [text, setText] = useState('')
@@ -77,7 +80,7 @@ export function MoneyCell({
         const n = parseMoney(text)
         if (n != null) onCommit(Math.round(n * 100) / 100)
       }}
-      className="num-tabular w-24 rounded-md px-1.5 py-0.5 text-right text-xs"
+      className={`num-tabular rounded-md px-1.5 py-0.5 text-xs ${fill ? 'w-full' : 'w-24 text-right'}`}
       style={selectStyle}
     />
   )

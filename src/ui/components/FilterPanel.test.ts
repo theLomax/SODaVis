@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { NO_SELECTION, matchesSelection, selectionSize } from './FilterWindow'
+import { NO_SELECTION, matchesSelection, selectionSize } from './FilterPanel'
 
 const park = { city: ['Springfield'], sport: ['C-BB', 'C-FP'], league: [] as string[] }
 const valuesOf = (id: string) => park[id as keyof typeof park] ?? []

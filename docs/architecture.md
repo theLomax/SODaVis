@@ -114,15 +114,18 @@ Each lists every place the change touches; skipping one has bitten before.
 fullest example), listed in `BUILT_IN_PROFILES`. Set `fileTypes`, `exportSteps`, and
 `defaultStatus` if the format has no status column. Detection ignores official columns.
 
-**A list of editable records** (parks, vehicles): a grid of cards rather than a table, so it
-fits a phone; `reference/ParkCard.tsx` is the example. Values are text until the card's
-Edit button unlocks it, destructive actions show only while unlocked, and fields commit on
-blur through a `patch*` function.
+**A list of editable records** (parks, vehicles, owned gear): a grid of cards rather than a
+table, so it fits a phone. Build each card on `components/LockableCard.tsx` (the shell, the
+Edit/Done lock, `CardField`, `toggledIn` for the set of unlocked ids);
+`reference/ParkCard.tsx` is the example. Values are text until the card is unlocked,
+destructive actions show only while unlocked, and fields commit on blur through a `patch*`
+function.
 
-**Filtering a list**: `components/FilterWindow.tsx`. Build a `FilterCategory[]` (id, label,
-options), keep a `FilterSelection` in component state, and filter with `matchesSelection`,
-passing a function that returns an item's values for a category id. Parks is the example.
-(The dashboard's period and sport filter is separate: `FilterBar`, held in the store.)
+**Filtering a list**: `components/FilterPanel.tsx`. Build a `FilterCategory[]` (id, label,
+options), keep a `FilterSelection` in component state, wrap the list in `<FilterPanel>`,
+and filter with `matchesSelection`, passing a function that returns an item's values for a
+category id. Parks is the example. (The dashboard's period and sport filter is separate:
+`FilterBar`, held in the store.)
 
 **A new Profile section**: a component in `ui/views/profile/` (Vehicles is the example),
 rendered from `views/Profile.tsx`. For what is the user's own rather than the games'.

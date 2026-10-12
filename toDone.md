@@ -6,25 +6,29 @@ lose and expensive to rediscover.
 
 ## Features
 
-- **Parks and vehicles as lockable cards.** Both were wide tables of always-live inputs:
+- **Parks, vehicles and owned gear as lockable cards.** All three were wide tables of always-live inputs:
   on a phone they ran off the screen, which made Chrome zoom the whole page out, and a
   stray tap could change a mileage figure that every trip to the park depends on. Each park
   and each vehicle is now a card, in a grid that is one column on a phone and up to three
   on a wide screen. A card shows its values as text until *Edit* unlocks it; *Done* locks
-  it again. Delete, and a vehicle's choice of default, appear only while a card is
-  unlocked. A warning's fix link still lands on the park's miles field: the card it names
+  it again. Delete, a vehicle's choice of default, and retiring a piece of gear appear only
+  while a card is unlocked. The three share one shell, `components/LockableCard.tsx`. The
+  gear catalog and gear sets are still tables. A warning's fix link still lands on the park's miles field: the card it names
   opens unlocked, marked and focused. Park fields now save as patches (`patchPark`), so
   two fields committed back to back cannot undo each other.
 
-- **A filter window any list can use, first on parks.** `FilterWindow` takes its categories
-  as props and the caller owns the selection, so it is not tied to parks: a Filter button
-  opens a window with each category's values as toggles. Picks within a category are
-  alternatives and categories combine (`matchesSelection`). Once the window is closed the
-  picks stay beside the button, each removable, with "Showing 3 of 12" and *Show all*, so
-  a narrowed list never looks complete. Parks pass city, and what has been played at a
-  park: league, sport, and assigning organization. Those three are read from the park's
-  games, so a park with no games matches none of them; only values some park has are
-  offered. Arriving from a warning clears the filter, so the park it names is never hidden.
+- **A filter panel any list can use, first on parks.** `FilterPanel` takes its categories
+  as props, the caller owns the selection and passes the list as children, so it is not
+  tied to parks. A Filter button shows and hides a panel of each category's values as
+  toggles. It is a panel rather than a modal so the list stays in view and usable while it
+  is narrowed: a column to the left of the list on a wide screen, above it on a phone.
+  Picks within a category are alternatives and categories combine (`matchesSelection`).
+  The picks stay beside the button whether the panel is open or not, each removable, with
+  "Showing 3 of 12" and *Show all*, so a narrowed list never looks complete. Parks pass
+  city, and what has been played at a park: league, sport, and assigning organization.
+  Those three are read from the park's games, so a park with no games matches none of
+  them; only values some park has are offered. Arriving from a warning clears the filter,
+  so the park it names is never hidden.
 
 - **Navigation in three groups.** Eleven tabs in the order they were built became three
   groups, Insights, Data and Reference, plus the Profile behind the avatar. The second row

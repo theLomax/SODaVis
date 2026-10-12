@@ -1,29 +1,17 @@
 /**
  * One park as a card: its figures read-only until the card is unlocked.
  *
- * Locked is the resting state. Mileage and drive times feed every trip to the
- * park, so a stray tap in a field must not be able to change one; Edit unlocks
- * this card alone, and Done locks it again. Each field still commits on blur, as
- * the table it replaced did.
+ * Mileage and drive times feed every trip to the park, so they sit behind the
+ * card's lock. Each field still commits on blur, as the table it replaced did.
  */
 
-import type { ReactNode, Ref } from 'react'
+import type { Ref } from 'react'
 import { Button } from '../../components/Controls'
+import { CardField, LockableCard } from '../../components/LockableCard'
 import { StatusChip } from '../../components/Tiles'
 import { formatMoney } from '../../../derive/money'
 import type { Park } from '../../../model/reference'
 import { NumberCell, TextCell } from './cells'
-
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="flex min-w-0 flex-col gap-0.5">
-      <dt style={{ color: 'var(--text-muted)' }}>{label}</dt>
-      <dd className="num-tabular m-0" style={{ color: 'var(--text-primary)' }}>
-        {children}
-      </dd>
-    </div>
-  )
-}
 
 export function ParkCard({
   park,
@@ -52,44 +40,25 @@ export function ParkCard({
 }) {
   const plain = (n: number | undefined) => (n == null ? '—' : n.toLocaleString())
   return (
-    <li
-      ref={cardRef}
+    <LockableCard
       data-park={park.id}
-      className="flex flex-col gap-3 rounded-lg p-3 text-xs"
-      style={{
-        border: `1px solid ${unlocked ? 'var(--series-1)' : 'var(--border-hairline)'}`,
-        background: highlighted ? 'var(--gridline)' : 'var(--surface-1)',
-      }}
+      name={park.name}
+      badge={
+        needsMiles ? (
+          <StatusChip role="warning" label="no mileage" title={`${games} games here have no distance on record`} />
+        ) : null
+      }
+      summary={
+        <>
+          {unlocked ? null : `${park.city ?? 'No city'} · `}
+          {games} game{games === 1 ? '' : 's'}
+        </>
+      }
+      unlocked={unlocked}
+      onToggle={onToggle}
+      highlighted={highlighted}
+      {...(cardRef ? { cardRef } : {})}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex min-w-0 flex-col gap-1">
-          <span className="flex flex-wrap items-center gap-2 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
-            {park.name}
-            {needsMiles ? (
-              <StatusChip role="warning" label="no mileage" title={`${games} games here have no distance on record`} />
-            ) : null}
-          </span>
-          <span style={{ color: 'var(--text-secondary)' }}>
-            {unlocked ? null : `${park.city ?? 'No city'} · `}
-            {games} game{games === 1 ? '' : 's'}
-          </span>
-        </div>
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-pressed={unlocked}
-          aria-label={unlocked ? `Done editing ${park.name}` : `Edit ${park.name}`}
-          className="shrink-0 rounded-md px-2.5 py-1 text-xs"
-          style={{
-            background: unlocked ? 'var(--series-1)' : 'var(--surface-1)',
-            color: unlocked ? '#ffffff' : 'var(--text-primary)',
-            border: `1px solid ${unlocked ? 'transparent' : 'var(--border-hairline)'}`,
-          }}
-        >
-          {unlocked ? 'Done' : 'Edit'}
-        </button>
-      </div>
-
       {unlocked ? (
         <label className="flex flex-col gap-0.5" style={{ color: 'var(--text-muted)' }}>
           City
@@ -98,7 +67,7 @@ export function ParkCard({
       ) : null}
 
       <dl className="m-0 grid grid-cols-2 gap-x-3 gap-y-2">
-        <Field label="One-way miles">
+        <CardField label="One-way miles">
           {unlocked ? (
             <NumberCell
               value={park.oneWayMiles}
@@ -110,8 +79,8 @@ export function ParkCard({
           ) : (
             plain(park.oneWayMiles)
           )}
-        </Field>
-        <Field label="Tolls, round trip">
+        </CardField>
+        <CardField label="Tolls, round trip">
           {unlocked ? (
             <NumberCell
               value={park.tollEstimate}
@@ -123,8 +92,8 @@ export function ParkCard({
           ) : (
             formatMoney(park.tollEstimate, currency)
           )}
-        </Field>
-        <Field label="Minutes (ideal)">
+        </CardField>
+        <CardField label="Minutes (ideal)">
           {unlocked ? (
             <NumberCell
               value={park.oneWayDriveMinutes}
@@ -135,11 +104,11 @@ export function ParkCard({
           ) : (
             plain(park.oneWayDriveMinutes)
           )}
-        </Field>
+        </CardField>
         {/* The return leg always uses the ideal figure, so this one only ever
             applies outbound. Left blank where traffic makes no real difference
             to this park. */}
-        <Field label="Minutes (rush)">
+        <CardField label="Minutes (rush)">
           {unlocked ? (
             <NumberCell
               value={park.oneWayDriveMinutesRush}
@@ -150,7 +119,7 @@ export function ParkCard({
           ) : (
             plain(park.oneWayDriveMinutesRush)
           )}
-        </Field>
+        </CardField>
       </dl>
 
       {park.aliases.length > 0 || park.venuePatterns.length > 0 || park.notes ? (
@@ -178,6 +147,6 @@ export function ParkCard({
           </Button>
         </div>
       ) : null}
-    </li>
+    </LockableCard>
   )
 }

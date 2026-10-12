@@ -5,7 +5,7 @@
  * Each park is a card (`ParkCard`), in a grid that is one column on a phone. A
  * card's figures are locked until its Edit button unlocks it.
  *
- * The list can be narrowed through the shared `FilterWindow`, by city and by what
+ * The list can be narrowed through the shared `FilterPanel`, by city and by what
  * has been played at a park: its leagues, sports, and the organizations that
  * assigned games there. Those three come from the games, so a park with no games
  * matches none of them.
@@ -15,7 +15,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '../../store'
 import { Button, selectStyle } from '../../components/Controls'
 import { Card, StatusChip } from '../../components/Tiles'
-import { FilterWindow, NO_SELECTION, matchesSelection, type FilterCategory, type FilterSelection } from '../../components/FilterWindow'
+import { FilterPanel, NO_SELECTION, matchesSelection, type FilterCategory, type FilterSelection } from '../../components/FilterPanel'
+import { toggledIn } from '../../components/LockableCard'
 import { deletePark, mergeParks, patchPark, saveParks } from '../../../db/repo'
 import type { Park } from '../../../model/reference'
 import { stripFieldDesignator } from '../../../derive/resolve'
@@ -55,12 +56,7 @@ export function ParksEditor() {
 
   /** The cards open for editing. Every card starts locked. */
   const [unlocked, setUnlocked] = useState<ReadonlySet<string>>(new Set())
-  const toggleLock = (id: string) =>
-    setUnlocked((u) => {
-      const next = new Set(u)
-      if (!next.delete(id)) next.add(id)
-      return next
-    })
+  const toggleLock = (id: string) => setUnlocked((u) => toggledIn(u, id))
 
   /**
    * The park id a warning sent us to. It is consumed once, so a rerender does not
@@ -230,43 +226,40 @@ export function ParksEditor() {
             : 'One-way miles; round-trip is computed. Two drive figures, because the legs differ: the outbound uses the rush time for a weekday evening arrival, the return always uses the ideal. Tolls are the round-trip estimate. Choose Edit on a park to change its figures.'
         }
       >
-        {parks.length > 1 ? (
-          <div className="mb-3">
-            <FilterWindow
-              noun="parks"
-              categories={categories}
-              selection={show}
-              onChange={setShow}
-              shown={shownParks.length}
-              total={parks.length}
-            />
-          </div>
-        ) : null}
-        {shownParks.length === 0 && parks.length > 0 ? (
-          <p className="m-0 text-xs" style={{ color: 'var(--text-muted)' }}>
-            No park matches all of those. League, sport and organization come from the games played at a park.
-          </p>
-        ) : null}
-        <ul className="m-0 grid list-none gap-3 p-0 sm:grid-cols-2 xl:grid-cols-3">
-          {shownParks.map((park) => (
-            <ParkCard
-              key={park.id}
-              park={park}
-              games={usage.get(park.id) ?? 0}
-              needsMiles={needsMiles(park)}
-              unlocked={unlocked.has(park.id)}
-              highlighted={park.id === arrivedAt}
-              currency={derived.snapshot.settings.currency}
-              {...(park.id === arrivedAt ? { cardRef: arrivedCard } : {})}
-              onToggle={() => toggleLock(park.id)}
-              onPatch={(patch) => void update(park, patch)}
-              onDelete={async () => {
-                await deletePark(park.id)
-                await reload()
-              }}
-            />
-          ))}
-        </ul>
+        <FilterPanel
+          noun="parks"
+          categories={categories}
+          selection={show}
+          onChange={setShow}
+          shown={shownParks.length}
+          total={parks.length}
+        >
+          {shownParks.length === 0 && parks.length > 0 ? (
+            <p className="m-0 text-xs" style={{ color: 'var(--text-muted)' }}>
+              No park matches all of those. League, sport and organization come from the games played at a park.
+            </p>
+          ) : null}
+          <ul className="m-0 grid list-none gap-3 p-0 sm:grid-cols-2 xl:grid-cols-3">
+            {shownParks.map((park) => (
+              <ParkCard
+                key={park.id}
+                park={park}
+                games={usage.get(park.id) ?? 0}
+                needsMiles={needsMiles(park)}
+                unlocked={unlocked.has(park.id)}
+                highlighted={park.id === arrivedAt}
+                currency={derived.snapshot.settings.currency}
+                {...(park.id === arrivedAt ? { cardRef: arrivedCard } : {})}
+                onToggle={() => toggleLock(park.id)}
+                onPatch={(patch) => void update(park, patch)}
+                onDelete={async () => {
+                  await deletePark(park.id)
+                  await reload()
+                }}
+              />
+            ))}
+          </ul>
+        </FilterPanel>
       </Card>
 
       <Card title="Merge two parks" subtitle="Folds one park's aliases and patterns into another, then removes it">
