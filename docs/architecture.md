@@ -119,6 +119,11 @@ fits a phone; `reference/ParkCard.tsx` is the example. Values are text until the
 Edit button unlocks it, destructive actions show only while unlocked, and fields commit on
 blur through a `patch*` function.
 
+**Filtering a list**: `components/FilterWindow.tsx`. Build a `FilterCategory[]` (id, label,
+options), keep a `FilterSelection` in component state, and filter with `matchesSelection`,
+passing a function that returns an item's values for a category id. Parks is the example.
+(The dashboard's period and sport filter is separate: `FilterBar`, held in the store.)
+
 **A new Profile section**: a component in `ui/views/profile/` (Vehicles is the example),
 rendered from `views/Profile.tsx`. For what is the user's own rather than the games'.
 

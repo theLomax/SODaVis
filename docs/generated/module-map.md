@@ -321,7 +321,7 @@ The filter row. One row above everything it scopes, never per-chart filters, so 
 - **Exports:** `withBound()`, `FilterBar()`, `selectStyle`, `TextInput()`, `Button()`, `ChartOption()`
 - **Imports:** `derive/metrics.ts`, `derive/time.ts`, `ui/charts/palette.ts`, `ui/store.tsx`
 - **Packages:** react
-- **Imported by:** `ui/App.tsx`, `ui/views/DataQuality.tsx`, `ui/views/Gear.tsx`, `ui/views/GeneralExpenses.tsx`, `ui/views/Import.tsx`, `ui/views/Overview.tsx`, `ui/views/Profile.tsx`, `ui/views/Tax.tsx`, `ui/views/Trips.tsx`, `ui/views/profile/Vehicles.tsx`, `ui/views/reference/Backup.tsx`, `ui/views/reference/Calls.tsx`, `ui/views/reference/Durations.tsx`, `ui/views/reference/Identity.tsx`, `ui/views/reference/Organizations.tsx`, `ui/views/reference/ParkCard.tsx`, `ui/views/reference/Parks.tsx`, `ui/views/reference/Settings.tsx`, `ui/views/reference/Sports.tsx`, `ui/views/reference/cells.tsx`
+- **Imported by:** `ui/App.tsx`, `ui/components/FilterWindow.tsx`, `ui/views/DataQuality.tsx`, `ui/views/Gear.tsx`, `ui/views/GeneralExpenses.tsx`, `ui/views/Import.tsx`, `ui/views/Overview.tsx`, `ui/views/Profile.tsx`, `ui/views/Tax.tsx`, `ui/views/Trips.tsx`, `ui/views/profile/Vehicles.tsx`, `ui/views/reference/Backup.tsx`, `ui/views/reference/Calls.tsx`, `ui/views/reference/Durations.tsx`, `ui/views/reference/Identity.tsx`, `ui/views/reference/Organizations.tsx`, `ui/views/reference/ParkCard.tsx`, `ui/views/reference/Parks.tsx`, `ui/views/reference/Settings.tsx`, `ui/views/reference/Sports.tsx`, `ui/views/reference/cells.tsx`
 
 ### `ui/components/Dialog.tsx` · S
 
@@ -329,7 +329,16 @@ Modal dialog. Rendered through a portal to `document.body` rather than in place,
 
 - **Exports:** `Dialog()`
 - **Packages:** react, react-dom
-- **Imported by:** `ui/components/FlagDialog.tsx`, `ui/views/Import.tsx`, `ui/views/Overview.tsx`, `ui/views/reference/Backup.tsx`
+- **Imported by:** `ui/components/FilterWindow.tsx`, `ui/components/FlagDialog.tsx`, `ui/views/Import.tsx`, `ui/views/Overview.tsx`, `ui/views/reference/Backup.tsx`
+
+### `ui/components/FilterWindow.tsx` · S
+
+A filter for any list: a button that opens a window of categories, each with the values to pick from.
+
+- **Exports:** `FilterCategory`, `FilterSelection`, `NO_SELECTION`, `selectionSize()`, `matchesSelection()`, `FilterWindow()`
+- **Imports:** `ui/components/Controls.tsx`, `ui/components/Dialog.tsx`
+- **Packages:** react
+- **Imported by:** `ui/views/reference/Parks.tsx`
 
 ### `ui/components/FlagDialog.tsx` · M
 
@@ -537,7 +546,7 @@ One park as a card: its figures read-only until the card is unlocked.
 Parks & mileage. Unmatched venues, one-way figures, and merging two parks that should have been one.
 
 - **Exports:** `ParksEditor()`
-- **Imports:** `db/repo.ts`, `derive/resolve.ts`, `model/reference.ts`, `ui/components/Controls.tsx`, `ui/components/Tiles.tsx`, `ui/store.tsx`, `ui/views/reference/ParkCard.tsx`
+- **Imports:** `db/repo.ts`, `derive/resolve.ts`, `model/reference.ts`, `ui/components/Controls.tsx`, `ui/components/FilterWindow.tsx`, `ui/components/Tiles.tsx`, `ui/store.tsx`, `ui/views/reference/ParkCard.tsx`
 - **Packages:** react
 - **Imported by:** `ui/views/Reference.tsx`
 

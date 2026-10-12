@@ -16,10 +16,15 @@ lose and expensive to rediscover.
   opens unlocked, marked and focused. Park fields now save as patches (`patchPark`), so
   two fields committed back to back cannot undo each other.
 
-- **Filter the parks shown.** By city, and by what has been played at a park: league,
-  sport, and assigning organization. Those three are read from the park's games, so a park
-  with no games matches none of them; the choices offered are only those some park has.
-  Arriving from a warning clears the filter, so the park it names is never hidden.
+- **A filter window any list can use, first on parks.** `FilterWindow` takes its categories
+  as props and the caller owns the selection, so it is not tied to parks: a Filter button
+  opens a window with each category's values as toggles. Picks within a category are
+  alternatives and categories combine (`matchesSelection`). Once the window is closed the
+  picks stay beside the button, each removable, with "Showing 3 of 12" and *Show all*, so
+  a narrowed list never looks complete. Parks pass city, and what has been played at a
+  park: league, sport, and assigning organization. Those three are read from the park's
+  games, so a park with no games matches none of them; only values some park has are
+  offered. Arriving from a warning clears the filter, so the park it names is never hidden.
 
 - **Navigation in three groups.** Eleven tabs in the order they were built became three
   groups, Insights, Data and Reference, plus the Profile behind the avatar. The second row

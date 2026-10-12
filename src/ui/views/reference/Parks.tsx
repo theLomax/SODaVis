@@ -5,63 +5,31 @@
  * Each park is a card (`ParkCard`), in a grid that is one column on a phone. A
  * card's figures are locked until its Edit button unlocks it.
  *
- * The list can be narrowed by city, and by what has been played at a park: its
- * leagues, sports, and the organizations that assigned games there. Those three
- * come from the games, so a park with no games matches none of them.
+ * The list can be narrowed through the shared `FilterWindow`, by city and by what
+ * has been played at a park: its leagues, sports, and the organizations that
+ * assigned games there. Those three come from the games, so a park with no games
+ * matches none of them.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '../../store'
 import { Button, selectStyle } from '../../components/Controls'
 import { Card, StatusChip } from '../../components/Tiles'
+import { FilterWindow, NO_SELECTION, matchesSelection, type FilterCategory, type FilterSelection } from '../../components/FilterWindow'
 import { deletePark, mergeParks, patchPark, saveParks } from '../../../db/repo'
 import type { Park } from '../../../model/reference'
 import { stripFieldDesignator } from '../../../derive/resolve'
 import { ParkCard } from './ParkCard'
 
-/** "All", or one value; `NO_CITY` picks the parks with no city entered. */
-type ParkFilter = { city: string; league: string; sport: string; organization: string }
-const NO_FILTER: ParkFilter = { city: '', league: '', sport: '', organization: '' }
+/** The city filter's value for a park with no city entered. */
 const NO_CITY = '\u0000none'
-
-function FilterSelect({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string
-  value: string
-  options: { value: string; label: string }[]
-  onChange: (value: string) => void
-}) {
-  return (
-    <label className="flex min-w-0 flex-col gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
-      {label}
-      <select
-        value={value}
-        aria-label={`Show parks by ${label.toLowerCase()}`}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-md px-2 py-1 text-xs"
-        style={selectStyle}
-      >
-        <option value="">All</option>
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-    </label>
-  )
-}
 
 export function ParksEditor() {
   const { derived, reload, pendingFocus, clearPendingFocus } = useStore()
   const [mergeFrom, setMergeFrom] = useState('')
   const [mergeInto, setMergeInto] = useState('')
   const [busy, setBusy] = useState(false)
-  const [show, setShow] = useState<ParkFilter>(NO_FILTER)
+  const [show, setShow] = useState<FilterSelection>(NO_SELECTION)
 
   const usage = useMemo(() => {
     const counts = new Map<string, number>()
@@ -108,7 +76,7 @@ export function ParksEditor() {
     if (!focusPark) return
     setUnlocked((u) => new Set(u).add(focusPark))
     // The park the reader was sent to must not be filtered out of view.
-    setShow(NO_FILTER)
+    setShow(NO_SELECTION)
     setArrivedAt(focusPark)
     clearPendingFocus()
   }, [focusPark, clearPendingFocus])
@@ -145,34 +113,45 @@ export function ParksEditor() {
   )
   const incompleteParks = parks.filter(needsMiles)
 
-  // Only values some park has, so no choice leads to an empty list on its own.
+  // Only values some park has, so no single pick leads to an empty list.
   const anyAt = (pick: (at: NonNullable<ReturnType<typeof played.get>>) => Set<string>) =>
     new Set(parks.flatMap((p) => [...(played.get(p.id) ? pick(played.get(p.id)!) : [])]))
   const leaguesPlayed = anyAt((at) => at.leagues)
   const sportsPlayed = anyAt((at) => at.sports)
   const organizationsPlayed = anyAt((at) => at.organizations)
-  const options = {
-    city: [
-      ...[...new Set(parks.flatMap((p) => (p.city ? [p.city] : [])))].sort().map((c) => ({ value: c, label: c })),
-      ...(parks.some((p) => !p.city) ? [{ value: NO_CITY, label: 'No city entered' }] : []),
-    ],
-    league: [...leaguesPlayed].sort().map((l) => ({ value: l, label: l })),
-    sport: derived.trackedSports.filter((sp) => sportsPlayed.has(sp.code)).map((sp) => ({ value: sp.code, label: sp.label })),
-    organization: derived.snapshot.organizations
-      .filter((o) => organizationsPlayed.has(o.id))
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .map((o) => ({ value: o.id, label: o.name })),
-  }
-  const filtering = Object.values(show).some(Boolean)
-  const shownParks = parks.filter((p) => {
-    const at = played.get(p.id)
-    return (
-      (!show.city || (show.city === NO_CITY ? !p.city : p.city === show.city)) &&
-      (!show.league || at?.leagues.has(show.league)) &&
-      (!show.sport || at?.sports.has(show.sport)) &&
-      (!show.organization || at?.organizations.has(show.organization))
-    )
-  })
+  const categories: FilterCategory[] = [
+    {
+      id: 'city',
+      label: 'City',
+      options: [
+        ...[...new Set(parks.flatMap((p) => (p.city ? [p.city] : [])))].sort().map((c) => ({ value: c, label: c })),
+        ...(parks.some((p) => !p.city) ? [{ value: NO_CITY, label: 'No city entered' }] : []),
+      ],
+    },
+    { id: 'league', label: 'League', options: [...leaguesPlayed].sort().map((l) => ({ value: l, label: l })) },
+    {
+      id: 'sport',
+      label: 'Sport',
+      options: derived.trackedSports.filter((sp) => sportsPlayed.has(sp.code)).map((sp) => ({ value: sp.code, label: sp.label })),
+    },
+    {
+      id: 'organization',
+      label: 'Assigning organization',
+      options: derived.snapshot.organizations
+        .filter((o) => organizationsPlayed.has(o.id))
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((o) => ({ value: o.id, label: o.name })),
+    },
+  ]
+  const shownParks = parks.filter((p) =>
+    matchesSelection(show, (category) => {
+      const at = played.get(p.id)
+      if (category === 'city') return [p.city ?? NO_CITY]
+      if (category === 'league') return at?.leagues ?? []
+      if (category === 'sport') return at?.sports ?? []
+      return at?.organizations ?? []
+    }),
+  )
 
   // A patch, not the park as rendered: two fields of a card can be committed
   // before the view reloads, and a whole-row save would undo the first.
@@ -252,27 +231,18 @@ export function ParksEditor() {
         }
       >
         {parks.length > 1 ? (
-          <div className="mb-3 flex flex-col gap-2">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <FilterSelect label="City" value={show.city} options={options.city} onChange={(city) => setShow({ ...show, city })} />
-              <FilterSelect label="League" value={show.league} options={options.league} onChange={(league) => setShow({ ...show, league })} />
-              <FilterSelect label="Sport" value={show.sport} options={options.sport} onChange={(sport) => setShow({ ...show, sport })} />
-              <FilterSelect
-                label="Assigning organization"
-                value={show.organization}
-                options={options.organization}
-                onChange={(organization) => setShow({ ...show, organization })}
-              />
-            </div>
-            {filtering ? (
-              <p role="status" className="m-0 flex flex-wrap items-center gap-2 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                Showing {shownParks.length} of {parks.length} parks.
-                <Button onClick={() => setShow(NO_FILTER)}>Show all</Button>
-              </p>
-            ) : null}
+          <div className="mb-3">
+            <FilterWindow
+              noun="parks"
+              categories={categories}
+              selection={show}
+              onChange={setShow}
+              shown={shownParks.length}
+              total={parks.length}
+            />
           </div>
         ) : null}
-        {filtering && shownParks.length === 0 ? (
+        {shownParks.length === 0 && parks.length > 0 ? (
           <p className="m-0 text-xs" style={{ color: 'var(--text-muted)' }}>
             No park matches all of those. League, sport and organization come from the games played at a park.
           </p>
