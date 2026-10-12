@@ -39,6 +39,8 @@ generally needs a new mechanism or touches the data model.
 None open.
 
 ## Features
+- **Navigation in three groups** (Insights, Data, Reference, plus Profile). Planned and
+  decided; see Phase 6.8 in `projectPlan.md` for the grouping and build order.
 - **User profile and a per-user interface.** The header avatar opens a Profile page that
   holds the user's vehicles so far. Next: gather the user's own preferences there (display
   name, sports officiated, currency, appearance, time model), which still live under

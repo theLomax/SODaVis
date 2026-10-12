@@ -37,6 +37,7 @@ build` succeeds. `node test/private/e2e.mjs` **fails** on `main` (see Phase 0).
 | 6.5 | Import formats: Excel files, a format picker, RefTown | M | Medium | Daytime | — |
 | 6.6 | RefTown pay: fee rules or a paysheet import | M | Medium | Design by day | 6.5, a real export |
 | 6.7 | Localization: EN-US, EN-UK, EN-CA, Spanish, FR-CA | L | High | Design by day, build overnight | — |
+| 6.8 | Navigation: three groups (Insights, Data, Reference) plus Profile | M | Medium | Daytime | the Profile page |
 | 7 | API support, global analytics, demographics | XL | — | Decision first | a backend |
 
 Sizes are relative: XS is a one-file edit, S is a single run, M is a single run touching
@@ -253,6 +254,56 @@ Offer the app in **EN-US** (the base language), **EN-UK**, **EN-CA**, **Spanish*
 - **Units:** miles are assumed throughout (`oneWayMiles`, `$/mile`). Canadian users will
   expect kilometers, so distance needs a unit setting, not just
   a label.
+
+## Phase 6.8: Navigation in three groups
+
+The header grew to eleven tabs in the order they were built, which reads as disjointed.
+Decided with the owner (2026-10-12): three top-level groups, each with a row of sub-tabs,
+plus the Profile behind the avatar.
+
+| Group | Sub-pages | Today |
+|---|---|---|
+| **Insights** | Overview, Venues, Partners, Leagues, Cancellations | five top-level tabs |
+| **Data** | *Records:* Trips and games, Expenses, Gear. *Reports:* Tax. *Manage:* Import, Sync, Data quality, Backup | Trips, Tax, Gear, Import and Data quality tabs; expenses inside Tax; Backup under Reference |
+| **Reference** | Parks and mileage, Organizations, Game durations, Sports and positions, Call types, Time and mileage rules | the Reference tabs, and half of Settings |
+| **Profile** (avatar) | Name and identity, home, vehicles, tracked sports, and every app preference (currency, appearance, time model); links to what is yours under Data, such as the gear you own | Profile, Identity and Settings tabs, the Track column in Sports |
+
+Decisions and what they rule out:
+
+- **Data holds records and reports as well as import.** It is the largest group, so its
+  sub-tabs are ordered and divided as Records, Reports, Manage rather than left flat.
+- **Reference, not "Setup".** The group holds lookups and the metadata tracking relies on
+  (call types, durations, gear conditions), and is added to long after setup. Parks and
+  organizations live here too.
+- **"Directory" is reserved** for a later list of parks, users, organizations and other
+  connections; nothing is called that now.
+- **App preferences are reached through the Profile.** The Settings tab splits: currency,
+  appearance, preferred time model and the home label go to the Profile; fallback speed,
+  arrival floor, the rush-hour window and mileage rates stay in Reference as calculation
+  rules.
+- **Gear stays one page under Data**, with a link from the Profile to the gear you own.
+- **Sync** means shared generic data coming down (catalog, sports and call-type lists,
+  rates) and the user's anonymized data going up. Both wait on the Phase 7 decision.
+
+Defaults assumed until the owner says otherwise:
+
+- *Shape:* a second row of sub-tabs under the selected group, as Reference works today,
+  rather than dropdown menus.
+- *Sync* is left out of the navigation until there is something for it to do.
+
+The filter bar applies to Insights and to Trips, as it does now.
+
+**Build order.** Each step moves pages rather than rewriting them, and ships on its own.
+
+1. **The shell.** Group the existing views under the three headings with sub-tabs. No page
+   changes; `ViewId` values stay, so every `navigate()` and flag fix-link keeps working.
+   Backup and Data quality become Data sub-pages.
+2. **Preferences to the Profile.** Split the Settings tab as above.
+3. **Identity and tracked sports to the Profile.** The Sports table keeps prep, wrap and
+   default position; the Profile gets the list of sports to tick.
+4. **Expenses as their own Data page**, out of the Tax view, which still counts them.
+5. **Profile links** to the user's own data under Data.
+6. **Sync**, once Phase 7 is decided.
 
 ## Phase 7: Needs a decision before any code
 
