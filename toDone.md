@@ -6,6 +6,21 @@ lose and expensive to rediscover.
 
 ## Features
 
+- **Parks and vehicles as lockable cards.** Both were wide tables of always-live inputs:
+  on a phone they ran off the screen, which made Chrome zoom the whole page out, and a
+  stray tap could change a mileage figure that every trip to the park depends on. Each park
+  and each vehicle is now a card, in a grid that is one column on a phone and up to three
+  on a wide screen. A card shows its values as text until *Edit* unlocks it; *Done* locks
+  it again. Delete, and a vehicle's choice of default, appear only while a card is
+  unlocked. A warning's fix link still lands on the park's miles field: the card it names
+  opens unlocked, marked and focused. Park fields now save as patches (`patchPark`), so
+  two fields committed back to back cannot undo each other.
+
+- **Filter the parks shown.** By city, and by what has been played at a park: league,
+  sport, and assigning organization. Those three are read from the park's games, so a park
+  with no games matches none of them; the choices offered are only those some park has.
+  Arriving from a warning clears the filter, so the park it names is never hidden.
+
 - **Navigation in three groups.** Eleven tabs in the order they were built became three
   groups, Insights, Data and Reference, plus the Profile behind the avatar. The second row
   shows the selected group's pages: Insights holds the five comparison views; Data holds

@@ -3,12 +3,15 @@
  * vehicle, so a trip records which one it was: its own, or else the default.
  *
  * Shown on the Profile page: what you drive is about you, not about the games.
+ *
+ * Each vehicle is a card, locked until its Edit button unlocks it, as the parks
+ * are. Delete and the choice of default appear only while a card is unlocked.
  */
 
 import { useMemo, useState } from 'react'
 import { useStore } from '../../store'
 import { Button, TextInput } from '../../components/Controls'
-import { Card } from '../../components/Tiles'
+import { Card, StatusChip } from '../../components/Tiles'
 import { VehicleInUseError, deleteVehicle, patchVehicle, saveVehicle, setDefaultVehicle } from '../../../db/repo'
 import type { Vehicle } from '../../../model/reference'
 import { TextCell } from '../reference/cells'
@@ -20,19 +23,135 @@ function newVehicleId(name: string, taken: Set<string>): string {
   return id
 }
 
-/**
- * A field's name in the stacked phone layout, where the column headers are
- * hidden. Decorative: every control already carries its own label.
- */
-function StackedLabel({ children, inline }: { children: string; inline?: boolean }) {
+function VehicleCard({
+  vehicle: v,
+  isDefault,
+  trips,
+  miles,
+  unlocked,
+  onToggle,
+  onPatch,
+  onMakeDefault,
+  onDelete,
+}: {
+  vehicle: Vehicle
+  isDefault: boolean
+  trips: number
+  miles: number
+  unlocked: boolean
+  onToggle: () => void
+  onPatch: (patch: Partial<Omit<Vehicle, 'id'>>) => void
+  onMakeDefault: () => void
+  onDelete: () => void
+}) {
   return (
-    <span
-      aria-hidden="true"
-      className={inline ? 'sm:hidden' : 'mb-1 block sm:hidden'}
-      style={{ color: 'var(--text-muted)' }}
+    <li
+      data-vehicle={v.id}
+      className="flex flex-col gap-3 rounded-lg p-3 text-xs"
+      style={{
+        border: `1px solid ${unlocked ? 'var(--series-1)' : 'var(--border-hairline)'}`,
+        background: 'var(--surface-1)',
+      }}
     >
-      {children}
-    </span>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 flex-col gap-1">
+          <span className="flex flex-wrap items-center gap-2 text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
+            {v.name}
+            {isDefault ? <StatusChip role="good" label="default" title="Trips with no vehicle of their own count toward this one" /> : null}
+          </span>
+          {unlocked ? null : <span style={{ color: 'var(--text-secondary)' }}>{v.details ?? 'No year, make or model'}</span>}
+        </div>
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-pressed={unlocked}
+          aria-label={unlocked ? `Done editing ${v.name}` : `Edit ${v.name}`}
+          className="shrink-0 rounded-md px-2.5 py-1 text-xs"
+          style={{
+            background: unlocked ? 'var(--series-1)' : 'var(--surface-1)',
+            color: unlocked ? '#ffffff' : 'var(--text-primary)',
+            border: `1px solid ${unlocked ? 'transparent' : 'var(--border-hairline)'}`,
+          }}
+        >
+          {unlocked ? 'Done' : 'Edit'}
+        </button>
+      </div>
+
+      {unlocked ? (
+        <div className="flex flex-col gap-2" style={{ color: 'var(--text-muted)' }}>
+          <label className="flex flex-col gap-0.5">
+            Name
+            <TextCell
+              value={v.name}
+              fill
+              ariaLabel={`Name of ${v.name}`}
+              onCommit={(next) => {
+                if (next && next !== v.name) onPatch({ name: next })
+              }}
+            />
+          </label>
+          <label className="flex flex-col gap-0.5">
+            Year, make and model
+            <TextCell
+              value={v.details}
+              fill
+              ariaLabel={`Year, make and model of ${v.name}`}
+              onCommit={(next) => {
+                if (next !== v.details) onPatch({ details: next })
+              }}
+            />
+          </label>
+          <label className="flex flex-col gap-0.5">
+            Notes
+            <TextCell
+              value={v.notes}
+              fill
+              ariaLabel={`Notes on ${v.name}`}
+              onCommit={(next) => {
+                if (next !== v.notes) onPatch({ notes: next })
+              }}
+            />
+          </label>
+        </div>
+      ) : v.notes ? (
+        <span className="break-words" style={{ color: 'var(--text-muted)' }}>
+          {v.notes}
+        </span>
+      ) : null}
+
+      <dl className="m-0 grid grid-cols-2 gap-x-3">
+        <div className="flex flex-col gap-0.5">
+          <dt style={{ color: 'var(--text-muted)' }}>Trips</dt>
+          <dd className="num-tabular m-0" style={{ color: 'var(--text-primary)' }}>
+            {trips}
+          </dd>
+        </div>
+        <div className="flex flex-col gap-0.5">
+          <dt style={{ color: 'var(--text-muted)' }}>Miles</dt>
+          <dd className="num-tabular m-0" style={{ color: 'var(--text-primary)' }}>
+            {(Math.round(miles * 10) / 10).toLocaleString()}
+          </dd>
+        </div>
+      </dl>
+
+      {unlocked ? (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <label className="flex items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
+            <input
+              type="radio"
+              name="default-vehicle"
+              checked={isDefault}
+              onChange={onMakeDefault}
+              aria-label={`Make ${v.name} the default vehicle`}
+            />
+            Default vehicle
+          </label>
+          <Button variant="danger" onClick={onDelete}>
+            Delete
+          </Button>
+        </div>
+      ) : null}
+    </li>
   )
 }
 
@@ -41,6 +160,14 @@ export function VehiclesEditor() {
   const [name, setName] = useState('')
   const [details, setDetails] = useState('')
   const [error, setError] = useState<string | null>(null)
+  /** The cards open for editing. Every card starts locked. */
+  const [unlocked, setUnlocked] = useState<ReadonlySet<string>>(new Set())
+  const toggleLock = (id: string) =>
+    setUnlocked((u) => {
+      const next = new Set(u)
+      if (!next.delete(id)) next.add(id)
+      return next
+    })
 
   const trips = derived?.allTrips
   const usage = useMemo(() => {
@@ -106,115 +233,32 @@ export function VehiclesEditor() {
           None yet. The first one you add becomes the default.
         </p>
       ) : (
-        <div className="overflow-auto">
-          {/* A table from `sm` up. Below it each vehicle is a stacked block, its
-              fields labeled one above the next, so nothing runs off a phone. */}
-          <table className="block w-full border-collapse text-xs sm:table">
-            <thead className="hidden sm:table-header-group">
-              <tr>
-                {['Default', 'Name', 'Year, make and model', 'Notes', 'Trips', 'Miles', ''].map((h, i) => (
-                  <th
-                    key={h || i}
-                    scope="col"
-                    className="px-2 py-1.5 font-medium"
-                    style={{
-                      textAlign: i === 4 || i === 5 ? 'right' : 'left',
-                      color: 'var(--text-secondary)',
-                      borderBottom: '1px solid var(--gridline)',
-                    }}
-                  >
-                    {h ? h : <span className="sr-only">Actions</span>}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="block sm:table-row-group">
-              {vehicles.map((v) => {
-                const u = usage.get(v.id)
-                return (
-                  <tr
-                    key={v.id}
-                    className="flex flex-col gap-2 px-2 py-3 sm:table-row"
-                    style={{ borderBottom: '1px solid var(--gridline)' }}
-                  >
-                    <td className="flex items-center gap-2 sm:table-cell sm:px-2 sm:py-1.5">
-                      <input
-                        type="radio"
-                        name="default-vehicle"
-                        checked={defaultId === v.id}
-                        onChange={() => void run(() => setDefaultVehicle(v.id))}
-                        aria-label={`Make ${v.name} the default vehicle`}
-                      />
-                      <StackedLabel inline>Default vehicle</StackedLabel>
-                    </td>
-                    <td className="block sm:table-cell sm:min-w-[150px] sm:px-2 sm:py-1.5">
-                      <StackedLabel>Name</StackedLabel>
-                      <TextCell
-                        value={v.name}
-                        fill
-                        ariaLabel={`Name of ${v.name}`}
-                        onCommit={(next) => {
-                          if (next && next !== v.name) void run(() => patchVehicle(v.id, { name: next }))
-                        }}
-                      />
-                    </td>
-                    <td className="block sm:table-cell sm:min-w-[180px] sm:px-2 sm:py-1.5">
-                      <StackedLabel>Year, make and model</StackedLabel>
-                      <TextCell
-                        value={v.details}
-                        fill
-                        ariaLabel={`Year, make and model of ${v.name}`}
-                        onCommit={(next) => {
-                          if (next !== v.details) void run(() => patchVehicle(v.id, { details: next }))
-                        }}
-                      />
-                    </td>
-                    <td className="block sm:table-cell sm:min-w-[180px] sm:px-2 sm:py-1.5">
-                      <StackedLabel>Notes</StackedLabel>
-                      <TextCell
-                        value={v.notes}
-                        fill
-                        ariaLabel={`Notes on ${v.name}`}
-                        onCommit={(next) => {
-                          if (next !== v.notes) void run(() => patchVehicle(v.id, { notes: next }))
-                        }}
-                      />
-                    </td>
-                    <td
-                      className="num-tabular flex justify-between sm:table-cell sm:px-2 sm:py-1.5 sm:text-right"
-                      style={{ color: 'var(--text-secondary)' }}
-                    >
-                      <StackedLabel inline>Trips</StackedLabel>
-                      {u?.trips ?? 0}
-                    </td>
-                    <td
-                      className="num-tabular flex justify-between sm:table-cell sm:px-2 sm:py-1.5 sm:text-right"
-                      style={{ color: 'var(--text-secondary)' }}
-                    >
-                      <StackedLabel inline>Miles</StackedLabel>
-                      {u ? (Math.round(u.miles * 10) / 10).toLocaleString() : 0}
-                    </td>
-                    <td className="block text-right sm:table-cell sm:px-2 sm:py-1.5">
-                      <button
-                        type="button"
-                        onClick={() => void run(() => deleteVehicle(v.id))}
-                        aria-label={`Delete ${v.name}`}
-                        className="text-xs"
-                        style={{ color: 'var(--status-critical)' }}
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+        <div>
+          <ul className="m-0 grid list-none gap-3 p-0 sm:grid-cols-2 xl:grid-cols-3">
+            {vehicles.map((v) => {
+              const u = usage.get(v.id)
+              return (
+                <VehicleCard
+                  key={v.id}
+                  vehicle={v}
+                  isDefault={defaultId === v.id}
+                  trips={u?.trips ?? 0}
+                  miles={u?.miles ?? 0}
+                  unlocked={unlocked.has(v.id)}
+                  onToggle={() => toggleLock(v.id)}
+                  onPatch={(patch) => void run(() => patchVehicle(v.id, patch))}
+                  onMakeDefault={() => void run(() => setDefaultVehicle(v.id))}
+                  onDelete={() => void run(() => deleteVehicle(v.id))}
+                />
+              )
+            })}
+          </ul>
           <p className="m-0 mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
             {defaultId
               ? 'Trips with no vehicle of their own count toward the default.'
               : 'No default is set, so a trip counts toward a vehicle only when you set one on it.'}{' '}
-            A vehicle named on a trip cannot be deleted until those trips are moved to another.
+            Choose Edit on a vehicle to change it, make it the default, or delete it; one named on a trip cannot be
+            deleted until those trips are moved to another.
           </p>
         </div>
       )}

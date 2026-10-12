@@ -32,6 +32,8 @@ import {
   saveGameAnnotation,
   patchGearItem,
   patchGearProduct,
+  patchPark,
+  saveParks,
   saveGearItem,
   saveGearProduct,
   saveGearSet,
@@ -438,6 +440,21 @@ describe('gear inventory', () => {
       patchGearItem('gi-1', { pricePaid: 39.99 }, db),
     ])
     expect(await db.gearItems.get('gi-1')).toMatchObject({ size: 'XL', pricePaid: 39.99, label: 'Black V3 #1' })
+  })
+
+  it('keeps both of two park fields edited back to back, and clears one patched to undefined', async () => {
+    await saveParks([{ id: 'park_test', name: 'Test Park', aliases: ['Test Park #1'], venuePatterns: [], city: 'Springfield' }], db)
+    await Promise.all([
+      patchPark('park_test', { oneWayMiles: 12.4 }, db),
+      patchPark('park_test', { oneWayDriveMinutes: 18 }, db),
+    ])
+    expect(await db.parks.get('park_test')).toMatchObject({
+      oneWayMiles: 12.4,
+      oneWayDriveMinutes: 18,
+      aliases: ['Test Park #1'],
+    })
+    await patchPark('park_test', { city: undefined }, db)
+    expect(await db.parks.get('park_test')).not.toHaveProperty('city')
   })
 
   it('clears a field patched to undefined, and ignores a missing row', async () => {

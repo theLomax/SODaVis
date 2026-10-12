@@ -232,6 +232,18 @@ export async function saveParks(parks: Park[], database: AppDatabase = db): Prom
   await database.parks.bulkPut(parks)
 }
 
+/**
+ * Changes some fields of one park, leaving the rest as stored. The park editor
+ * commits each field on blur, so two can be saved before the view reloads.
+ */
+export async function patchPark(
+  id: string,
+  patch: Partial<Omit<Park, 'id'>>,
+  database: AppDatabase = db,
+): Promise<void> {
+  await patchRow<Park>(database.parks, (fn) => database.transaction('rw', database.parks, fn), id, patch)
+}
+
 export async function deletePark(id: string, database: AppDatabase = db): Promise<void> {
   await database.parks.delete(id)
 }

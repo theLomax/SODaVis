@@ -88,11 +88,14 @@ export function NumberCell({
   onCommit,
   step,
   ariaLabel,
+  fill,
 }: {
   value: number | undefined
   onCommit: (v: number | undefined) => void
   step?: string
   ariaLabel: string
+  /** Take the cell's width, left-aligned, for a stacked layout rather than a column of figures. */
+  fill?: boolean
 }) {
   const [text, setText] = useState(value?.toString() ?? '')
   return (
@@ -106,7 +109,7 @@ export function NumberCell({
         const n = Number(text)
         onCommit(text.trim() && Number.isFinite(n) ? n : undefined)
       }}
-      className="num-tabular w-20 rounded-md px-1.5 py-0.5 text-right text-xs"
+      className={`num-tabular rounded-md px-1.5 py-0.5 text-xs ${fill ? 'w-full' : 'w-20 text-right'}`}
       style={selectStyle}
     />
   )

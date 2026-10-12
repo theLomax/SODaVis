@@ -114,6 +114,11 @@ Each lists every place the change touches; skipping one has bitten before.
 fullest example), listed in `BUILT_IN_PROFILES`. Set `fileTypes`, `exportSteps`, and
 `defaultStatus` if the format has no status column. Detection ignores official columns.
 
+**A list of editable records** (parks, vehicles): a grid of cards rather than a table, so it
+fits a phone; `reference/ParkCard.tsx` is the example. Values are text until the card's
+Edit button unlocks it, destructive actions show only while unlocked, and fields commit on
+blur through a `patch*` function.
+
 **A new Profile section**: a component in `ui/views/profile/` (Vehicles is the example),
 rendered from `views/Profile.tsx`. For what is the user's own rather than the games'.
 
@@ -140,7 +145,7 @@ legend rules). Colors come from `palette.ts`; sports use `sportSlot(code, tracke
 
 - **Whole-row saves race.** Two inline edits committed before `reload()` finishes would
   each save the row as rendered, and the second undoes the first. Inline editors patch
-  (`patchRow` in `repo.ts`: gear items/products, organizations, vehicles).
+  (`patchRow` in `repo.ts`: gear items/products, organizations, vehicles, parks).
   `saveSports` and the trip form still save whole rows.
 - **Forms that rebuild a record** (`TripDetail.save`) must hold every field they own.
 - **Never count income out of Tax.** Tax uses `taxResolved`/`taxTrips` so tracked-sport
