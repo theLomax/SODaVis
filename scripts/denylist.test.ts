@@ -66,7 +66,9 @@ describe('publish.mjs', () => {
     const r = run({ SODAVIS_DENYLIST: path })
     expect(r.status).toBe(1)
     expect(r.stderr).toMatch(/real data found/)
-  })
+    // Scans every tracked file in a child process: about 3.5s alone, and past the
+    // default 5s when the whole suite is running beside it.
+  }, 20_000)
 
   it('carries no literal denylist of its own', () => {
     const source = readFileSync('scripts/publish.mjs', 'utf8')

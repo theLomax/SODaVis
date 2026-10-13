@@ -49,13 +49,19 @@ export function LockableCard({
     <li
       ref={cardRef}
       {...data}
-      className={`flex flex-col gap-3 rounded-lg p-3 text-xs${className ? ` ${className}` : ''}`}
-      style={{
-        border: `1px solid ${unlocked ? 'var(--series-1)' : 'var(--border-hairline)'}`,
-        background: highlighted ? 'var(--gridline)' : 'var(--surface-1)',
+      // Border, background and fade come from `.lockable-card` and its modifiers
+      // in theme.css rather than an inline style, so a list's own class (a tracked
+      // sport, say) can restyle its cards without `!important`.
+      className={[
+        'lockable-card flex flex-col gap-3 rounded-lg p-3 text-xs',
+        unlocked ? 'lockable-card--unlocked' : '',
+        highlighted ? 'lockable-card--arrived' : '',
         // An unlocked card is being worked on, so it is never faded.
-        opacity: dimmed && !unlocked ? 0.6 : 1,
-      }}
+        dimmed && !unlocked ? 'lockable-card--dimmed' : '',
+        className ?? '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 flex-col gap-1">

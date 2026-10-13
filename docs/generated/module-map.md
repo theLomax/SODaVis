@@ -22,7 +22,7 @@ JSON export/import. The point is that the data is portable rather than trapped i
 
 Data access. Every write that could touch imported facts goes through here, so the rules about what an import may and may not overwrite live in one place.
 
-- **Exports:** `AppSnapshot`, `loadSnapshot()`, `CommitPlan`, `commitImport()`, `undoBlockers()`, `ImportUndoBlockedError (class)`, `undoImport()`, `saveParks()`, `patchPark()`, `deletePark()`, `mergeParks()`, `reattachTripAnnotation()`, `deleteTripAnnotation()`, `saveDurations()`, `deleteDuration()`, `seedDurations()`, `saveSports()`, `saveGearLevels()`, `saveGearModifiers()`, `saveIdentity()`, `saveSettings()`, `saveCallTypes()`, `deleteCallType()`, `saveGameAnnotation()`, `patchGameAnnotation()`, `acknowledgeAnomaly()`, `saveTripAnnotation()`, `saveGeneralExpense()`, `deleteGeneralExpense()`, `saveGearProduct()`, `deleteGearProduct()`, `saveGearItem()`, `patchGearItem()`, `patchGearProduct()`, `deleteGearItem()`, `saveGearSet()`, `deleteGearSet()`, `saveOrganization()`, `patchOrganization()`, `deleteOrganization()`, `setImportOrganization()`, `saveVehicle()`, `patchVehicle()`, `VehicleInUseError (class)`, `deleteVehicle()`, `setDefaultVehicle()`, `saveStartLocation()`, `patchStartLocation()`, `StartLocationInUseError (class)`, `deleteStartLocation()`, `setHomeAddress()`, `setHomeLabel()`, `patchPartnerContact()`, `saveCustomProfile()`, `deleteCustomProfile()`, `clearAll()`
+- **Exports:** `AppSnapshot`, `loadSnapshot()`, `CommitPlan`, `commitImport()`, `undoBlockers()`, `ImportUndoBlockedError (class)`, `undoImport()`, `saveParks()`, `patchPark()`, `deletePark()`, `mergeParks()`, `reattachTripAnnotation()`, `deleteTripAnnotation()`, `saveDurations()`, `deleteDuration()`, `seedDurations()`, `saveSports()`, `patchSport()`, `saveGearLevels()`, `saveGearModifiers()`, `saveIdentity()`, `saveSettings()`, `saveCallTypes()`, `deleteCallType()`, `saveGameAnnotation()`, `patchGameAnnotation()`, `acknowledgeAnomaly()`, `saveTripAnnotation()`, `saveGeneralExpense()`, `deleteGeneralExpense()`, `saveGearProduct()`, `deleteGearProduct()`, `saveGearItem()`, `patchGearItem()`, `patchGearProduct()`, `deleteGearItem()`, `saveGearSet()`, `deleteGearSet()`, `saveOrganization()`, `patchOrganization()`, `deleteOrganization()`, `setImportOrganization()`, `saveVehicle()`, `patchVehicle()`, `VehicleInUseError (class)`, `deleteVehicle()`, `setDefaultVehicle()`, `saveStartLocation()`, `patchStartLocation()`, `StartLocationInUseError (class)`, `deleteStartLocation()`, `setHomeAddress()`, `setHomeLabel()`, `patchPartnerContact()`, `saveCustomProfile()`, `deleteCustomProfile()`, `clearAll()`
 - **Imports:** `db/schema.ts`, `db/tables.ts`, `import/profiles/index.ts`, `model/annotation.ts`, `model/game.ts`, `model/gear.ts`, `model/reference.ts`
 - **Imported by:** `db/backup.ts`, `ui/components/HiddenSportsNotice.tsx`, `ui/store.tsx`, `ui/views/Breakdowns.tsx`, `ui/views/DataQuality.tsx`, `ui/views/Gear.tsx`, `ui/views/GeneralExpenses.tsx`, `ui/views/Import.tsx`, `ui/views/Trips.tsx`, `ui/views/profile/StartLocations.tsx`, `ui/views/profile/Vehicles.tsx`, `ui/views/reference/Calls.tsx`, `ui/views/reference/Durations.tsx`, `ui/views/reference/Identity.tsx`, `ui/views/reference/Organizations.tsx`, `ui/views/reference/Parks.tsx`, `ui/views/reference/Settings.tsx`, `ui/views/reference/Sports.tsx`
 
@@ -372,7 +372,7 @@ One record of an editable list — a park, a vehicle, a piece of gear — as a c
 
 - **Exports:** `LockableCard()`, `CardField()`, `toggledIn()`
 - **Packages:** react
-- **Imported by:** `ui/views/Breakdowns.tsx`, `ui/views/Gear.tsx`, `ui/views/GeneralExpenses.tsx`, `ui/views/Trips.tsx`, `ui/views/breakdowns/PartnerCard.tsx`, `ui/views/gear/GearItemCard.tsx`, `ui/views/gear/GearProductCard.tsx`, `ui/views/gear/GearSetCard.tsx`, `ui/views/profile/StartLocations.tsx`, `ui/views/profile/Vehicles.tsx`, `ui/views/reference/Durations.tsx`, `ui/views/reference/OrganizationCard.tsx`, `ui/views/reference/Organizations.tsx`, `ui/views/reference/ParkCard.tsx`, `ui/views/reference/Parks.tsx`, `ui/views/trips/TripCard.tsx`
+- **Imported by:** `ui/views/Breakdowns.tsx`, `ui/views/Gear.tsx`, `ui/views/GeneralExpenses.tsx`, `ui/views/Trips.tsx`, `ui/views/breakdowns/PartnerCard.tsx`, `ui/views/gear/GearItemCard.tsx`, `ui/views/gear/GearProductCard.tsx`, `ui/views/gear/GearSetCard.tsx`, `ui/views/profile/StartLocations.tsx`, `ui/views/profile/Vehicles.tsx`, `ui/views/reference/Durations.tsx`, `ui/views/reference/OrganizationCard.tsx`, `ui/views/reference/Organizations.tsx`, `ui/views/reference/ParkCard.tsx`, `ui/views/reference/Parks.tsx`, `ui/views/reference/Sports.tsx`, `ui/views/trips/TripCard.tsx`
 
 ### `ui/components/SubNav.tsx` · S
 
@@ -648,12 +648,13 @@ Settings: home origin, arrival floor, time model, appearance, rush hour, and IRS
 - **Packages:** react
 - **Imported by:** `ui/views/Reference.tsx`
 
-### `ui/views/reference/Sports.tsx` · S
+### `ui/views/reference/Sports.tsx` · M
 
 Sports, positions and gear. Prep and wrap are charged once per trip.
 
 - **Exports:** `SportsEditor()`
-- **Imports:** `db/repo.ts`, `model/reference.ts`, `ui/components/Controls.tsx`, `ui/components/Tiles.tsx`, `ui/store.tsx`, `ui/views/reference/cells.tsx`
+- **Imports:** `db/repo.ts`, `model/reference.ts`, `ui/components/Controls.tsx`, `ui/components/LockableCard.tsx`, `ui/components/Tiles.tsx`, `ui/store.tsx`, `ui/views/reference/cells.tsx`
+- **Packages:** react
 - **Imported by:** `ui/views/Reference.tsx`
 
 ### `ui/views/reference/cells.tsx` · S

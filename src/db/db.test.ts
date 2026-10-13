@@ -33,6 +33,7 @@ import {
   patchGearItem,
   patchGearProduct,
   patchPark,
+  patchSport,
   patchPartnerContact,
   saveStartLocation,
   deleteStartLocation,
@@ -709,6 +710,20 @@ describe('vehicles', () => {
     expect((await loadSnapshot(db)).settings.defaultVehicleId).toBe('v-1')
     delete (backup.data as { vehicles?: unknown }).vehicles
     expect(validateBackup(backup).ok).toBe(true)
+  })
+})
+
+describe('patching a sport', () => {
+  it('keeps both of two fields edited back to back, and clears one patched to undefined', async () => {
+    await seedReferenceData(db)
+    const [sport] = await db.sports.toArray()
+    await Promise.all([
+      patchSport(sport!.code, { prepMinutes: 41 }, db),
+      patchSport(sport!.code, { wrapMinutes: 17 }, db),
+    ])
+    expect(await db.sports.get(sport!.code)).toMatchObject({ prepMinutes: 41, wrapMinutes: 17, label: sport!.label })
+    await patchSport(sport!.code, { defaultGearLevel: undefined }, db)
+    expect(await db.sports.get(sport!.code)).not.toHaveProperty('defaultGearLevel')
   })
 })
 

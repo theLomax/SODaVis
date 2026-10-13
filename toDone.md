@@ -6,6 +6,13 @@ lose and expensive to rediscover.
 
 ## Features
 
+- **Durations, sports, positions and gear conditions as cards.** The last lists under
+  Reference with always-live inputs. Each competition, sport, position and gear condition
+  is a card whose figures are text until *Edit*. A sport's Track checkbox lives in edit
+  mode, with a "tracked" chip when locked. Sports now save one field at a time
+  (`patchSport`), since prep and wrap sit side by side. A warning's link to a missing
+  duration opens that card unlocked with its minutes field focused.
+
 - **Map lookups: park addresses and driving distances.** They work with no setup, through
   OpenStreetMap's public servers (Nominatim for search; OSRM for the route, after
   geocoding both ends). A Google Maps Platform key (Profile → Map service) is optional and

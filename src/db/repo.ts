@@ -358,6 +358,25 @@ export async function saveSports(sports: SportProfile[], database: AppDatabase =
   await database.sports.bulkPut(sports)
 }
 
+/**
+ * Changes some fields of one sport, leaving the rest as stored; a field patched
+ * to `undefined` is removed. The sport card commits each field on its own, so two
+ * can be saved before the view reloads.
+ */
+export async function patchSport(
+  code: string,
+  patch: Partial<Omit<SportProfile, 'code'>>,
+  database: AppDatabase = db,
+): Promise<void> {
+  await database.transaction('rw', database.sports, async () => {
+    const existing = await database.sports.get(code)
+    if (!existing) return
+    const next: Record<string, unknown> = { ...existing, ...patch }
+    for (const k of Object.keys(next)) if (next[k] === undefined) delete next[k]
+    await database.sports.put(next as SportProfile)
+  })
+}
+
 export async function saveGearLevels(levels: GearLevel[], database: AppDatabase = db): Promise<void> {
   await database.gearLevels.bulkPut(levels)
 }

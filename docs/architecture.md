@@ -124,7 +124,7 @@ fullest example), listed in `BUILT_IN_PROFILES`. Set `fileTypes`, `exportSteps`,
 
 **A list of editable records** (parks, vehicles, start locations, organizations, gear items,
 sets and catalog, general expenses, trips; and partners, whose figures are derived and whose
-only editable part is contact details): a grid of cards rather
+only editable part is contact details; also durations, sports, positions and gear conditions): a grid of cards rather
 than a table, so it fits a phone. Build each card on `components/LockableCard.tsx` (the
 shell, the Edit/Done lock, `CardField`, `toggledIn` for the set of unlocked ids);
 `reference/ParkCard.tsx` is the example. Values are text until the card is unlocked,
@@ -166,7 +166,8 @@ legend rules). Colors come from `palette.ts`; sports use `sportSlot(code, tracke
 - **Whole-row saves race.** Two inline edits committed before `reload()` finishes would
   each save the row as rendered, and the second undoes the first. Inline editors patch
   (`patchRow` in `repo.ts`: gear items/products, organizations, vehicles, parks).
-  `saveSports` and the trip form still save whole rows.
+  The trip form still saves whole rows, as do positions and gear conditions, which have one
+  editable field each.
 - **Forms that rebuild a record** (`TripDetail.save`) must hold every field they own.
 - **Never count income out of Tax.** Tax uses `taxResolved`/`taxTrips` so tracked-sport
   filtering cannot hide income a 1099 reports.
@@ -216,7 +217,7 @@ level of modules and data flow rather than class hierarchies.
 4. **Misplaced utilities:** time helpers (`timeToMinutes`, `minutesBetween`) live in
    `import/transforms.ts`, so `derive/` depends on `import/`; `db/` depends on
    `import/profiles` to rehydrate custom profiles. Both invert the intended direction.
-5. **Whole-row saves remain** for sports and the trip form (see Traps).
+5. **Whole-row saves remain** for the trip form (see Traps).
 6. **`db/repo.ts` is a grab bag** of every entity's writes (~750 lines); splitting it by
    aggregate would match how views use it.
 7. **Editors hand-build their tables** with repeated header styles, while `DataTable`
