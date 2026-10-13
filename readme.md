@@ -52,6 +52,13 @@ leaves the browser: the file is parsed in the page, and the result is stored in
 IndexedDB on your machine. *Data → Backup* writes a JSON file you can keep
 somewhere you trust.
 
+There is one exception. The app can look up a park's address and the driving distance
+between two addresses. Each lookup happens only when you press its button, and sends
+only that lookup — a park's name and city, or the two addresses of a route — to
+OpenStreetMap's public servers (Nominatim and OSRM). If you add a Google Maps Platform
+key on your profile, lookups go to Google under your key instead; the key stays in the
+browser and is left out of backups.
+
 The app ships with **no parks and no identity**, because a park list is one person's
 commute and an identity pattern is their name — neither belongs in a public repository
 as a default. On first import every venue is flagged as unmatched, which is the

@@ -53,6 +53,8 @@ function snapshot(generalExpenses: GeneralExpense[]): AppSnapshot {
     tripAnnotations: [],
     organizations: [],
     vehicles: [],
+    startLocations: [],
+    partnerContacts: [],
     generalExpenses,
     gearProducts: [],
     gearItems: [],

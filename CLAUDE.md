@@ -2,7 +2,8 @@
 
 Sports officiating data visualizer: a browser-only React + TypeScript app (Vite, Dexie /
 IndexedDB, Recharts, Tailwind) that imports game exports and reports income, time,
-mileage and tax. No server; nothing leaves the user's machine.
+mileage and tax. No server; nothing leaves the user's machine, except map lookups the
+user triggers by button (`src/maps/`: OpenStreetMap, or Google with their key).
 
 ## Read before scanning the code
 

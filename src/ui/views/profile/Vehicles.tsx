@@ -200,7 +200,7 @@ export function VehiclesEditor() {
         </p>
       ) : (
         <div>
-          <ul className="m-0 grid list-none gap-3 p-0 sm:grid-cols-2 xl:grid-cols-3">
+          <ul className="m-0 grid list-none gap-3 p-0 md:grid-cols-2 xl:grid-cols-3">
             {vehicles.map((v) => {
               const u = usage.get(v.id)
               return (
@@ -219,7 +219,7 @@ export function VehiclesEditor() {
               )
             })}
           </ul>
-          <p className="m-0 mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+          <p className="m-0 my-5 text-xs" style={{ color: 'var(--text-muted)' }}>
             {defaultId
               ? 'Trips with no vehicle of their own count toward the default.'
               : 'No default is set, so a trip counts toward a vehicle only when you set one on it.'}{' '}

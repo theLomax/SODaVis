@@ -8,6 +8,8 @@ import { useState } from 'react'
 import { useStore } from '../store'
 import { Button, TextInput, selectStyle } from '../components/Controls'
 import { Card } from '../components/Tiles'
+import { CardField, LockableCard, toggledIn } from '../components/LockableCard'
+import { MoneyCell, TextCell } from './reference/cells'
 import { deleteGeneralExpense, saveGeneralExpense } from '../../db/repo'
 import { formatMoney } from '../../derive/money'
 import {
@@ -25,6 +27,7 @@ export function GeneralExpenses({ year }: { year: number }) {
   const [deductible, setDeductible] = useState(true)
   const [sportCodes, setSportCodes] = useState<string[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [unlocked, setUnlocked] = useState<ReadonlySet<string>>(new Set())
 
   if (!derived) return null
   const { generalExpenses, settings } = derived.snapshot
@@ -65,7 +68,13 @@ export function GeneralExpenses({ year }: { year: number }) {
     await reload()
   }
 
-  const headers = ['Date', 'Category', 'Sports', 'Note', 'Deductible', 'Amount', '']
+  // One field at a time from a locked-by-default card, so a whole-row save is safe.
+  async function change(expense: GeneralExpense, patch: Partial<GeneralExpense>) {
+    const next: Record<string, unknown> = { ...expense, ...patch }
+    for (const k of Object.keys(next)) if (next[k] === undefined) delete next[k]
+    await saveGeneralExpense(next as GeneralExpense)
+    await reload()
+  }
 
   return (
     <Card
@@ -73,52 +82,79 @@ export function GeneralExpenses({ year }: { year: number }) {
       subtitle="Costs tied to no single trip — shoes, uniform, dues. They count here and in net take-home, never in a per-hour rate."
     >
       {inYear.length > 0 ? (
-        <div className="overflow-auto">
-          <table className="w-full border-collapse text-xs">
-            <thead>
-              <tr>
-                {headers.map((h, i) => (
-                  <th
-                    key={h || i}
-                    scope="col"
-                    className="px-2 py-1.5 font-medium"
-                    style={{
-                      textAlign: h === 'Amount' ? 'right' : 'left',
-                      color: 'var(--text-secondary)',
-                      borderBottom: '1px solid var(--gridline)',
-                    }}
-                  >
-                    {h ? h : <span className="sr-only">Actions</span>}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {inYear.map((e) => (
-                <tr key={e.id} style={{ borderBottom: '1px solid var(--gridline)', color: 'var(--text-primary)' }}>
-                  <td className="px-2 py-1.5">{e.date}</td>
-                  <td className="px-2 py-1.5">{e.category}</td>
-                  <td className="px-2 py-1.5">
-                    {e.sportCodes?.length ? e.sportCodes.map(sportLabel).join(', ') : 'All'}
-                  </td>
-                  <td className="px-2 py-1.5">{e.note ?? ''}</td>
-                  <td className="px-2 py-1.5">{e.deductible ? 'Yes' : 'No'}</td>
-                  <td className="num-tabular px-2 py-1.5 text-right">{formatMoney(e.amount, currency)}</td>
-                  <td className="px-2 py-1.5 text-right">
-                    <button
-                      type="button"
-                      onClick={() => void remove(e.id)}
-                      aria-label={`Remove the ${e.category} expense of ${e.date}`}
-                      style={{ color: 'var(--status-critical)' }}
-                    >
-                      ✕
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ul className="m-0 grid list-none gap-3 p-0 sm:grid-cols-2 xl:grid-cols-3">
+          {inYear.map((e) => {
+            const open = unlocked.has(e.id)
+            const what = `the ${e.category} expense of ${e.date}`
+            return (
+              <LockableCard
+                key={e.id}
+                data-general-expense={e.id}
+                name={formatMoney(e.amount, currency)}
+                editLabel={what}
+                summary={`${e.category} · ${e.date}`}
+                unlocked={open}
+                onToggle={() => setUnlocked((u) => toggledIn(u, e.id))}
+              >
+                {open ? (
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-2" style={{ color: 'var(--text-muted)' }}>
+                    <label className="flex min-w-0 flex-col gap-0.5">
+                      Amount
+                      <MoneyCell
+                        value={e.amount}
+                        currency={currency}
+                        fill
+                        ariaLabel={`Amount of ${what}`}
+                        onCommit={(v) => {
+                          if (v !== undefined && v > 0 && v !== e.amount) void change(e, { amount: v })
+                        }}
+                      />
+                    </label>
+                    <label className="flex min-w-0 flex-col gap-0.5">
+                      Note
+                      <TextCell
+                        value={e.note}
+                        fill
+                        ariaLabel={`Note on ${what}`}
+                        onCommit={(v) => {
+                          if (v !== e.note) void change(e, { note: v })
+                        }}
+                      />
+                    </label>
+                  </div>
+                ) : e.note ? (
+                  <span className="break-words" style={{ color: 'var(--text-secondary)' }}>
+                    {e.note}
+                  </span>
+                ) : null}
+                <dl className="m-0 grid grid-cols-2 gap-x-3">
+                  <CardField label="Sports">{e.sportCodes?.length ? e.sportCodes.map(sportLabel).join(', ') : 'All'}</CardField>
+                  <CardField label="Deductible">
+                    {open ? (
+                      <input
+                        type="checkbox"
+                        checked={e.deductible}
+                        onChange={(ev) => void change(e, { deductible: ev.target.checked })}
+                        aria-label={`Whether ${what} is deductible`}
+                      />
+                    ) : e.deductible ? (
+                      'Yes'
+                    ) : (
+                      'No'
+                    )}
+                  </CardField>
+                </dl>
+                {open ? (
+                  <div className="flex justify-end">
+                    <Button variant="danger" onClick={() => void remove(e.id)}>
+                      Delete
+                    </Button>
+                  </div>
+                ) : null}
+              </LockableCard>
+            )
+          })}
+        </ul>
       ) : (
         <p className="m-0 text-xs" style={{ color: 'var(--text-muted)' }}>
           None logged for {year}.

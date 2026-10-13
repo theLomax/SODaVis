@@ -27,7 +27,6 @@ import {
 import {
   GEAR_CATEGORIES,
   describeProduct,
-  gearCategoryLabel,
   isRetired,
   newGearId,
   nextItemLabel,
@@ -44,8 +43,9 @@ import {
   type VendorSku,
 } from '../../model/gear'
 import { toggledIn } from '../components/LockableCard'
-import { TextCell } from './reference/cells'
 import { GearItemCard } from './gear/GearItemCard'
+import { GearProductCard } from './gear/GearProductCard'
+import { GearSetCard } from './gear/GearSetCard'
 
 export function Gear() {
   const { derived, reload } = useStore()
@@ -89,58 +89,11 @@ export function Gear() {
 
 type Run = (action: () => Promise<void>) => Promise<void>
 
-const th = (align: 'left' | 'right' = 'left'): React.CSSProperties => ({
-  textAlign: align,
-  color: 'var(--text-secondary)',
-  borderBottom: '1px solid var(--gridline)',
-})
-
-const rowStyle: React.CSSProperties = { borderBottom: '1px solid var(--gridline)', color: 'var(--text-primary)' }
-
-function HeaderRow({ headers }: { headers: string[] }) {
-  return (
-    <thead>
-      <tr>
-        {headers.map((h, i) => (
-          <th key={h || i} scope="col" className="px-2 py-1.5 font-medium" style={th()}>
-            {h ? h : <span className="sr-only">Actions</span>}
-          </th>
-        ))}
-      </tr>
-    </thead>
-  )
-}
-
 function Muted({ children }: { children: React.ReactNode }) {
   return (
     <p className="m-0 text-xs" style={{ color: 'var(--text-muted)' }}>
       {children}
     </p>
-  )
-}
-
-/** A row action that reads as a link, matching the ✕ / Delete buttons elsewhere. */
-function RowAction({
-  children,
-  onClick,
-  ariaLabel,
-  danger,
-}: {
-  children: React.ReactNode
-  onClick: () => void
-  ariaLabel: string
-  danger?: boolean
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={ariaLabel}
-      className="text-xs"
-      style={{ color: danger ? 'var(--status-critical)' : 'var(--text-secondary)' }}
-    >
-      {children}
-    </button>
   )
 }
 
@@ -162,6 +115,7 @@ function SetsCard({
   run: Run
 }) {
   const [name, setName] = useState('')
+  const [unlocked, setUnlocked] = useState<ReadonlySet<string>>(new Set())
   const sorted = [...sets].sort((a, b) => a.name.localeCompare(b.name))
 
   async function add() {
@@ -174,16 +128,26 @@ function SetsCard({
   return (
     <Card
       title="Gear sets"
-      subtitle="Kits you wear together, such as “BB: Plate Gear” or “SB: Bases”, so a whole set can go on a game in one step."
+      subtitle="Kits you wear together, such as “BB: Plate Gear” or “SB: Bases”, so a whole set can go on a game in one step. Choose Edit on a set to change what is in it."
     >
       {sorted.length === 0 ? (
         <Muted>No sets yet. Name one below, then add items to it.</Muted>
       ) : (
-        <div className="flex flex-col gap-3">
+        <ul className="m-0 grid list-none gap-3 p-0 sm:grid-cols-2 xl:grid-cols-3">
           {sorted.map((set) => (
-            <SetRow key={set.id} set={set} items={items} products={products} sports={sports} run={run} />
+            <GearSetCard
+              key={set.id}
+              set={set}
+              items={items}
+              products={products}
+              sports={sports}
+              unlocked={unlocked.has(set.id)}
+              onToggle={() => setUnlocked((u) => toggledIn(u, set.id))}
+              onSave={(patch) => void run(() => saveGearSet({ ...set, ...patch }))}
+              onDelete={() => void run(() => deleteGearSet(set.id))}
+            />
           ))}
-        </div>
+        </ul>
       )}
       <div className="mt-3 flex flex-wrap items-end gap-2">
         <label className="flex flex-col gap-1 text-xs" style={{ color: 'var(--text-muted)' }}>
@@ -195,124 +159,6 @@ function SetsCard({
         </Button>
       </div>
     </Card>
-  )
-}
-
-function SetRow({
-  set,
-  items,
-  products,
-  sports,
-  run,
-}: {
-  set: GearSet
-  items: GearItem[]
-  products: Map<string, GearProduct>
-  sports: { code: string; label: string }[]
-  run: Run
-}) {
-  const byId = new Map(items.map((i) => [i.id, i]))
-  const members = set.itemIds.map((id) => byId.get(id)).filter((i): i is GearItem => Boolean(i))
-  // A retired piece stays listed on the set it was in, marked, so the set's
-  // history reads true; it just is not offered for adding again.
-  const addable = items.filter((i) => !isRetired(i) && !set.itemIds.includes(i.id))
-
-  const save = (patch: Partial<GearSet>) => run(() => saveGearSet({ ...set, ...patch }))
-
-  return (
-    <div className="rounded-md p-3" style={{ border: '1px solid var(--border-hairline)' }}>
-      <div className="flex flex-wrap items-center gap-2">
-        <TextCell
-          value={set.name}
-          ariaLabel={`Name of the ${set.name} set`}
-          width={200}
-          onCommit={(v) => {
-            if (v && v !== set.name) void save({ name: v })
-          }}
-        />
-        <select
-          value={set.sportCode ?? ''}
-          onChange={(e) => void save({ sportCode: e.target.value || undefined })}
-          aria-label={`Sport for the ${set.name} set`}
-          className="rounded-md px-1.5 py-0.5 text-xs"
-          style={selectStyle}
-        >
-          <option value="">Any sport</option>
-          {sports.map((s) => (
-            <option key={s.code} value={s.code}>
-              {s.label}
-            </option>
-          ))}
-        </select>
-        <span className="ml-auto">
-          <RowAction danger onClick={() => void run(() => deleteGearSet(set.id))} ariaLabel={`Delete the ${set.name} set`}>
-            Delete set
-          </RowAction>
-        </span>
-      </div>
-
-      <ul className="m-0 mt-2 flex list-none flex-wrap gap-1.5 p-0">
-        {members.length === 0 ? (
-          <li className="text-xs" style={{ color: 'var(--text-muted)' }}>
-            Empty.
-          </li>
-        ) : (
-          members.map((item) => {
-            const product = products.get(item.productId)
-            return (
-              <li
-                key={item.id}
-                className="flex items-center gap-1 rounded-full px-2 py-0.5 text-xs"
-                style={{ border: '1px solid var(--border-hairline)', color: 'var(--text-primary)' }}
-                title={product ? describeProduct(product) : undefined}
-              >
-                {item.label}
-                {isRetired(item) ? <span style={{ color: 'var(--text-muted)' }}>· retired</span> : null}
-                <button
-                  type="button"
-                  onClick={() => void save({ itemIds: set.itemIds.filter((id) => id !== item.id) })}
-                  aria-label={`Remove ${item.label} from ${set.name}`}
-                  style={{ color: 'var(--text-muted)' }}
-                >
-                  ✕
-                </button>
-              </li>
-            )
-          })
-        )}
-      </ul>
-
-      {/* Adds on pick, so there is no separate confirm button to forget. */}
-      {addable.length > 0 ? (
-        <select
-          value=""
-          onChange={(e) => {
-            if (e.target.value) void save({ itemIds: [...set.itemIds, e.target.value] })
-          }}
-          aria-label={`Add an item to ${set.name}`}
-          className="mt-2 rounded-md px-1.5 py-0.5 text-xs"
-          style={selectStyle}
-        >
-          <option value="">+ Add item…</option>
-          {GEAR_CATEGORIES.map((c) => {
-            const inCategory = addable.filter((i) => products.get(i.productId)?.category === c.id)
-            return inCategory.length ? (
-              <optgroup key={c.id} label={c.label}>
-                {inCategory.map((i) => (
-                  <option key={i.id} value={i.id}>
-                    {i.label}
-                  </option>
-                ))}
-              </optgroup>
-            ) : null
-          })}
-        </select>
-      ) : items.length === 0 ? (
-        <p className="m-0 mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-          Add owned items below to fill this set.
-        </p>
-      ) : null}
-    </div>
   )
 }
 
@@ -489,6 +335,7 @@ function CatalogCard({
   run: Run
 }) {
   const [open, setOpen] = useState(false)
+  const [unlocked, setUnlocked] = useState<ReadonlySet<string>>(new Set())
   const [category, setCategory] = useState<GearCategory>('shirt')
   const [name, setName] = useState('')
   const [brand, setBrand] = useState('')
@@ -581,75 +428,20 @@ function CatalogCard({
       {/* Collapsed by default: the catalog is consulted when adding gear, not
           read every visit, and a long list would push the sets off screen. */}
       {open ? (
-        <div className="overflow-auto">
-          <table className="w-full border-collapse text-xs">
-            <HeaderRow headers={['Category', 'Name', 'Brand', 'Color', 'UPC', 'Product no.', 'Retailer SKUs', 'Owned', '']} />
-            <tbody>
-              {sorted.map((p) => (
-                <tr key={p.id} style={rowStyle}>
-                  <td className="px-2 py-1.5" style={{ color: 'var(--text-secondary)' }}>
-                    {gearCategoryLabel(p.category)}
-                  </td>
-                  <td className="px-2 py-1.5">
-                    <TextCell
-                      value={p.name}
-                      width={190}
-                      ariaLabel={`Name of ${describeProduct(p)}`}
-                      onCommit={(v) => patch(p, 'name', v)}
-                    />
-                  </td>
-                  <td className="px-2 py-1.5">
-                    <TextCell value={p.brand} ariaLabel={`Brand of ${describeProduct(p)}`} onCommit={(v) => patch(p, 'brand', v)} />
-                  </td>
-                  <td className="px-2 py-1.5">
-                    <TextCell value={p.color} ariaLabel={`Color of ${describeProduct(p)}`} onCommit={(v) => patch(p, 'color', v)} />
-                  </td>
-                  <td className="whitespace-nowrap px-2 py-1.5">
-                    <TextCell value={p.upc} width={120} ariaLabel={`UPC of ${describeProduct(p)}`} onCommit={(v) => patch(p, 'upc', v)} />
-                    {p.upc && !isValidUpc(p.upc) ? (
-                      <span
-                        className="ml-1"
-                        title="The last digit does not check out for a 12- or 13-digit UPC. Kept as typed, in case the label reads that way."
-                        style={{ color: 'var(--status-warning)' }}
-                      >
-                        check
-                      </span>
-                    ) : null}
-                  </td>
-                  <td className="px-2 py-1.5">
-                    <TextCell
-                      value={p.brandProductId}
-                      ariaLabel={`Product number of ${describeProduct(p)}`}
-                      onCommit={(v) => patch(p, 'brandProductId', v)}
-                    />
-                  </td>
-                  <td className="px-2 py-1.5">
-                    <VendorSkuCell product={p} onChange={(next) => setVendorSkus(p, next)} />
-                  </td>
-                  <td className="num-tabular px-2 py-1.5" style={{ color: 'var(--text-secondary)' }}>
-                    {owned(p.id)}
-                  </td>
-                  <td className="whitespace-nowrap px-2 py-1.5 text-right">
-                    <span className="inline-flex gap-3">
-                      {p.url ? (
-                        <a href={p.url} target="_blank" rel="noreferrer noopener" style={{ color: 'var(--text-secondary)' }}>
-                          Link
-                        </a>
-                      ) : null}
-                      <RowAction
-                        danger
-                        onClick={() => void run(() => deleteGearProduct(p.id))}
-                        ariaLabel={`Delete ${describeProduct(p)} from the catalog`}
-                      >
-                        Delete
-                      </RowAction>
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ul className="m-0 grid list-none gap-3 p-0 sm:grid-cols-2 xl:grid-cols-3">
+          {sorted.map((p) => (
+            <GearProductCard
+              key={p.id}
+              product={p}
+              owned={owned(p.id)}
+              unlocked={unlocked.has(p.id)}
+              onToggle={() => setUnlocked((u) => toggledIn(u, p.id))}
+              onPatchText={(key, v) => patch(p, key, v)}
+              onVendorSkus={(next) => setVendorSkus(p, next)}
+              onDelete={() => void run(() => deleteGearProduct(p.id))}
+            />
+          ))}
+        </ul>
       ) : null}
 
       <div className="mt-3 flex flex-wrap items-end gap-2">
@@ -725,63 +517,5 @@ function CatalogCard({
         </div>
       ) : null}
     </Card>
-  )
-}
-
-/**
- * Retailer SKUs as chips, each removable, with an inline pair of fields to add
- * one. A pair, never a bare SKU: a SKU is only unique at the retailer that set it.
- */
-function VendorSkuCell({ product, onChange }: { product: GearProduct; onChange: (next: VendorSku[]) => void }) {
-  const [adding, setAdding] = useState(false)
-  const [vendor, setVendor] = useState('')
-  const [sku, setSku] = useState('')
-  const list = product.vendorSkus ?? []
-  const label = describeProduct(product)
-
-  function save() {
-    if (!vendor.trim() || !sku.trim()) return
-    onChange([...list, { vendor: vendor.trim(), sku: sku.trim() }])
-    setVendor('')
-    setSku('')
-    setAdding(false)
-  }
-
-  return (
-    <span className="inline-flex flex-wrap items-center gap-1">
-      {list.map((v, i) => (
-        <span
-          key={`${v.vendor}|${v.sku}`}
-          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5"
-          style={{ border: '1px solid var(--border-hairline)', color: 'var(--text-primary)' }}
-        >
-          <span style={{ color: 'var(--text-muted)' }}>{v.vendor}:</span> {v.sku}
-          <button
-            type="button"
-            onClick={() => onChange(list.filter((_, j) => j !== i))}
-            aria-label={`Remove the ${v.vendor} SKU from ${label}`}
-            style={{ color: 'var(--text-muted)' }}
-          >
-            ✕
-          </button>
-        </span>
-      ))}
-      {adding ? (
-        <span className="inline-flex items-center gap-1">
-          <TextInput value={vendor} onChange={setVendor} width={80} placeholder="Retailer" ariaLabel={`Retailer for a new SKU on ${label}`} />
-          <TextInput value={sku} onChange={setSku} width={80} placeholder="SKU" ariaLabel={`New retailer SKU for ${label}`} />
-          <RowAction onClick={save} ariaLabel={`Save the retailer SKU on ${label}`}>
-            Save
-          </RowAction>
-          <RowAction onClick={() => setAdding(false)} ariaLabel="Cancel adding a retailer SKU">
-            Cancel
-          </RowAction>
-        </span>
-      ) : (
-        <RowAction onClick={() => setAdding(true)} ariaLabel={`Add a retailer SKU to ${label}`}>
-          + SKU
-        </RowAction>
-      )}
-    </span>
   )
 }

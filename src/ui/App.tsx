@@ -134,7 +134,7 @@ function Shell() {
         </nav>
         <div className="ml-auto flex items-center gap-4">
           <span className="hidden text-xs sm:inline" style={{ color: 'var(--text-muted)' }}>
-            {derived ? `${derived.snapshot.games.length} games on this machine` : ''}
+            {derived ? `${derived.snapshot.games.length} games on this device` : ''}
           </span>
           <button
             type="button"

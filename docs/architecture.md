@@ -18,7 +18,8 @@ exports (Assignr CSV, RefTown Excel, or any mapped CSV/Excel) are parsed into ca
 **facts**; the user's own knowledge (parks, durations, sports, organizations, vehicles,
 gear…) is **reference data**; per-game and per-trip corrections are **annotations**. All
 three live in IndexedDB (Dexie). Everything shown — trips, time, money, rates, tax — is
-**derived** on read by pure functions and never stored. There is no server.
+**derived** on read by pure functions and never stored. There is no server; the only
+outbound calls are map lookups the user triggers (`src/maps/`).
 
 ## Layers and data flow
 
@@ -35,6 +36,7 @@ three live in IndexedDB (Dexie). Everything shown — trips, time, money, rates,
 | Import | `src/import/` | File → `ParsedFile` → `Game[]`. Never writes; `reconcile.ts` only *decides* inserts, skips and conflicts. Formats are `profiles/*` (see below). |
 | Persistence | `src/db/` | `tables.ts` is the **registry** of every table; `schema.ts` builds Dexie from it; `repo.ts` is the only writer; `backup.ts` exports/restores from the registry. |
 | Derive | `src/derive/` | **Pure functions** of a snapshot. `resolve.ts` turns a stored game into a `ResolvedGame` (park, duration, sport, organization, flags…); `trips.ts` groups by `(date, park)`; `time.ts`, `money.ts`, `metrics.ts`, `tax.ts`, `anomalies.ts` aggregate. |
+| Map service | `src/maps/` | The only code that calls out: `findPlaces` and `routeBetween`. No key: OpenStreetMap (Nominatim, then OSRM; Nominatim calls spaced a second apart). A Google key in `localStorage`: Google Places and Routes. `fetch` and the wait are injected for tests. Called only from button handlers in views; results are proposed, and written through `db/repo` once accepted. |
 | App state | `src/ui/store.tsx` | Loads the snapshot, owns filter/view/drill/focus/theme, and runs `derive(snapshot, filter)` in one memo. |
 | Views | `src/ui/views/`, `ui/components/`, `ui/charts/` | Read `useStore().derived`; write through `db/repo` then `reload()`. |
 
@@ -50,6 +52,7 @@ Dependencies point down this table. Known exceptions are listed under
 | Filter, view, drill-down, pending focus | `StoreProvider` | `setFilter` clears a drill-down; `navigate()` sets `pendingFocus` for the destination view to consume. `Reference` clears a tab request itself unless the tab's editor consumes a row focus (Parks, Durations). |
 | Navigation groups, the Reference tab, each group's last page | `Shell` (`ui/App.tsx`) | `GROUPS` maps every `ViewId` to Insights, Data or Reference. The second nav row (`components/SubNav.tsx`) shows the group's pages, or Reference's tabs; `Reference` is controlled by the shell. |
 | Theme | `StoreProvider` + `localStorage` | Not in IndexedDB, so not in backups. |
+| Map service key | `localStorage` (`maps/maps.ts`) | Deliberately not in IndexedDB: a secret must not travel in a backup file. |
 | Everything computed | `derive()` → `DerivedState` | Recomputed on any snapshot or filter change. Includes `trackedSports`, `hiddenSports`, and `taxResolved`/`taxTrips` (every game, for Tax only). |
 | Form drafts, import stage machine | Component state | `TripDetail` rebuilds its whole annotation on save — see the trap below. |
 
@@ -71,6 +74,8 @@ registry test fails if a Dexie table is missing from it.
 | `gearProducts`, `gearItems`, `gearSets` (5) | Gear catalog, owned pieces, kits | `id` |
 | `organizations` (6) | Who hired/paid; names and aliases | `id` |
 | `vehicles` (7) | Vehicles; the default is `settings.defaultVehicleId` | `id` |
+| `startLocations` (8) | Places trips start from other than home. Home is not a row; its label and address are `settings.homeOriginLabel` / `homeAddress` | `id` |
+| `partnerContacts` (8) | Phone, email and notes the user adds for a partner | `id` = the partner's name key from the games |
 
 Annotations are keyed by stable identity, never by row index, so re-importing a
 corrected export keeps every manual figure attached. Seeds: written to an empty table,
@@ -82,6 +87,9 @@ refilled after a restore leaves one empty, and — for tables marked `seedMissin
 - **Organization** of a game: set by hand → the game's **payor** equals an organization's
   name or alias → the import's organization. Never inferred from assignor or league.
 - **Vehicle** of a trip: set on the trip → `settings.defaultVehicleId` → none.
+- **Start** of a trip: a known `startLocationId` on the trip → home. It is recorded, not
+  computed with: a park's miles and drive times are from home, so a trip from elsewhere
+  keeps them until its own are entered as overrides, and the trip editor says so.
 - **Sport** of a game: hand tag (`sportCodeOverride`) → source code. Games in an
   **untracked** sport are dropped from every dashboard view but kept in `taxResolved`.
 - **Money:** `gross` is everything received (cancellation pay included); `grossWorked`
@@ -114,12 +122,16 @@ Each lists every place the change touches; skipping one has bitten before.
 fullest example), listed in `BUILT_IN_PROFILES`. Set `fileTypes`, `exportSteps`, and
 `defaultStatus` if the format has no status column. Detection ignores official columns.
 
-**A list of editable records** (parks, vehicles, owned gear): a grid of cards rather than a
-table, so it fits a phone. Build each card on `components/LockableCard.tsx` (the shell, the
-Edit/Done lock, `CardField`, `toggledIn` for the set of unlocked ids);
+**A list of editable records** (parks, vehicles, start locations, organizations, gear items,
+sets and catalog, general expenses, trips; and partners, whose figures are derived and whose
+only editable part is contact details): a grid of cards rather
+than a table, so it fits a phone. Build each card on `components/LockableCard.tsx` (the
+shell, the Edit/Done lock, `CardField`, `toggledIn` for the set of unlocked ids);
 `reference/ParkCard.tsx` is the example. Values are text until the card is unlocked,
 destructive actions show only while unlocked, and fields commit on blur through a `patch*`
-function.
+function. A card whose editor is too wide for one column spans the row while unlocked
+(`trips/TripCard.tsx`); trips keep their explicit Save, because `TripDetail` rebuilds the
+whole annotation.
 
 **Filtering a list**: `components/FilterPanel.tsx`. Build a `FilterCategory[]` (id, label,
 options), keep a `FilterSelection` in component state, wrap the list in `<FilterPanel>`,
@@ -158,6 +170,8 @@ legend rules). Colors come from `palette.ts`; sports use `sportSlot(code, tracke
 - **Forms that rebuild a record** (`TripDetail.save`) must hold every field they own.
 - **Never count income out of Tax.** Tax uses `taxResolved`/`taxTrips` so tracked-sport
   filtering cannot hide income a 1099 reports.
+- **Nothing is sent without a click.** Map lookups run only from a button, never from an
+  effect or on load, and a result is shown for the user to accept before it is saved.
 - **Privacy.** Real names and figures live only in the private `data/` and `test/private/`
   submodules. `scripts/denylist.test.ts` fails if a denylisted string appears in the
   public tree; use invented names in code and tests.

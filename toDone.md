@@ -6,6 +6,51 @@ lose and expensive to rediscover.
 
 ## Features
 
+- **Map lookups: park addresses and driving distances.** They work with no setup, through
+  OpenStreetMap's public servers (Nominatim for search; OSRM for the route, after
+  geocoding both ends). A Google Maps Platform key (Profile → Map service) is optional and
+  switches both calls to Google. An unlocked park card can *Look up address*, which
+  offers up to three matches to choose from, and *Get distance from Home*, which proposes
+  one-way miles and traffic-free minutes for the park's ideal figures. Parks that have an
+  address but no mileage can be measured in one go. A trip that started somewhere other
+  than home can fetch its round trip into the override fields, kept only on Save. This is
+  the app's first outbound call, so it is fenced: only on a button, only that lookup's
+  text, every result accepted by hand, and the key kept in `localStorage` so it never
+  lands in a backup. The first version required the Google key, which made the feature
+  look broken out of the box, so the keyless route became the default; Google stays for
+  its better search of parks by name. Nominatim asks for at most one request a second,
+  so its calls are spaced, and a route costs three requests.
+  A place picked from a lookup keeps its coordinates (`Park.location`) and is routed from
+  those: OpenStreetMap returns a descriptive address (park, road number, county, state)
+  that its own search often cannot find again, which made the first route to a looked-up
+  park fail. Retyping the address clears the position.
+  Rush-hour minutes are not fetched: they depend on departure time, and stay typed.
+
+- **Starting locations for trips.** Every trip started from home; now other places can be
+  added on the Profile page (an office, a second address), each with a label, a street
+  address and notes,
+  and chosen on a trip under *Started from*. Home is always there, is the default, and
+  can be relabeled from its card. A trip that started elsewhere says so on its card. The
+  location is recorded rather than computed with: a park's miles and drive times are
+  measured from home, so the trip editor warns until that trip's own miles and drive time
+  are entered. Per-location mileage for each park was left out; it would need a figure
+  for every park from every location. A location a trip names cannot be deleted, so
+  trips never silently become trips from home. Home, each location and each park carry a
+  free-text street address (`settings.homeAddress`, `StartLocation.address`,
+  `Park.address`), so a trip has both ends for routing; nothing routes with them yet.
+
+- **Cards for the rest of the editable lists.** Gear sets, the gear catalog, organizations
+  and general expenses are lockable cards like parks and vehicles: values are text until
+  *Edit*, and Delete shows only while unlocked. General expenses gained editing of amount,
+  note and deductible, which the table never had. The list of payors with no organization
+  wraps instead of running off a phone.
+
+- **Partner cards with contact details.** The partners table is a grid of cards. The
+  figures are read from the games and cannot be edited; *Edit* opens phone, email and
+  notes, the only thing the user can add. They are stored by the partner's name as the
+  export writes it (`partnerContacts`), shown as tap-to-call and mailto links, and are in
+  backups. The solo row has no card; its tile above carries it.
+
 - **Parks, vehicles and owned gear as lockable cards.** All three were wide tables of always-live inputs:
   on a phone they ran off the screen, which made Chrome zoom the whole page out, and a
   stray tap could change a mileage figure that every trip to the park depends on. Each park

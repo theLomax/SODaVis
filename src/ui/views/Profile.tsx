@@ -1,6 +1,6 @@
 /**
  * The user's profile, opened from the header avatar: who the app thinks you are,
- * and what is yours rather than the games' — so far, your vehicles. It also points
+ * and what is yours rather than the games' — where you set out from, and what you drive. It also points
  * to where the rest of a profile's contents live today; they will be gathered here.
  */
 
@@ -9,6 +9,8 @@ import { Avatar } from '../components/Avatar'
 import { Button } from '../components/Controls'
 import { Card } from '../components/Tiles'
 import { VehiclesEditor } from './profile/Vehicles'
+import { StartLocationsEditor } from './profile/StartLocations'
+import { MapServiceCard } from './profile/MapService'
 
 /** Where the things a profile will hold are edited today. */
 const LINKS = [
@@ -40,7 +42,11 @@ export function Profile() {
         </div>
       </Card>
 
+      <StartLocationsEditor />
+
       <VehiclesEditor />
+
+      <MapServiceCard />
 
       <Card
         title="Coming to this page"

@@ -348,6 +348,7 @@ export function derive(snapshot: AppSnapshot, filter: Filter): DerivedState {
     tripAnnotations,
     settings: snapshot.settings,
     vehicles: new Map(snapshot.vehicles.map((v) => [v.id, v])),
+    startLocations: new Map((snapshot.startLocations ?? []).map((l) => [l.id, l])),
   }
   const { trips, unplaceable, cancelled, uncountedDrives } = buildTrips(resolved, tripCtx)
   const { trips: allTrips } = buildTrips(allResolved, tripCtx)

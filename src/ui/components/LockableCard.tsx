@@ -12,18 +12,22 @@ import type { ReactNode, Ref } from 'react'
 
 export function LockableCard({
   name,
+  editLabel = name,
   badge,
   summary,
   unlocked,
   onToggle,
   highlighted,
   dimmed,
+  className,
   cardRef,
   children,
   ...data
 }: {
   /** The record's name: the card's heading, and what the Edit button names. */
   name: string
+  /** What the Edit button names, where the name alone is shared by several cards. */
+  editLabel?: string
   /** Chips shown after the name. */
   badge?: ReactNode
   /** A line under the name. */
@@ -34,6 +38,8 @@ export function LockableCard({
   highlighted?: boolean
   /** For a record no longer in use. */
   dimmed?: boolean
+  /** Extra classes for the list item, such as a grid span. */
+  className?: string
   cardRef?: Ref<HTMLLIElement>
   children: ReactNode
   /** `data-*` attributes for the list item, so a card can be found by its record. */
@@ -43,7 +49,7 @@ export function LockableCard({
     <li
       ref={cardRef}
       {...data}
-      className="flex flex-col gap-3 rounded-lg p-3 text-xs"
+      className={`flex flex-col gap-3 rounded-lg p-3 text-xs${className ? ` ${className}` : ''}`}
       style={{
         border: `1px solid ${unlocked ? 'var(--series-1)' : 'var(--border-hairline)'}`,
         background: highlighted ? 'var(--gridline)' : 'var(--surface-1)',
@@ -63,7 +69,7 @@ export function LockableCard({
           type="button"
           onClick={onToggle}
           aria-pressed={unlocked}
-          aria-label={unlocked ? `Done editing ${name}` : `Edit ${name}`}
+          aria-label={unlocked ? `Done editing ${editLabel}` : `Edit ${editLabel}`}
           className="shrink-0 rounded-md px-2.5 py-1 text-xs"
           style={{
             background: unlocked ? 'var(--series-1)' : 'var(--surface-1)',

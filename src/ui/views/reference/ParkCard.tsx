@@ -12,6 +12,7 @@ import { StatusChip } from '../../components/Tiles'
 import { formatMoney } from '../../../derive/money'
 import type { Park } from '../../../model/reference'
 import { NumberCell, TextCell } from './cells'
+import { ParkMapTools } from './ParkMapTools'
 
 export function ParkCard({
   park,
@@ -20,6 +21,8 @@ export function ParkCard({
   unlocked,
   highlighted,
   currency,
+  homeLabel,
+  homeAddress,
   cardRef,
   onToggle,
   onPatch,
@@ -33,6 +36,9 @@ export function ParkCard({
   /** The card a warning sent the reader to. */
   highlighted: boolean
   currency: string
+  /** Home, for the map lookup's distance. */
+  homeLabel: string
+  homeAddress: string | undefined
   cardRef?: Ref<HTMLLIElement>
   onToggle: () => void
   onPatch: (patch: Partial<Omit<Park, 'id'>>) => void
@@ -60,16 +66,46 @@ export function ParkCard({
       {...(cardRef ? { cardRef } : {})}
     >
       {unlocked ? (
-        <label className="flex flex-col gap-0.5" style={{ color: 'var(--text-muted)' }}>
-          City
-          <TextCell value={park.city} fill onCommit={(v) => onPatch({ city: v })} ariaLabel={`City for ${park.name}`} />
-        </label>
+        <div className="flex flex-col gap-2" style={{ color: 'var(--text-muted)' }}>
+          <label className="flex flex-col gap-0.5">
+            Address
+            {/* Keyed by value: the cell holds its own text, and a lookup can set this. */}
+            <TextCell
+              key={park.address ?? ''}
+              value={park.address}
+              fill
+              onCommit={(v) => {
+                if (v === park.address) return
+                // Changing an address means somewhere else, so its saved map position
+                // no longer holds. Typing one where there was none describes the
+                // position a lookup already found, which stays.
+                onPatch(park.address ? { address: v, location: undefined } : { address: v })
+              }}
+              ariaLabel={`Address of ${park.name}`}
+            />
+          </label>
+          <label className="flex flex-col gap-0.5">
+            City
+            <TextCell value={park.city} fill onCommit={(v) => onPatch({ city: v })} ariaLabel={`City for ${park.name}`} />
+          </label>
+        </div>
+      ) : park.address ? (
+        <span className="break-words" style={{ color: 'var(--text-secondary)' }}>
+          {park.address}
+        </span>
+      ) : park.location ? (
+        <span style={{ color: 'var(--text-muted)' }}>Map position saved; no street address.</span>
+      ) : null}
+
+      {unlocked ? (
+        <ParkMapTools park={park} homeLabel={homeLabel} homeAddress={homeAddress} onPatch={onPatch} />
       ) : null}
 
       <dl className="m-0 grid grid-cols-2 gap-x-3 gap-y-2">
         <CardField label="One-way miles">
           {unlocked ? (
             <NumberCell
+              key={park.oneWayMiles ?? ''}
               value={park.oneWayMiles}
               step="0.1"
               fill
@@ -96,6 +132,7 @@ export function ParkCard({
         <CardField label="Minutes (ideal)">
           {unlocked ? (
             <NumberCell
+              key={park.oneWayDriveMinutes ?? ''}
               value={park.oneWayDriveMinutes}
               fill
               onCommit={(v) => onPatch({ oneWayDriveMinutes: v })}

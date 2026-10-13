@@ -33,6 +33,12 @@ import {
   patchGearItem,
   patchGearProduct,
   patchPark,
+  patchPartnerContact,
+  saveStartLocation,
+  deleteStartLocation,
+  setHomeLabel,
+  setHomeAddress,
+  StartLocationInUseError,
   saveParks,
   saveGearItem,
   saveGearProduct,
@@ -702,6 +708,66 @@ describe('vehicles', () => {
     expect(await db.vehicles.get('v-1')).toEqual(sedan)
     expect((await loadSnapshot(db)).settings.defaultVehicleId).toBe('v-1')
     delete (backup.data as { vehicles?: unknown }).vehicles
+    expect(validateBackup(backup).ok).toBe(true)
+  })
+})
+
+describe('start locations and partner contacts', () => {
+  const office = { id: 'loc-office', label: 'Office' }
+
+  it('keeps a trip annotation that carries only a start location, and refuses to delete one in use', async () => {
+    await saveStartLocation(office, db)
+    await saveTripAnnotation({ key: '2026-09-12|park', expenses: [], startLocationId: 'loc-office' }, db)
+    expect((await db.tripAnnotations.get('2026-09-12|park'))!.startLocationId).toBe('loc-office')
+    await expect(deleteStartLocation('loc-office', db)).rejects.toBeInstanceOf(StartLocationInUseError)
+    await saveTripAnnotation({ key: '2026-09-12|park', expenses: [] }, db)
+    await deleteStartLocation('loc-office', db)
+    expect(await db.startLocations.get('loc-office')).toBeUndefined()
+  })
+
+  it('keeps the start location when a park merge folds two trips together', () => {
+    expect(
+      mergeTripAnnotations({ key: 'a', expenses: [] }, { key: 'b', expenses: [], startLocationId: 'loc-office' })
+        .startLocationId,
+    ).toBe('loc-office')
+  })
+
+  it('renames home without touching other settings, and falls back when blanked', async () => {
+    await setHomeLabel('Apartment', db)
+    const settings = (await loadSnapshot(db)).settings
+    expect(settings.homeOriginLabel).toBe('Apartment')
+    expect(settings.fallbackMph).toBe(SEED_SETTINGS.fallbackMph)
+    await setHomeLabel('  ', db)
+    expect((await loadSnapshot(db)).settings.homeOriginLabel).toBe(SEED_SETTINGS.homeOriginLabel)
+    await setHomeAddress(' 12 Example St, Springfield ', db)
+    expect((await loadSnapshot(db)).settings.homeAddress).toBe('12 Example St, Springfield')
+    await setHomeAddress('', db)
+    expect((await loadSnapshot(db)).settings).not.toHaveProperty('homeAddress')
+  })
+
+  it('creates a partner contact on first edit, merges later ones, and drops it once empty', async () => {
+    await Promise.all([
+      patchPartnerContact('Pike, Jordan', { phone: '555-0100' }, db),
+      patchPartnerContact('Pike, Jordan', { email: 'jordan@example.com' }, db),
+    ])
+    expect(await db.partnerContacts.get('Pike, Jordan')).toEqual({
+      id: 'Pike, Jordan',
+      phone: '555-0100',
+      email: 'jordan@example.com',
+    })
+    await patchPartnerContact('Pike, Jordan', { phone: undefined, email: undefined }, db)
+    expect(await db.partnerContacts.get('Pike, Jordan')).toBeUndefined()
+  })
+
+  it('round-trips both through a backup, and accepts a backup from before them', async () => {
+    await saveStartLocation(office, db)
+    await patchPartnerContact('Pike, Jordan', { phone: '555-0100' }, db)
+    const backup = await exportBackup(db)
+    await restoreBackup(backup, 'replace', db)
+    expect(await db.startLocations.get('loc-office')).toEqual(office)
+    expect((await db.partnerContacts.get('Pike, Jordan'))!.phone).toBe('555-0100')
+    delete (backup.data as { startLocations?: unknown }).startLocations
+    delete (backup.data as { partnerContacts?: unknown }).partnerContacts
     expect(validateBackup(backup).ok).toBe(true)
   })
 })

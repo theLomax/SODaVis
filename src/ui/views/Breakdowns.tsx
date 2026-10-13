@@ -7,7 +7,7 @@
  * ahead of a long tail of occasional ones.
  */
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useStore } from '../store'
 import { HorizontalBar } from '../charts/Charts'
 import { Card, EmptyState, StatTile } from '../components/Tiles'
@@ -24,6 +24,9 @@ import {
 } from '../../derive/metrics'
 import { formatMoney, formatMoneyCompact } from '../../derive/money'
 import { formatMinutes } from '../../derive/time'
+import { patchPartnerContact } from '../../db/repo'
+import { toggledIn } from '../components/LockableCard'
+import { PartnerCard } from './breakdowns/PartnerCard'
 
 function useBreakdownTable(currency: string): TableColumn<Breakdown>[] {
   return useMemo(
@@ -162,11 +165,11 @@ export function Venues() {
 }
 
 export function Partners() {
-  const { derived } = useStore()
+  const { derived, reload } = useStore()
   const ctx = derived?.breakdownCtx
   const rows = useMemo(() => (ctx ? byPartner(ctx) : []), [ctx])
   const currency = derived?.money.currency ?? 'USD'
-  const columns = useBreakdownTable(currency)
+  const [unlocked, setUnlocked] = useState<ReadonlySet<string>>(new Set())
 
   if (!derived) return null
   if (rows.length === 0) {
@@ -176,6 +179,7 @@ export function Partners() {
   const solo = rows.find((r) => r.key === '(solo)')
   const named = rows.filter((r) => r.key !== '(solo)')
   const top = [...named].sort((a, b) => b.games - a.games)[0]
+  const contacts = new Map(derived.snapshot.partnerContacts.map((c) => [c.id, c]))
 
   // Breakdowns are built from trips, which exclude cancellations. A partner you
   // only ever had on a rained-out game therefore does not appear here — say so
@@ -224,11 +228,24 @@ export function Partners() {
 
       <Card
         title="All partners"
-        subtitle="One partner dominates and the rest form a long tail, so the table carries the detail"
+        subtitle="One partner dominates and the rest form a long tail. The figures come from your games; choose Edit on a partner to add how to reach them."
       >
-        <div className="overflow-auto" style={{ maxHeight: 460 }}>
-          <DataTable rows={rows} columns={columns} />
-        </div>
+        <ul className="m-0 grid list-none gap-3 p-0 sm:grid-cols-2 xl:grid-cols-3">
+          {named.map((r) => (
+            <PartnerCard
+              key={r.key}
+              partner={r}
+              contact={contacts.get(r.key)}
+              currency={currency}
+              unlocked={unlocked.has(r.key)}
+              onToggle={() => setUnlocked((u) => toggledIn(u, r.key))}
+              onPatch={async (patch) => {
+                await patchPartnerContact(r.key, patch)
+                await reload()
+              }}
+            />
+          ))}
+        </ul>
       </Card>
     </div>
   )

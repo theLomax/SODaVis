@@ -188,6 +188,8 @@ export type TripAnnotation = {
   wrapMinutesOverride?: number
   /** The vehicle driven, when not the default one. */
   vehicleId?: string
+  /** Where the trip started, when not from home. */
+  startLocationId?: string
   expenses: Expense[]
   notes?: string
 }
@@ -233,6 +235,9 @@ export function mergeTripAnnotations(
   const vehicleId = keep.vehicleId ?? merge.vehicleId
   if (vehicleId) out.vehicleId = vehicleId
   else delete out.vehicleId
+  const startLocationId = keep.startLocationId ?? merge.startLocationId
+  if (startLocationId) out.startLocationId = startLocationId
+  else delete out.startLocationId
   if (notes) out.notes = notes
   else delete out.notes
   return out

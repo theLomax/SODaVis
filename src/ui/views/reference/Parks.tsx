@@ -21,6 +21,7 @@ import { deletePark, mergeParks, patchPark, saveParks } from '../../../db/repo'
 import type { Park } from '../../../model/reference'
 import { stripFieldDesignator } from '../../../derive/resolve'
 import { ParkCard } from './ParkCard'
+import { getMapsKey, routeBetween, type RouteResult } from '../../../maps/maps'
 
 /** The city filter's value for a park with no city entered. */
 const NO_CITY = '\u0000none'
@@ -31,6 +32,9 @@ export function ParksEditor() {
   const [mergeInto, setMergeInto] = useState('')
   const [busy, setBusy] = useState(false)
   const [show, setShow] = useState<FilterSelection>(NO_SELECTION)
+  /** Distances fetched for several parks at once, waiting to be accepted. */
+  const [fetched, setFetched] = useState<{ park: Park; route?: RouteResult; error?: string }[] | null>(null)
+  const [fetching, setFetching] = useState(false)
 
   const usage = useMemo(() => {
     const counts = new Map<string, number>()
@@ -149,6 +153,44 @@ export function ParksEditor() {
     }),
   )
 
+  const { homeOriginLabel: homeLabel, homeAddress } = derived.snapshot.settings
+  /** Parks the map service can measure without anything more being typed. */
+  const measurable = parks.filter((p) => (p.address || p.location) && p.oneWayMiles == null)
+
+  // One request per park, in turn, on the button. Results wait to be accepted.
+  async function fetchDistances() {
+    if (!homeAddress) return
+    setFetching(true)
+    const out: NonNullable<typeof fetched> = []
+    for (const park of measurable) {
+      try {
+        out.push({
+          park,
+          route: await routeBetween(homeAddress, { address: park.address ?? park.name, location: park.location }, getMapsKey()),
+        })
+      } catch (e) {
+        out.push({ park, error: e instanceof Error ? e.message : String(e) })
+        // A refused key or a dead connection will fail every park the same way.
+        if (out.every((r) => r.error)) break
+      }
+      setFetched([...out])
+    }
+    setFetching(false)
+  }
+
+  async function applyFetched() {
+    setBusy(true)
+    try {
+      for (const r of fetched ?? []) {
+        if (r.route) await patchPark(r.park.id, { oneWayMiles: r.route.miles, oneWayDriveMinutes: r.route.minutes })
+      }
+      setFetched(null)
+      await reload()
+    } finally {
+      setBusy(false)
+    }
+  }
+
   // A patch, not the park as rendered: two fields of a card can be committed
   // before the view reloads, and a whole-row save would undo the first.
   async function update(park: Park, patch: Partial<Omit<Park, 'id'>>) {
@@ -234,12 +276,51 @@ export function ParksEditor() {
           shown={shownParks.length}
           total={parks.length}
         >
+          {measurable.length > 0 || fetched ? (
+            <div
+              className="mb-3 flex flex-col gap-2 rounded-lg p-3 text-xs"
+              style={{ border: '1px solid var(--border-hairline)' }}
+            >
+              {fetched ? (
+                <>
+                  <ul className="m-0 flex list-none flex-col gap-1 p-0">
+                    {fetched.map((r) => (
+                      <li key={r.park.id} style={{ color: r.error ? 'var(--status-critical)' : 'var(--text-primary)' }}>
+                        <strong>{r.park.name}: </strong>
+                        {r.route ? `${r.route.miles} mi, ${r.route.minutes} min one way` : r.error}
+                      </li>
+                    ))}
+                  </ul>
+                  {fetching ? (
+                    <span style={{ color: 'var(--text-muted)' }}>Fetching…</span>
+                  ) : (
+                    <span className="flex flex-wrap gap-2">
+                      {fetched.some((r) => r.route) ? (
+                        <Button variant="primary" disabled={busy} onClick={() => void applyFetched()}>
+                          Use these distances
+                        </Button>
+                      ) : null}
+                      <Button onClick={() => setFetched(null)}>Dismiss</Button>
+                    </span>
+                  )}
+                </>
+              ) : (
+                <span className="flex flex-wrap items-center gap-2" style={{ color: 'var(--text-secondary)' }}>
+                  {measurable.length} park{measurable.length === 1 ? ' has' : 's have'} an address or map position but no mileage.
+                  <Button disabled={fetching || !homeAddress} onClick={() => void fetchDistances()}>
+                    Get {measurable.length === 1 ? 'its distance' : 'their distances'} from {homeLabel}
+                  </Button>
+                  {homeAddress ? null : <span>Add {homeLabel}'s address on your profile first.</span>}
+                </span>
+              )}
+            </div>
+          ) : null}
           {shownParks.length === 0 && parks.length > 0 ? (
             <p className="m-0 text-xs" style={{ color: 'var(--text-muted)' }}>
               No park matches all of those. League, sport and organization come from the games played at a park.
             </p>
           ) : null}
-          <ul className="m-0 grid list-none gap-3 p-0 sm:grid-cols-2 xl:grid-cols-3">
+          <ul className="m-0 grid list-none gap-3 p-0 md:grid-cols-2 xl:grid-cols-3">
             {shownParks.map((park) => (
               <ParkCard
                 key={park.id}
@@ -249,6 +330,8 @@ export function ParksEditor() {
                 unlocked={unlocked.has(park.id)}
                 highlighted={park.id === arrivedAt}
                 currency={derived.snapshot.settings.currency}
+                homeLabel={homeLabel}
+                homeAddress={homeAddress}
                 {...(park.id === arrivedAt ? { cardRef: arrivedCard } : {})}
                 onToggle={() => toggleLock(park.id)}
                 onPatch={(patch) => void update(park, patch)}
