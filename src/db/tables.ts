@@ -326,6 +326,30 @@ export const TABLES: readonly TableSpec[] = [
     merge: 'key',
     inCounts: true,
   },
+  {
+    name: 'startLocations',
+    since: 8,
+    indexes: 'id',
+    kind: 'rows',
+    rowSchema: z.object({ id: z.string(), label: z.string() }).loose(),
+    backupShape: 'array',
+    optionalInBackup: true,
+    keyOf: (row) => row.id as string,
+    merge: 'key',
+    inCounts: true,
+  },
+  {
+    name: 'partnerContacts',
+    since: 8,
+    indexes: 'id',
+    kind: 'rows',
+    rowSchema: z.object({ id: z.string() }).loose(),
+    backupShape: 'array',
+    optionalInBackup: true,
+    keyOf: (row) => row.id as string,
+    merge: 'key',
+    inCounts: true,
+  },
 ]
 
 export const TABLE_NAMES = TABLES.map((t) => t.name)

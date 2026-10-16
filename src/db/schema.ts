@@ -9,6 +9,8 @@ import type { Game, ImportRun } from '../model/game'
 import type {
   AgeGroupDuration,
   Vehicle,
+  StartLocation,
+  PartnerContact,
   Organization,
   CallType,
   GearLevel,
@@ -55,6 +57,8 @@ export class AppDatabase extends Dexie {
   customProfiles!: EntityTable<StoredProfile, 'id'>
   organizations!: EntityTable<Organization, 'id'>
   vehicles!: EntityTable<Vehicle, 'id'>
+  startLocations!: EntityTable<StartLocation, 'id'>
+  partnerContacts!: EntityTable<PartnerContact, 'id'>
 
   constructor(name = 'so-datavisualizer') {
     super(name)

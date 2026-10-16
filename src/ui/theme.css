@@ -20,6 +20,7 @@
   --baseline: #c3c2b7;
   --border-hairline: rgba(11, 11, 11, 0.1);
   --delta-good: #006300;
+  --tracked: #008800;
   /*
    * Zebra striping for long tables. Deliberately a hair off the surface rather
    * than a step of the gridline scale: the stripe must be weak enough that it never
@@ -86,6 +87,7 @@
     --baseline: #383835;
     --border-hairline: rgba(255, 255, 255, 0.1);
     --delta-good: #0ca30c;
+    --tracked: #004400;
 
     --series-1: #3987e5;
     --series-2: #d95926;
@@ -137,6 +139,15 @@
   --div-pos: #e66767;
 }
 
+@media (max-width: 700px) {
+    #root {
+        --spacing: .15rem;
+    }
+    .sm\:grid-cols-2 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
 html,
 body,
 #root {
@@ -149,6 +160,33 @@ body {
   color: var(--text-primary);
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * A record's card in an editable list (components/LockableCard.tsx). Kept here,
+ * not inline, so a list can restyle its cards with a class of its own — for
+ * example `.sport-card--tracked` — and win without `!important`. Put such rules
+ * after this block.
+ */
+.lockable-card {
+  border: 1px solid var(--border-hairline);
+  background: var(--surface-1);
+}
+/* The card a warning's link sent the reader to. */
+.lockable-card--arrived {
+  background: var(--gridline);
+}
+/* A record no longer in use: an untracked sport, a retired piece of gear. */
+.lockable-card--dimmed {
+  opacity: 0.6;
+}
+/* Open for editing. Last, so it shows on an arrived or restyled card too. */
+.lockable-card--unlocked {
+  border-color: var(--series-1);
+}
+
+.sport-card--tracked {
+    border-color: var(--tracked);
 }
 
 /* Tabular figures only where numbers must align vertically. */

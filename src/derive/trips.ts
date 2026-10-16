@@ -21,7 +21,7 @@
 
 import type { DataQualityFlag } from '../model/game'
 import { isActive, isCancelled } from '../model/game'
-import type { Park, Settings, Vehicle } from '../model/reference'
+import type { Park, Settings, StartLocation, Vehicle } from '../model/reference'
 import type { TripAnnotation } from '../model/annotation'
 import { parseTripKey, tripKey } from '../model/annotation'
 import { minutesToTime, timeToMinutes } from '../import/transforms'
@@ -79,6 +79,8 @@ export type Trip = {
   /** The vehicle driven: set on the trip, or else the default. Unset if neither. */
   vehicleId?: string
   vehicleSource?: 'trip' | 'default'
+  /** Where the trip started, when not from home and the location is still known. */
+  startLocationId?: string
   flags: DataQualityFlag[]
 }
 
@@ -88,6 +90,8 @@ export type TripContext = {
   settings: Settings
   /** Known vehicles, so a trip naming one since deleted falls back rather than dangling. */
   vehicles?: Map<string, Vehicle>
+  /** Known start locations, so a trip naming one since deleted reads as from home. */
+  startLocations?: Map<string, StartLocation>
 }
 
 /** The trip's own vehicle if it names a known one, else the default if that is known. */
@@ -210,7 +214,7 @@ function buildTrip(
     flags.push({
       code: 'missing-mileage',
       severity: 'warning',
-      message: `No mileage on record for ${park?.name ?? parkId}. Add one-way miles in Reference data, or enter a trip override.`,
+      message: `No mileage on record for ${park?.name ?? parkId}. Add one-way miles under Reference, or enter a trip override.`,
       context: park?.name ?? parkId,
     })
   }
@@ -301,6 +305,9 @@ function buildTrip(
     isWastedTrip: played.length === 0,
     cancelledGames: games.length - played.length,
     ...vehicleFields(resolveVehicle(annotation, ctx.settings, ctx.vehicles ?? new Map())),
+    ...(annotation?.startLocationId && ctx.startLocations?.has(annotation.startLocationId)
+      ? { startLocationId: annotation.startLocationId }
+      : {}),
     flags,
   }
 }

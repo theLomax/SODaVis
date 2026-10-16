@@ -50,7 +50,7 @@ export function HiddenSportsNotice() {
           onClick={() => void track(h.code)}
           className="rounded-md px-2 py-0.5"
           style={{ border: '1px solid var(--border-hairline)', color: 'var(--text-primary)' }}
-          title={h.known ? undefined : `"${h.code}" is a sport code the app has not seen; tracking it adds it as a sport you can rename under Reference data.`}
+          title={h.known ? undefined : `"${h.code}" is a sport code the app has not seen; tracking it adds it as a sport you can rename under Reference.`}
         >
           Track {h.label} ({h.games})
         </button>

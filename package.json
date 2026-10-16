@@ -13,7 +13,8 @@
     "commit": "node scripts/commit-all.mjs",
     "fixture": "node scripts/make-fixture.mjs && vite-node scripts/write-expected-example.mjs",
     "expected": "vite-node scripts/write-expected.mjs",
-    "publish:app": "node scripts/publish.mjs"
+    "publish:app": "node scripts/publish.mjs",
+    "map": "node scripts/module-map.mjs"
   },
   "dependencies": {
     "@tanstack/react-table": "^8.21.3",

@@ -61,6 +61,8 @@ function snapshot(parts: Partial<AppSnapshot>): AppSnapshot {
     gearSets: [],
     organizations: [],
     vehicles: [],
+    startLocations: [],
+    partnerContacts: [],
     imports: [],
     customProfiles: [],
     ...parts,

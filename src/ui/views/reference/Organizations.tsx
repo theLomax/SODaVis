@@ -8,6 +8,8 @@
  * game to it. Never the assignor: that is a person, who may assign for several.
  */
 
+import { toggledIn } from '../../components/LockableCard'
+import { OrganizationCard } from './OrganizationCard'
 import { useMemo, useState } from 'react'
 import { useStore } from '../../store'
 import { Button, TextInput, selectStyle } from '../../components/Controls'
@@ -18,7 +20,6 @@ import {
   type Organization,
   type OrganizationKind,
 } from '../../../model/reference'
-import { TextCell } from './cells'
 import { newOrganizationId } from '../../../model/organizations'
 
 /** "HOG, H&B Officials" → ['HOG', 'H&B Officials']. */
@@ -37,6 +38,7 @@ export function OrganizationsEditor() {
   const [kind, setKind] = useState<OrganizationKind>('association')
   const [platform, setPlatform] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [unlocked, setUnlocked] = useState<ReadonlySet<string>>(new Set())
 
   const games = derived?.allResolved
   const counts = useMemo(() => {
@@ -132,102 +134,33 @@ export function OrganizationsEditor() {
             None yet. Add the organizations you work for below, or from the payors on your games.
           </p>
         ) : (
-          <div className="overflow-auto">
-            <table className="w-full border-collapse text-xs">
-              <thead>
-                <tr>
-                  {['Name', 'Also known as', 'Kind', 'Platform', 'Games', ''].map((h, i) => (
-                    <th
-                      key={h || i}
-                      scope="col"
-                      className="px-2 py-1.5 font-medium"
-                      style={{
-                        textAlign: i === 4 ? 'right' : 'left',
-                        color: 'var(--text-secondary)',
-                        borderBottom: '1px solid var(--gridline)',
-                      }}
-                    >
-                      {h ? h : <span className="sr-only">Actions</span>}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {organizations.map((org) => (
-                  <tr key={org.id} style={{ borderBottom: '1px solid var(--gridline)' }}>
-                    <td className="px-2 py-1.5">
-                      <TextCell
-                        value={org.name}
-                        width={180}
-                        ariaLabel={`Name of ${org.name}`}
-                        onCommit={(v) => {
-                          if (!v || v === org.name) return
-                          const clash = nameInUse(v)
-                          if (clash && clash.id !== org.id) {
-                            setError(`"${v}" is already a name for ${clash.name}.`)
-                            return
-                          }
-                          void run(() => patchOrganization(org.id, { name: v }))
-                        }}
-                      />
-                    </td>
-                    <td className="px-2 py-1.5">
-                      <TextCell
-                        value={(org.aliases ?? []).join(', ')}
-                        width={240}
-                        ariaLabel={`Other names for ${org.name}`}
-                        onCommit={(v) => setAliases(org, v)}
-                      />
-                    </td>
-                    <td className="px-2 py-1.5">
-                      <select
-                        value={org.kind}
-                        onChange={(e) =>
-                          void run(() => patchOrganization(org.id, { kind: e.target.value as OrganizationKind }))
-                        }
-                        aria-label={`Kind of ${org.name}`}
-                        className="rounded-md px-1.5 py-0.5 text-xs"
-                        style={selectStyle}
-                      >
-                        {ORGANIZATION_KINDS.map((k) => (
-                          <option key={k.id} value={k.id}>
-                            {k.label}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="px-2 py-1.5">
-                      <TextCell
-                        value={org.platform}
-                        width={90}
-                        ariaLabel={`Platform ${org.name} uses`}
-                        onCommit={(v) => {
-                          if (v !== org.platform) void run(() => patchOrganization(org.id, { platform: v }))
-                        }}
-                      />
-                    </td>
-                    <td className="num-tabular px-2 py-1.5 text-right" style={{ color: 'var(--text-secondary)' }}>
-                      {counts.get(org.id) ?? 0}
-                    </td>
-                    <td className="px-2 py-1.5 text-right">
-                      <button
-                        type="button"
-                        onClick={() => void run(() => deleteOrganization(org.id))}
-                        aria-label={`Delete ${org.name}`}
-                        className="text-xs"
-                        style={{ color: 'var(--status-critical)' }}
-                      >
-                        Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div>
+            <ul className="m-0 grid list-none gap-3 p-0 md:grid-cols-2 xl:grid-cols-3">
+              {organizations.map((org) => (
+                <OrganizationCard
+                  key={org.id}
+                  organization={org}
+                  games={counts.get(org.id) ?? 0}
+                  unlocked={unlocked.has(org.id)}
+                  onToggle={() => setUnlocked((u) => toggledIn(u, org.id))}
+                  onRename={(v) => {
+                    const clash = nameInUse(v)
+                    if (clash && clash.id !== org.id) {
+                      setError(`"${v}" is already a name for ${clash.name}.`)
+                      return
+                    }
+                    void run(() => patchOrganization(org.id, { name: v }))
+                  }}
+                  onAliases={(v) => setAliases(org, v)}
+                  onPatch={(patch) => void run(() => patchOrganization(org.id, patch))}
+                  onDelete={() => void run(() => deleteOrganization(org.id))}
+                />
+              ))}
+            </ul>
             <p className="m-0 mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
               A game whose payor is one of an organization's names belongs to it. Separate other names with commas;
-              case is ignored. A game set by hand in Trips keeps its organization regardless. Deleting an organization
-              clears it from every game and import that used it.
+              case is ignored. A game set by hand in Trips keeps its organization regardless. Choose Edit on an organization
+              to change or delete it; deleting clears it from every game and import that used it.
             </p>
           </div>
         )}
@@ -273,44 +206,44 @@ export function OrganizationsEditor() {
               None of them names a payor.
             </p>
           ) : (
-            <table className="w-full border-collapse text-xs">
-              <tbody>
-                {unclaimed.payors.slice(0, 12).map(([payor, n]) => (
-                  <tr key={payor} style={{ borderBottom: '1px solid var(--gridline)' }}>
-                    <td className="px-2 py-1.5" style={{ color: 'var(--text-primary)' }}>
-                      {payor}
-                    </td>
-                    <td className="num-tabular px-2 py-1.5 text-right" style={{ color: 'var(--text-muted)' }}>
-                      {n} game{n === 1 ? '' : 's'}
-                    </td>
-                    <td className="px-2 py-1.5 text-right">
-                      <span className="inline-flex flex-wrap items-center justify-end gap-2">
-                        <Button onClick={() => void create(payor, 'association')}>Add as association</Button>
-                        <Button onClick={() => void create(payor, 'direct')}>Add as direct contract</Button>
-                        {organizations.length > 0 ? (
-                          <select
-                            value=""
-                            onChange={(e) => {
-                              if (e.target.value) addAlias(e.target.value, payor)
-                            }}
-                            aria-label={`File ${payor} as another name for`}
-                            className="rounded-md px-1.5 py-0.5 text-xs"
-                            style={selectStyle}
-                          >
-                            <option value="">Another name for…</option>
-                            {organizations.map((o) => (
-                              <option key={o.id} value={o.id}>
-                                {o.name}
-                              </option>
-                            ))}
-                          </select>
-                        ) : null}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <ul className="m-0 flex list-none flex-col p-0 text-xs">
+              {unclaimed.payors.slice(0, 12).map(([payor, n]) => (
+                <li
+                  key={payor}
+                  className="flex flex-wrap items-center justify-between gap-2 py-2"
+                  style={{ borderBottom: '1px solid var(--gridline)' }}
+                >
+                  <span style={{ color: 'var(--text-primary)' }}>
+                    {payor}{' '}
+                    <span className="num-tabular" style={{ color: 'var(--text-muted)' }}>
+                      · {n} game{n === 1 ? '' : 's'}
+                    </span>
+                  </span>
+                  <span className="flex flex-wrap items-center gap-2">
+                    <Button onClick={() => void create(payor, 'association')}>Add as association</Button>
+                    <Button onClick={() => void create(payor, 'direct')}>Add as direct contract</Button>
+                    {organizations.length > 0 ? (
+                      <select
+                        value=""
+                        onChange={(e) => {
+                          if (e.target.value) addAlias(e.target.value, payor)
+                        }}
+                        aria-label={`File ${payor} as another name for`}
+                        className="rounded-md px-1.5 py-0.5 text-xs"
+                        style={selectStyle}
+                      >
+                        <option value="">Another name for…</option>
+                        {organizations.map((o) => (
+                          <option key={o.id} value={o.id}>
+                            {o.name}
+                          </option>
+                        ))}
+                      </select>
+                    ) : null}
+                  </span>
+                </li>
+              ))}
+            </ul>
           )}
           {unclaimed.noPayor > 0 && unclaimed.payors.length > 0 ? (
             <p className="m-0 mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>

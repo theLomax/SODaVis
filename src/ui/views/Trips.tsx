@@ -1,10 +1,11 @@
 /**
- * Trips. A table with drill-down, which is the right form here: the interesting
- * thing about a trip is its several numbers side by side, not its shape.
+ * Trips. A grid of cards, one per trip, each with its figures side by side: the
+ * interesting thing about a trip is its several numbers, not its shape.
  *
  * This is also where a trip's manual figures are entered — miles, tolls, drive
  * time, and expenses — because that is where the user is looking when they
- * notice a figure is wrong.
+ * notice a figure is wrong. A card is locked until its Edit button opens the
+ * trip's editor (`TripDetail`), as the parks and gear cards are.
  */
 
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
@@ -12,7 +13,10 @@ import { useStore } from '../store'
 import { Button, TextInput, selectStyle } from '../components/Controls'
 import { Card, EmptyState, StatusChip } from '../components/Tiles'
 import { FlagDialog } from '../components/FlagDialog'
+import { toggledIn } from '../components/LockableCard'
 import { flagMarker, flagTitle } from '../flags'
+import { getMapsKey, routeBetween } from '../../maps/maps'
+import { TripCard } from './trips/TripCard'
 import { formatMoney } from '../../derive/money'
 import { formatMinutes, tripTime } from '../../derive/time'
 import { patchGameAnnotation, saveTripAnnotation } from '../../db/repo'
@@ -23,6 +27,7 @@ import type {
   CallType,
   Organization,
   Vehicle,
+  StartLocation,
   GearLevel,
   GearLevelId,
   GearModifier,
@@ -35,7 +40,9 @@ import { severityStatus } from '../charts/palette'
 
 export function Trips() {
   const { derived, reload, pendingFocus, clearPendingFocus } = useStore()
-  const [openKey, setOpenKey] = useState<string | null>(null)
+  /** The trips open for editing. Every card starts locked. */
+  const [unlocked, setUnlocked] = useState<ReadonlySet<string>>(new Set())
+  const unlock = (key: string) => setUnlocked((u) => new Set(u).add(key))
   /** Trip key whose flags are being reviewed in the dialog. */
   const [flagKey, setFlagKey] = useState<string | null>(null)
 
@@ -45,19 +52,26 @@ export function Trips() {
   )
 
   /**
-   * Arriving from a warning elsewhere: expand that trip and scroll to it. `openKey`
-   * already existed for the dialog's own "Open this trip" action, so a deep link is
-   * the same state reached from further away.
+   * Arriving from a warning elsewhere: unlock that trip and scroll to it. The
+   * dialog's own "Open this trip" action unlocks the same way, so a deep link is
+   * the same state reached from further away. Kept as `arrivedAt` so the card
+   * stays marked after the focus request is consumed.
    */
   const focusTrip = pendingFocus?.view === 'trips' ? pendingFocus.focus : undefined
-  const focusRow = useRef<HTMLTableRowElement | null>(null)
+  const [arrivedAt, setArrivedAt] = useState<string>()
+  const arrivedCard = useRef<HTMLLIElement | null>(null)
 
   useEffect(() => {
     if (!focusTrip) return
-    setOpenKey(focusTrip)
-    focusRow.current?.scrollIntoView({ block: 'center' })
+    setUnlocked((u) => new Set(u).add(focusTrip))
+    setArrivedAt(focusTrip)
     clearPendingFocus()
   }, [focusTrip, clearPendingFocus])
+
+  // After the render that unlocked the card, so it is laid out at its full width.
+  useEffect(() => {
+    if (arrivedAt) arrivedCard.current?.scrollIntoView({ block: 'center' })
+  }, [arrivedAt])
 
   if (!derived) return null
   const { trips, timeCtx, money } = derived
@@ -80,130 +94,56 @@ export function Trips() {
         title={`${trips.length} trips`}
         subtitle={`Across ${new Set(trips.map((t) => t.date)).size} work days. Cancelled games are excluded by design.`}
       >
-        {/* Cap by viewport rather than a fixed pixel height, so the last visible
-            row is never sliced in half while the page has room below. */}
-        <div className="overflow-auto" style={{ maxHeight: 'min(72vh, 900px)' }}>
-          <table className="w-full border-collapse text-xs">
-            <thead>
-              <tr>
-                {['Date', 'Park', 'Games', 'First', 'Last end', 'Game time', 'Drive', 'Miles', 'Tolls', 'Income', ''].map(
-                  (h, i) => (
-                    <th
-                      key={h || `spacer-${i}`}
-                      scope="col"
-                      className="sticky top-0 px-2 py-1.5 font-medium"
-                      style={{
-                        textAlign: i >= 2 && i <= 9 ? 'right' : 'left',
-                        color: 'var(--text-secondary)',
-                        background: 'var(--surface-1)',
-                        borderBottom: '1px solid var(--gridline)',
-                      }}
-                    >
-                      {h}
-                    </th>
-                  ),
-                )}
-              </tr>
-            </thead>
-            <tbody>
-              {trips.map((trip) => {
-                const t = tripTime(trip, timeCtx)
-                const gross = trip.games.reduce((s, g) => s + (g.game.fees.actual ?? 0), 0)
-                const isOpen = openKey === trip.key
-                return (
-                  // The fragment carries the key: a trip renders two sibling rows.
-                  <Fragment key={trip.key}>
-                    <tr
-                      {...(trip.key === focusTrip ? { ref: focusRow } : {})}
-                      style={{ borderBottom: '1px solid var(--gridline)' }}
-                    >
-                      {/* The weekday is the thing you actually reason about —
-                          "was that a Saturday?" — but it would cost a column, so
-                          it rides the date's tooltip. */}
-                      <Td>
-                        <span title={weekdayOf(trip.date)}>{trip.date}</span>
-                      </Td>
-                      <Td>
-                        <span className="flex items-center gap-2">
-                          {trip.parkName}
-                          {trip.flags.length > 0 ? (
-                            <StatusChip
-                              role={severityStatus(trip.flags[0]!.severity)}
-                              marker={flagMarker(trip.flags[0]!.severity)}
-                              label={trip.flags.length === 1 ? 'Review' : `${trip.flags.length} issues`}
-                              onClick={() => setFlagKey(trip.key)}
-                              opensDialog
-                              title={
-                                trip.flags.length === 1
-                                  ? `${flagTitle(trip.flags[0]!.code)} — open for detail`
-                                  : `${trip.flags.length} items to review — open for detail`
-                              }
-                            />
-                          ) : null}
-                        </span>
-                      </Td>
-                      <Td right>{trip.games.length}</Td>
-                      <Td right>{trip.firstStart}</Td>
-                      <Td right>{trip.lastEnd ?? '—'}</Td>
-                      <Td right>{formatMinutes(trip.gameMinutes)}</Td>
-                      <Td right>
-                        {formatMinutes(trip.driveMinutes)}
-                        <SourceMark source={trip.driveMinutesSource} />
-                      </Td>
-                      <Td right>
-                        {trip.miles == null ? '—' : trip.miles.toLocaleString()}
-                        <SourceMark source={trip.milesSource} />
-                      </Td>
-                      <Td right>
-                        {trip.tolls == null ? '—' : formatMoney(trip.tolls, currency)}
-                        <SourceMark source={trip.tollsSource} />
-                      </Td>
-                      <Td right>{formatMoney(gross, currency)}</Td>
-                      <Td>
-                        <button
-                          type="button"
-                          onClick={() => setOpenKey(isOpen ? null : trip.key)}
-                          aria-expanded={isOpen}
-                          className="rounded px-1.5 py-0.5"
-                          style={{ color: 'var(--text-secondary)', border: '1px solid var(--border-hairline)' }}
-                        >
-                          {isOpen ? 'Close' : 'Open'}
-                        </button>
-                      </Td>
-                    </tr>
-                    {isOpen ? (
-                      <tr>
-                        <td colSpan={11} style={{ background: 'var(--surface-page)', padding: 0 }}>
-                          <TripDetail
-                            trip={trip}
-                            onReviewFlag={() => setFlagKey(trip.key)}
-                            sports={derived.trackedSports}
-                            gearLevels={derived.snapshot.gearLevels}
-                            gearModifiers={derived.snapshot.gearModifiers}
-                            callTypes={derived.snapshot.callTypes}
-                            organizations={derived.snapshot.organizations}
-                            vehicles={derived.snapshot.vehicles}
-                            annotation={annotations.get(trip.key)}
-                            committedMinutes={t.byModel['committed']}
-                            prepMinutes={t.prepMinutes}
-                            wrapMinutes={t.wrapMinutes}
-                            gapMinutes={t.gapMinutes}
-                            currency={currency}
-                            onSaved={reload}
-                          />
-                        </td>
-                      </tr>
-                    ) : null}
-                  </Fragment>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+        {/* An open card spans the row, so the cards before it on that row can leave
+            a gap; a dense grid would fill it, but by moving later trips ahead of
+            earlier ones, and date order matters more here. */}
+        <ul className="m-0 grid list-none gap-3 p-0 sm:grid-cols-2 xl:grid-cols-3">
+          {trips.map((trip) => {
+            const isOpen = unlocked.has(trip.key)
+            const t = isOpen ? tripTime(trip, timeCtx) : null
+            return (
+              <TripCard
+                key={trip.key}
+                trip={trip}
+                currency={currency}
+                startedFrom={derived.snapshot.startLocations.find((l) => l.id === trip.startLocationId)?.label}
+                unlocked={isOpen}
+                highlighted={trip.key === arrivedAt}
+                {...(trip.key === arrivedAt ? { cardRef: arrivedCard } : {})}
+                onToggle={() => setUnlocked((u) => toggledIn(u, trip.key))}
+                onReviewFlags={() => setFlagKey(trip.key)}
+              >
+                {t ? (
+                  <TripDetail
+                    trip={trip}
+                    onReviewFlag={() => setFlagKey(trip.key)}
+                    sports={derived.trackedSports}
+                    gearLevels={derived.snapshot.gearLevels}
+                    gearModifiers={derived.snapshot.gearModifiers}
+                    callTypes={derived.snapshot.callTypes}
+                    organizations={derived.snapshot.organizations}
+                    vehicles={derived.snapshot.vehicles}
+                    startLocations={derived.snapshot.startLocations}
+                    homeLabel={derived.snapshot.settings.homeOriginLabel}
+                    parkAddress={derived.snapshot.parks.find((p) => p.id === trip.parkId)?.address}
+                    parkLocation={derived.snapshot.parks.find((p) => p.id === trip.parkId)?.location}
+                    annotation={annotations.get(trip.key)}
+                    committedMinutes={t.byModel['committed']}
+                    prepMinutes={t.prepMinutes}
+                    wrapMinutes={t.wrapMinutes}
+                    gapMinutes={t.gapMinutes}
+                    currency={currency}
+                    onSaved={reload}
+                  />
+                ) : null}
+              </TripCard>
+            )
+          })}
+        </ul>
       </Card>
 
-      {/* One dialog for the whole table, driven by which trip's chip was clicked.
-          Its fix action expands that trip's row where the overrides live, and falls
+      {/* One dialog for every card, driven by which trip's chip was clicked. Its
+          fix action unlocks that trip's card where the overrides live, and falls
           back to the flag's own destination where they do not. */}
       {flagTrip ? (
         <FlagDialog
@@ -222,7 +162,7 @@ export function Trips() {
             ? {
                 action: {
                   label: 'Open this trip to enter it',
-                  onClick: () => setOpenKey(flagTrip.key),
+                  onClick: () => unlock(flagTrip.key),
                 },
               }
             : {})}
@@ -263,6 +203,10 @@ function TripDetail({
   callTypes,
   organizations,
   vehicles,
+  startLocations,
+  homeLabel,
+  parkAddress,
+  parkLocation,
   annotation,
   committedMinutes,
   prepMinutes,
@@ -280,6 +224,12 @@ function TripDetail({
   callTypes: CallType[]
   organizations: Organization[]
   vehicles: Vehicle[]
+  startLocations: StartLocation[]
+  /** What home is called, for the default choice of where the trip started. */
+  homeLabel: string
+  /** The park's address, for routing a trip that did not start from home. */
+  parkAddress: string | undefined
+  parkLocation: { lat: number; lon: number } | undefined
   annotation: TripAnnotation | undefined
   committedMinutes: number | null
   prepMinutes: number
@@ -296,12 +246,31 @@ function TripDetail({
   const [notes, setNotes] = useState(annotation?.notes ?? '')
   /** '' = no vehicle on the trip itself, so the default applies. */
   const [vehicle, setVehicle] = useState(annotation?.vehicleId ?? '')
+  /** '' = started from home. */
+  const [startLocation, setStartLocation] = useState(annotation?.startLocationId ?? '')
   const [expenses, setExpenses] = useState<Expense[]>(annotation?.expenses ?? [])
   const [amount, setAmount] = useState('')
   const [category, setCategory] = useState<ExpenseCategory>('parking')
   const [deductible, setDeductible] = useState(true)
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
+  const [routing, setRouting] = useState<{ busy?: boolean; message?: string; failed?: boolean }>({})
+
+  // Fills the two override fields with the round trip from where this trip
+  // started. Nothing is stored until Save, like any other figure typed here.
+  async function routeFrom(origin: StartLocation) {
+    setRouting({ busy: true })
+    try {
+      const r = await routeBetween(origin.address!, { address: parkAddress ?? trip.parkName, location: parkLocation }, getMapsKey())
+      setMiles(String(Math.round(r.miles * 2 * 10) / 10))
+      setDrive(String(r.minutes * 2))
+      setRouting({
+        message: `Filled in the round trip from ${origin.label}: ${r.miles} mi and ${r.minutes} min each way. Save overrides to keep it.`,
+      })
+    } catch (e) {
+      setRouting({ failed: true, message: e instanceof Error ? e.message : String(e) })
+    }
+  }
 
   const num = (v: string) => {
     const n = Number(v)
@@ -309,12 +278,14 @@ function TripDetail({
   }
 
   // Rebuilds the whole annotation from this form, so every field it owns —
-  // the vehicle included — must be held here, or a save would drop it.
-  async function save(nextExpenses = expenses, nextVehicle = vehicle) {
+  // the vehicle and start location included — must be held here, or a save
+  // would drop it.
+  async function save(nextExpenses = expenses, nextVehicle = vehicle, nextStart = startLocation) {
     setSaving(true)
     try {
       const next: TripAnnotation = { key: trip.key, expenses: nextExpenses }
       if (nextVehicle) next.vehicleId = nextVehicle
+      if (nextStart) next.startLocationId = nextStart
       const m = num(miles)
       const t = num(tolls)
       const d = num(drive)
@@ -359,11 +330,14 @@ function TripDetail({
   }
 
   return (
-    <div className="flex flex-col gap-4 p-4">
+    <div
+      className="flex flex-col gap-4 pt-3"
+      style={{ borderTop: '1px solid var(--gridline)' }}
+    >
       {trip.flags.length > 0 ? (
         <ul className="m-0 flex list-none flex-col gap-1 p-0">
           {trip.flags.map((f) => (
-            <li key={f.code} className="flex items-center gap-2 text-xs">
+            <li key={f.code} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
               {/* The human title, not the machine code, with the detail a click away. */}
               <StatusChip
                 role={severityStatus(f.severity)}
@@ -516,6 +490,63 @@ function TripDetail({
                     </option>
                   ))}
               </select>
+            </Labeled>
+          ) : null}
+          {startLocations.length > 0 ? (
+            <Labeled label="Started from">
+              <select
+                value={startLocation}
+                disabled={saving}
+                onChange={(e) => {
+                  setStartLocation(e.target.value)
+                  void save(expenses, vehicle, e.target.value)
+                }}
+                className="rounded-md px-2 py-1 text-xs"
+                style={selectStyle}
+                aria-label="Where this trip started"
+              >
+                <option value="">{homeLabel}</option>
+                {[...startLocations]
+                  .sort((a, b) => a.label.localeCompare(b.label))
+                  .map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.label}
+                    </option>
+                  ))}
+              </select>
+              {/* Park figures are from home, so say when they are standing in. */}
+              {startLocation && (trip.milesSource !== 'override' || trip.driveMinutesSource !== 'override') ? (
+                <span className="mt-1 block text-xs" style={{ color: 'var(--status-warning)' }}>
+                  The park's miles and drive time are from {homeLabel}. Enter this trip's own above.
+                </span>
+              ) : null}
+              {(() => {
+                const origin = startLocations.find((l) => l.id === startLocation)
+                if (!origin) return null
+                const ready = Boolean(origin.address && (parkAddress || parkLocation))
+                return (
+                  <span className="mt-1 flex flex-col gap-1 text-xs">
+                    <span>
+                      <Button onClick={() => void routeFrom(origin)} disabled={!ready || routing.busy === true}>
+                        Get miles and drive time from {origin.label}
+                      </Button>
+                    </span>
+                    {ready ? null : (
+                      <span style={{ color: 'var(--text-muted)' }}>
+                        Needs an address on {origin.label}, and an address or map position on the park.
+                      </span>
+                    )}
+                    {routing.message ? (
+                      <span
+                        role={routing.failed ? 'alert' : 'status'}
+                        style={{ color: routing.failed ? 'var(--status-critical)' : 'var(--text-secondary)' }}
+                      >
+                        {routing.message}
+                      </span>
+                    ) : null}
+                  </span>
+                )
+              })()}
             </Labeled>
           ) : null}
           <Labeled label="Trip notes">
@@ -830,51 +861,6 @@ function DurationCell({
   )
 }
 
-/**
- * Where a figure came from, marked on the value itself.
- *
- * A table has no room for the parenthetical the editors use ("Miles (override)"),
- * so each cell carries a short suffix instead — extending the `est.` marker the
- * drive column already had rather than inventing an asterisk convention that would
- * need a legend.
- *
- * Only non-obvious provenance is marked. A figure straight from reference data is
- * the expected case and says nothing; `yours` means you typed it, and `est.` means
- * the app derived it from something else and could be wrong.
- */
-function SourceMark({
-  source,
-}: {
-  source: Trip['milesSource'] | Trip['driveMinutesSource'] | Trip['tollsSource']
-}) {
-  const mark =
-    source === 'override'
-      ? { text: 'yours', title: 'You entered this figure for this trip' }
-      : source === 'estimated'
-        ? { text: 'est.', title: 'Estimated from mileage, not measured' }
-        : source === 'park-rush'
-          ? { text: 'rush', title: "Uses this park's rush-hour figure for at least one leg" }
-          : null
-
-  if (!mark) return null
-  return (
-    <span style={{ color: 'var(--text-muted)' }} title={mark.title}>
-      {' '}
-      {mark.text}
-    </span>
-  )
-}
-
-/**
- * The full weekday name for an ISO date. Parsed as UTC so the day never shifts
- * with the viewer's timezone — the same reason the metrics layer does it.
- */
-function weekdayOf(date: string): string {
-  const d = new Date(`${date}T00:00:00Z`)
-  if (Number.isNaN(d.getTime())) return date
-  return d.toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' })
-}
-
 /** Where a duration came from, in the same voice as `trip.milesSource`. */
 function durationSourceLabel(source: ResolvedGame['duration']['source']): string {
   switch (source) {
@@ -1021,7 +1007,7 @@ function CallCell({
   }
 
   if (types.length === 0) {
-    return <span style={{ color: 'var(--text-muted)' }}>Add call types in Reference data</span>
+    return <span style={{ color: 'var(--text-muted)' }}>Add call types under Reference</span>
   }
 
   return (

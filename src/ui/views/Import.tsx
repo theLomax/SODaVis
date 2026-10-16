@@ -940,7 +940,7 @@ function OrganizationChoice({
       <span style={{ color: 'var(--text-muted)' }}>
         {value.kind === 'later'
           ? later.create
-            ? `These games will be filed under a placeholder, "${later.create.name}", to rename under Reference data → Organizations.`
+            ? `These games will be filed under a placeholder, "${later.create.name}", to rename under Reference → Organizations.`
             : 'Every game’s payor already names one of your organizations, so none is needed.'
           : value.kind === 'new' && !value.name.trim()
             ? 'Type a name for the new organization.'

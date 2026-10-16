@@ -7,6 +7,8 @@ import type { Game, ImportRun } from '../model/game'
 import type {
   AgeGroupDuration,
   Vehicle,
+  StartLocation,
+  PartnerContact,
   Organization,
   CallType,
   GearLevel,
@@ -55,6 +57,8 @@ export type AppSnapshot = {
   tripAnnotations: TripAnnotation[]
   organizations: Organization[]
   vehicles: Vehicle[]
+  startLocations: StartLocation[]
+  partnerContacts: PartnerContact[]
   generalExpenses: GeneralExpense[]
   gearProducts: GearProduct[]
   gearItems: GearItem[]
@@ -232,6 +236,18 @@ export async function saveParks(parks: Park[], database: AppDatabase = db): Prom
   await database.parks.bulkPut(parks)
 }
 
+/**
+ * Changes some fields of one park, leaving the rest as stored. The park editor
+ * commits each field on blur, so two can be saved before the view reloads.
+ */
+export async function patchPark(
+  id: string,
+  patch: Partial<Omit<Park, 'id'>>,
+  database: AppDatabase = db,
+): Promise<void> {
+  await patchRow<Park>(database.parks, (fn) => database.transaction('rw', database.parks, fn), id, patch)
+}
+
 export async function deletePark(id: string, database: AppDatabase = db): Promise<void> {
   await database.parks.delete(id)
 }
@@ -340,6 +356,25 @@ export async function seedDurations(
 
 export async function saveSports(sports: SportProfile[], database: AppDatabase = db): Promise<void> {
   await database.sports.bulkPut(sports)
+}
+
+/**
+ * Changes some fields of one sport, leaving the rest as stored; a field patched
+ * to `undefined` is removed. The sport card commits each field on its own, so two
+ * can be saved before the view reloads.
+ */
+export async function patchSport(
+  code: string,
+  patch: Partial<Omit<SportProfile, 'code'>>,
+  database: AppDatabase = db,
+): Promise<void> {
+  await database.transaction('rw', database.sports, async () => {
+    const existing = await database.sports.get(code)
+    if (!existing) return
+    const next: Record<string, unknown> = { ...existing, ...patch }
+    for (const k of Object.keys(next)) if (next[k] === undefined) delete next[k]
+    await database.sports.put(next as SportProfile)
+  })
 }
 
 export async function saveGearLevels(levels: GearLevel[], database: AppDatabase = db): Promise<void> {
@@ -490,6 +525,7 @@ export async function saveTripAnnotation(
     annotation.prepMinutesOverride == null &&
     annotation.wrapMinutesOverride == null &&
     !annotation.vehicleId &&
+    !annotation.startLocationId &&
     annotation.expenses.length === 0 &&
     !annotation.notes?.trim()
   if (isEmpty) await database.tripAnnotations.delete(annotation.key)
@@ -719,6 +755,83 @@ export async function setDefaultVehicle(id: string | undefined, database: AppDat
     const { defaultVehicleId: _old, ...rest } = current
     void _old
     await database.settings.put(id ? { ...rest, defaultVehicleId: id } : rest)
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Start locations
+// ---------------------------------------------------------------------------
+
+export async function saveStartLocation(location: StartLocation, database: AppDatabase = db): Promise<void> {
+  await database.startLocations.put(location)
+}
+
+export async function patchStartLocation(
+  id: string,
+  patch: Partial<Omit<StartLocation, 'id'>>,
+  database: AppDatabase = db,
+): Promise<void> {
+  await patchRow<StartLocation>(
+    database.startLocations,
+    (fn) => database.transaction('rw', database.startLocations, fn),
+    id,
+    patch,
+  )
+}
+
+export class StartLocationInUseError extends Error {
+  constructor(readonly trips: number) {
+    super(
+      `This location is where ${trips} trip${trips === 1 ? '' : 's'} started. Change ${trips === 1 ? 'that trip' : 'those trips'} first, so ${trips === 1 ? 'it does' : 'they do'} not silently become ${trips === 1 ? 'a trip' : 'trips'} from home.`,
+    )
+  }
+}
+
+/** Deletes a start location no trip names; one that is named is refused, as a vehicle is. */
+export async function deleteStartLocation(id: string, database: AppDatabase = db): Promise<void> {
+  await database.transaction('rw', [database.startLocations, database.tripAnnotations], async () => {
+    const using = (await database.tripAnnotations.toArray()).filter((a) => a.startLocationId === id)
+    if (using.length) throw new StartLocationInUseError(using.length)
+    await database.startLocations.delete(id)
+  })
+}
+
+/** Sets, or clears with a blank, home's street address. Read-merge-write, like its label. */
+export async function setHomeAddress(address: string | undefined, database: AppDatabase = db): Promise<void> {
+  await database.transaction('rw', database.settings, async () => {
+    const current = { ...SEED_SETTINGS, ...((await database.settings.get('settings')) ?? {}) }
+    const { homeAddress: _old, ...rest } = current
+    void _old
+    await database.settings.put(address?.trim() ? { ...rest, homeAddress: address.trim() } : rest)
+  })
+}
+
+/** Renames home. Read-merge-write, so the rest of the settings survive. */
+export async function setHomeLabel(label: string, database: AppDatabase = db): Promise<void> {
+  await database.transaction('rw', database.settings, async () => {
+    const current = { ...SEED_SETTINGS, ...((await database.settings.get('settings')) ?? {}) }
+    await database.settings.put({ ...current, homeOriginLabel: label.trim() || SEED_SETTINGS.homeOriginLabel })
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Partner contacts
+// ---------------------------------------------------------------------------
+
+/**
+ * Changes some of a partner's contact details, creating the row on first use and
+ * deleting it once nothing is left in it.
+ */
+export async function patchPartnerContact(
+  id: string,
+  patch: Partial<Omit<PartnerContact, 'id'>>,
+  database: AppDatabase = db,
+): Promise<void> {
+  await database.transaction('rw', database.partnerContacts, async () => {
+    const next: Record<string, unknown> = { ...((await database.partnerContacts.get(id)) ?? {}), ...patch, id }
+    for (const k of Object.keys(next)) if (next[k] === undefined || next[k] === '') delete next[k]
+    if (Object.keys(next).length === 1) await database.partnerContacts.delete(id)
+    else await database.partnerContacts.put(next as PartnerContact)
   })
 }
 

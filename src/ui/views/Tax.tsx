@@ -224,7 +224,11 @@ export function Tax() {
                 ))}
               </tbody>
             </table>
-          ) : null}
+          ) : (
+            <p className="m-0" style={{ color: 'var(--text-muted)' }}>
+              To split mileage by vehicle, add your vehicles on your profile (the avatar at the top right).
+            </p>
+          )}
           {summary.mileage.tripsMissingMiles > 0 ? (
             <div className="flex items-center gap-2">
               <StatusChip
@@ -236,7 +240,7 @@ export function Tax() {
                 }
               />
               <span style={{ color: 'var(--text-secondary)' }}>
-                Add one-way miles for those parks in Reference data to complete the figure.
+                Add one-way miles for those parks under Reference to complete the figure.
               </span>
             </div>
           ) : null}

@@ -6,6 +6,109 @@ lose and expensive to rediscover.
 
 ## Features
 
+- **Durations, sports, positions and gear conditions as cards.** The last lists under
+  Reference with always-live inputs. Each competition, sport, position and gear condition
+  is a card whose figures are text until *Edit*. A sport's Track checkbox lives in edit
+  mode, with a "tracked" chip when locked. Sports now save one field at a time
+  (`patchSport`), since prep and wrap sit side by side. A warning's link to a missing
+  duration opens that card unlocked with its minutes field focused.
+
+- **Map lookups: park addresses and driving distances.** They work with no setup, through
+  OpenStreetMap's public servers (Nominatim for search; OSRM for the route, after
+  geocoding both ends). A Google Maps Platform key (Profile → Map service) is optional and
+  switches both calls to Google. An unlocked park card can *Look up address*, which
+  offers up to three matches to choose from, and *Get distance from Home*, which proposes
+  one-way miles and traffic-free minutes for the park's ideal figures. Parks that have an
+  address but no mileage can be measured in one go. A trip that started somewhere other
+  than home can fetch its round trip into the override fields, kept only on Save. This is
+  the app's first outbound call, so it is fenced: only on a button, only that lookup's
+  text, every result accepted by hand, and the key kept in `localStorage` so it never
+  lands in a backup. The first version required the Google key, which made the feature
+  look broken out of the box, so the keyless route became the default; Google stays for
+  its better search of parks by name. Nominatim asks for at most one request a second,
+  so its calls are spaced, and a route costs three requests.
+  A place picked from a lookup keeps its coordinates (`Park.location`) and is routed from
+  those: OpenStreetMap returns a descriptive address (park, road number, county, state)
+  that its own search often cannot find again, which made the first route to a looked-up
+  park fail. Retyping the address clears the position.
+  Rush-hour minutes are not fetched: they depend on departure time, and stay typed.
+
+- **Starting locations for trips.** Every trip started from home; now other places can be
+  added on the Profile page (an office, a second address), each with a label, a street
+  address and notes,
+  and chosen on a trip under *Started from*. Home is always there, is the default, and
+  can be relabeled from its card. A trip that started elsewhere says so on its card. The
+  location is recorded rather than computed with: a park's miles and drive times are
+  measured from home, so the trip editor warns until that trip's own miles and drive time
+  are entered. Per-location mileage for each park was left out; it would need a figure
+  for every park from every location. A location a trip names cannot be deleted, so
+  trips never silently become trips from home. Home, each location and each park carry a
+  free-text street address (`settings.homeAddress`, `StartLocation.address`,
+  `Park.address`), so a trip has both ends for routing; nothing routes with them yet.
+
+- **Cards for the rest of the editable lists.** Gear sets, the gear catalog, organizations
+  and general expenses are lockable cards like parks and vehicles: values are text until
+  *Edit*, and Delete shows only while unlocked. General expenses gained editing of amount,
+  note and deductible, which the table never had. The list of payors with no organization
+  wraps instead of running off a phone.
+
+- **Partner cards with contact details.** The partners table is a grid of cards. The
+  figures are read from the games and cannot be edited; *Edit* opens phone, email and
+  notes, the only thing the user can add. They are stored by the partner's name as the
+  export writes it (`partnerContacts`), shown as tap-to-call and mailto links, and are in
+  backups. The solo row has no card; its tile above carries it.
+
+- **Parks, vehicles and owned gear as lockable cards.** All three were wide tables of always-live inputs:
+  on a phone they ran off the screen, which made Chrome zoom the whole page out, and a
+  stray tap could change a mileage figure that every trip to the park depends on. Each park
+  and each vehicle is now a card, in a grid that is one column on a phone and up to three
+  on a wide screen. A card shows its values as text until *Edit* unlocks it; *Done* locks
+  it again. Delete, a vehicle's choice of default, and retiring a piece of gear appear only
+  while a card is unlocked. The three share one shell, `components/LockableCard.tsx`. The
+  gear catalog and gear sets are still tables. A warning's fix link still lands on the park's miles field: the card it names
+  opens unlocked, marked and focused. Park fields now save as patches (`patchPark`), so
+  two fields committed back to back cannot undo each other.
+
+- **A filter panel any list can use, first on parks.** `FilterPanel` takes its categories
+  as props, the caller owns the selection and passes the list as children, so it is not
+  tied to parks. A Filter button shows and hides a panel of each category's values as
+  toggles. It is a panel rather than a modal so the list stays in view and usable while it
+  is narrowed: a column to the left of the list on a wide screen, above it on a phone.
+  Picks within a category are alternatives and categories combine (`matchesSelection`).
+  The picks stay beside the button whether the panel is open or not, each removable, with
+  "Showing 3 of 12" and *Show all*, so a narrowed list never looks complete. Parks pass
+  city, and what has been played at a park: league, sport, and assigning organization.
+  Those three are read from the park's games, so a park with no games matches none of
+  them; only values some park has are offered. Arriving from a warning clears the filter,
+  so the park it names is never hidden.
+
+- **Navigation in three groups.** Eleven tabs in the order they were built became three
+  groups, Insights, Data and Reference, plus the Profile behind the avatar. The second row
+  shows the selected group's pages: Insights holds the five comparison views; Data holds
+  Trips and Gear, then Tax, then Import, Data quality and Backup, with a hairline between
+  those three sections; Reference's own tabs are its second row, so there is never a third.
+  Backup moved from Reference to Data, since it concerns all the data rather than the
+  lookups. No page changed and no view id changed, so every warning's fix link still
+  lands where it did. A group reopens on the page last used in it. On a phone the second
+  row is one line that scrolls sideways and keeps the current page in view, and the
+  header drops the title and game count to stay on one line. Copy that named a path
+  ("Reference data → Parks & mileage") now uses the new names.
+
+- **Vehicles moved to the Profile page.** What you drive is about you rather than the
+  games, so the Vehicles editor left the Reference tabs and sits on the Profile page
+  (`ui/views/profile/Vehicles.tsx`). Nothing about the data, the trip editor's vehicle
+  choice or the Tax view's per-vehicle table changed. The trip editor only offers a
+  vehicle once one exists, so the Tax view's mileage card says where to add them until
+  one is in use.
+
+- **A profile avatar in the header.** A round button at the end of the header shows the
+  user's initials, from the display name under Identity, or a person icon until one is
+  set. It opens a Profile view that has no entry in the view switcher; the avatar is its
+  entry point and carries a ring while the page is open. The page is a placeholder: the
+  name, and links to where a profile's contents are edited today (Identity, Sports &
+  gear, Settings). `Reference` now clears a tab request once the tab is showing, so a
+  later plain visit opens on the first tab rather than the last one linked to.
+
 - **Choose the sports you officiate.** Soccer, Volleyball, Football and Basketball join
   the sports list, offered but untracked; the four from the sample stay tracked. A
   *Track* checkbox per sport (*Reference data → Sports & gear*) decides what the app

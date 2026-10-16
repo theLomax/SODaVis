@@ -9,6 +9,14 @@ export type Park = {
   id: string
   name: string
   city?: string
+  /** Street address, for routing a trip here. Free text, as the user would type it into a map. */
+  address?: string
+  /**
+   * Where `address` is on the map, saved when the address was picked from a lookup.
+   * Routing uses it rather than searching the text again, which can fail for a
+   * place's descriptive address. Cleared when the address is retyped.
+   */
+  location?: { lat: number; lon: number }
   /** Exact venue strings from a source file that mean this park. */
   aliases: string[]
   /**
@@ -74,6 +82,37 @@ export type Vehicle = {
   name: string
   /** Year, make and model, free text. */
   details?: string
+  notes?: string
+}
+
+/**
+ * A place trips start from other than home: an office, a second address. Home
+ * itself is not a row — it always exists, and its label is
+ * `settings.homeOriginLabel`. A trip names a location only when it did not start
+ * from home.
+ *
+ * A park's miles and drive times are measured from home, so a trip from anywhere
+ * else needs its own figures entered on the trip.
+ */
+export type StartLocation = {
+  id: string
+  /** The user's own name for it: "Office", "Mom's house". */
+  label: string
+  /** Street address, for routing a trip from here. */
+  address?: string
+  notes?: string
+}
+
+/**
+ * Contact details for a partner. Partners are not stored — they are read from the
+ * games — so this is keyed by the partner's name as the export writes it, and
+ * holds only what the user adds.
+ */
+export type PartnerContact = {
+  /** The partner key from the games, e.g. "Pike, Jordan". */
+  id: string
+  phone?: string
+  email?: string
   notes?: string
 }
 
@@ -188,6 +227,22 @@ export type Identity = {
   displayName: string
 }
 
+/**
+ * Up to two initials for the profile avatar: the first letters of the first and
+ * last words of the display name. Empty when there is no name, so the avatar can
+ * fall back to an icon rather than show a guess.
+ */
+export function initialsOf(displayName: string | undefined): string {
+  const words = (displayName ?? '')
+    .split(/\s+/)
+    .map((w) => w.replace(/[^\p{L}\p{N}]/gu, ''))
+    .filter(Boolean)
+  if (words.length === 0) return ''
+  const first = [...words[0]!][0]!
+  const last = words.length > 1 ? [...words[words.length - 1]!][0]! : ''
+  return (first + last).toUpperCase()
+}
+
 export type TimeModelId = 'game' | 'game-drive' | 'committed'
 
 /**
@@ -225,6 +280,8 @@ export type RushHourWindow = {
 export type Settings = {
   id: 'settings'
   homeOriginLabel: string
+  /** Home's street address, for routing a trip from home. */
+  homeAddress?: string
   /** Fallback speed for estimating drive time from miles. */
   fallbackMph: number
   /** IRS standard mileage rate per calendar year, in currency units per mile. */
@@ -376,7 +433,7 @@ export const SEED_IDENTITY: Identity = {
   id: 'self',
   // Empty, deliberately. A name here would ship one person's identity as every
   // installation's default, and this file is public. The pattern is set in
-  // Reference data → Identity on first run, or loaded from a local seed file
+  // Reference → Identity on first run, or loaded from a local seed file
   // (see `loadLocalReference` in db/schema.ts).
   patterns: [],
   displayName: '',

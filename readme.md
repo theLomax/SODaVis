@@ -49,8 +49,15 @@ npm run build        # static bundle in dist/
 
 Export your games from Assignr as CSV and import it through the *Import* view. Nothing
 leaves the browser: the file is parsed in the page, and the result is stored in
-IndexedDB on your machine. *Reference data → Backup* writes a JSON file you can keep
+IndexedDB on your machine. *Data → Backup* writes a JSON file you can keep
 somewhere you trust.
+
+There is one exception. The app can look up a park's address and the driving distance
+between two addresses. Each lookup happens only when you press its button, and sends
+only that lookup — a park's name and city, or the two addresses of a route — to
+OpenStreetMap's public servers (Nominatim and OSRM). If you add a Google Maps Platform
+key on your profile, lookups go to Google under your key instead; the key stays in the
+browser and is left out of backups.
 
 The app ships with **no parks and no identity**, because a park list is one person's
 commute and an identity pattern is their name — neither belongs in a public repository
@@ -158,10 +165,10 @@ screen can never again name a number of trips the app cannot name individually.
 Two different inputs produce the same symptom, and the dialog distinguishes them:
 
 - **No duration** for an age group — nulls `gameMinutes`, so every model drops the trip.
-  Fixed once per age group in *Reference data → Game durations*.
+  Fixed once per age group in *Reference → Game durations*.
 - **No mileage** for the park — drive time is estimated from miles, so no miles means no
   drive figure, which drops the trip from *game + drive* and *committed* (`game` still
-  times it). Fixed once per park in *Reference data → Parks & mileage*.
+  times it). Fixed once per park in *Reference → Parks & mileage*.
 
 With every age group filled, four trips in the sample still cannot be timed, all for the
 second reason — four parks
@@ -185,7 +192,7 @@ One trip's two legs routinely get different answers, and in both directions:
 - A Saturday 9am game that finishes at 15:45 does the reverse — out on clear
   roads, then **home** straight into it.
 
-The window is 15:00–19:00, every day, and is editable in *Reference data →
+The window is 15:00–19:00, every day, and is editable in *Reference →
 Settings*. It was weekdays only at first, on the evidence that weekday games finish
 after the window closes — true, but it silently charged a clear-road drive home to
 every weekend afternoon game.
@@ -317,7 +324,7 @@ and the first import flags every venue as unmatched, which is already the design
 for an unknown park: Data Quality offers a suggested name and one-click creation.
 
 On a machine entitled to the real data, restore `data/reference.local.json` from
-*Reference data → Backup* and the parks, mileage, tolls and identity come back at once.
+*Data → Backup* and the parks, mileage, tolls and identity come back at once.
 
 ## Verified against the sample export
 

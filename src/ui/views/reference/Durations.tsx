@@ -1,5 +1,8 @@
 /**
- * Game durations. One row per competition rather than per league spelling of it.
+ * Game durations. One card per competition rather than per league spelling of it.
+ *
+ * A card's minutes are text until its Edit button unlocks it, as the park cards
+ * are: no field is live until asked for.
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -10,6 +13,7 @@ import { deleteDuration, saveDurations } from '../../../db/repo'
 import type { AgeGroupDuration } from '../../../model/reference'
 import { seedAgeGroupDurations } from '../../../derive/resolve'
 import { durationKey, durationKeyLabel, durationKeyScope, parseAgeGroup } from '../../../derive/ageGroup'
+import { CardField, LockableCard, toggledIn } from '../../components/LockableCard'
 import { NumberCell } from './cells'
 
 export function DurationsEditor() {
@@ -29,12 +33,15 @@ export function DurationsEditor() {
     pendingFocus?.view === 'reference' && pendingFocus.tab === 'durations'
       ? pendingFocus.focus
       : undefined
-  const focusRow = useRef<HTMLTableRowElement | null>(null)
+  /** The cards open for editing. Every card starts locked. */
+  const [unlocked, setUnlocked] = useState<ReadonlySet<string>>(new Set())
+  /** Kept after the request is consumed, so the card stays marked and can be found. */
+  const [arrivedAt, setArrivedAt] = useState<string>()
+  const arrivedCard = useRef<HTMLLIElement | null>(null)
 
   useEffect(() => {
     if (!focusGroup) return
-    focusRow.current?.scrollIntoView({ block: 'center' })
-    focusRow.current?.querySelector<HTMLInputElement>('input[type="number"]')?.focus()
+    setArrivedAt(focusGroup)
     clearPendingFocus()
   }, [focusGroup, clearPendingFocus])
 
@@ -91,7 +98,20 @@ export function DurationsEditor() {
 
   /** True when a navigation target names this row, by scope key or by raw string. */
   const isFocused = (row: { key: string; rawGroups: string[] }) =>
-    focusGroup != null && (row.key === focusGroup || row.rawGroups.includes(focusGroup))
+    arrivedAt != null && (row.key === arrivedAt || row.rawGroups.includes(arrivedAt))
+
+  // The reader arrived to type a number: unlock the card it belongs on, then,
+  // once its field exists, scroll to it and focus it.
+  const arrivedKey = arrivedAt == null ? undefined : rows.find(isFocused)?.key
+  useEffect(() => {
+    if (arrivedKey) setUnlocked((u) => new Set(u).add(arrivedKey))
+  }, [arrivedKey])
+  const arrivedOpen = arrivedKey != null && unlocked.has(arrivedKey)
+  useEffect(() => {
+    if (!arrivedOpen) return
+    arrivedCard.current?.scrollIntoView({ block: 'center' })
+    arrivedCard.current?.querySelector<HTMLInputElement>('input[type="number"]')?.focus()
+  }, [arrivedOpen])
 
   const q = filterText.toLowerCase()
   // Matches the scope label or any raw string it covers, so searching for the
@@ -158,7 +178,7 @@ export function DurationsEditor() {
 
       <Card
         title="Game durations by competition"
-        subtitle="One row per competition rather than per league's spelling of it, so a figure entered once covers every league running the same rules. Extracted from the source string where it states one; the rest need a figure from you."
+        subtitle="One card per competition rather than per league's spelling of it, so a figure entered once covers every league running the same rules. Extracted from the source string where it states one; the rest need a figure from you. Choose Edit on a card to set its minutes."
         action={
           <Button onClick={() => void reseed()} disabled={busy}>
             Re-extract from source
@@ -168,76 +188,54 @@ export function DurationsEditor() {
         <div className="mb-3">
           <TextInput value={filterText} onChange={setFilterText} placeholder="Filter age groups…" width={260} ariaLabel="Filter age groups" />
         </div>
-        <div className="overflow-auto" style={{ maxHeight: 560 }}>
-          <table className="w-full border-collapse text-xs">
-            <thead>
-              <tr>
-                {['Competition', 'Games', 'Minutes', 'Source'].map((h, i) => (
-                  <th
-                    key={h}
-                    scope="col"
-                    className="sticky top-0 px-2 py-1.5 font-medium"
-                    style={{
-                      textAlign: i === 1 || i === 2 ? 'right' : 'left',
-                      color: 'var(--text-secondary)',
-                      background: 'var(--surface-1)',
-                      borderBottom: '1px solid var(--gridline)',
-                    }}
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((row) => (
-                <tr
-                  key={row.key}
-                  {...(isFocused(row) ? { ref: focusRow } : {})}
-                  style={{
-                    borderBottom: '1px solid var(--gridline)',
-                    background: isFocused(row) ? 'var(--gridline)' : undefined,
-                  }}
-                >
-                  <td className="px-2 py-1.5" style={{ color: 'var(--text-primary)' }}>
-                    {row.label}
+        <ul className="m-0 grid list-none gap-3 p-0 md:grid-cols-2 xl:grid-cols-3">
+          {filtered.map((row) => {
+            const open = unlocked.has(row.key)
+            return (
+              <LockableCard
+                key={row.key}
+                data-duration={row.key}
+                // The readable label, not the prefixed key: `lg:` is a storage detail
+                // and has no business in an accessible name.
+                name={row.label}
+                badge={row.duration ? null : <StatusChip role="warning" label="not set" />}
+                summary={
+                  <>
+                    {row.games} game{row.games === 1 ? '' : 's'}
                     {/* A rule-set scope answers for every league running it; say so,
                         since that is the difference between one entry and six. */}
-                    {row.scope === 'ruleSet' ? (
-                      <span style={{ color: 'var(--text-muted)' }}> · rule set</span>
-                    ) : null}
+                    {row.scope === 'ruleSet' ? ' · rule set' : ''}
                     {row.rawGroups.length > 1 ? (
-                      <div
-                        className="mt-0.5"
-                        style={{ color: 'var(--text-muted)', fontSize: 11 }}
-                        title={row.rawGroups.join('\n')}
-                      >
-                        {row.rawGroups.length} source spellings
-                      </div>
+                      <span title={row.rawGroups.join('\n')}> · {row.rawGroups.length} source spellings</span>
                     ) : null}
-                  </td>
-                  <td className="num-tabular px-2 py-1.5 text-right">{row.games}</td>
-                  <td className="px-2 py-1.5 text-right">
-                    <NumberCell
-                      value={row.duration?.durationMinutes}
-                      onCommit={(v) => void set(row.key, v)}
-                      // The readable label, not the prefixed key: `lg:` is a storage detail and
-                      // has no business in an accessible name.
-                      ariaLabel={`Duration for ${row.label}`}
-                    />
-                  </td>
-                  <td className="px-2 py-1.5">
-                    {row.duration ? (
-                      <span style={{ color: 'var(--text-muted)' }}>{row.duration.origin}</span>
+                  </>
+                }
+                unlocked={open}
+                onToggle={() => setUnlocked((u) => toggledIn(u, row.key))}
+                highlighted={isFocused(row)}
+                {...(isFocused(row) ? { cardRef: arrivedCard } : {})}
+              >
+                <dl className="m-0 grid grid-cols-2 gap-x-3">
+                  <CardField label="Minutes">
+                    {open ? (
+                      <NumberCell
+                        value={row.duration?.durationMinutes}
+                        fill
+                        onCommit={(v) => {
+                          if (v !== row.duration?.durationMinutes) void set(row.key, v)
+                        }}
+                        ariaLabel={`Duration for ${row.label}`}
+                      />
                     ) : (
-                      <StatusChip role="warning" label="not set" />
+                      (row.duration?.durationMinutes ?? '—')
                     )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  </CardField>
+                  <CardField label="Source">{row.duration?.origin ?? '—'}</CardField>
+                </dl>
+              </LockableCard>
+            )
+          })}
+        </ul>
       </Card>
     </div>
   )

@@ -57,6 +57,9 @@ export type ViewId =
   | 'import'
   | 'reference'
   | 'quality'
+  | 'backup'
+  /** Opened from the header avatar, not from the view switcher. */
+  | 'profile'
 
 /**
  * A navigation request: where to go, plus optionally which row to land on.
@@ -149,7 +152,7 @@ type Store = {
 export type PendingFocus = {
   view: ViewId
   /** Only set for a Reference target. */
-  tab?: 'parks' | 'durations' | 'identity' | 'organizations'
+  tab?: 'parks' | 'durations' | 'identity' | 'organizations' | 'sports' | 'settings'
   /** Park id, age-group key or trip key, per the destination. */
   focus?: string
 }
@@ -345,6 +348,7 @@ export function derive(snapshot: AppSnapshot, filter: Filter): DerivedState {
     tripAnnotations,
     settings: snapshot.settings,
     vehicles: new Map(snapshot.vehicles.map((v) => [v.id, v])),
+    startLocations: new Map((snapshot.startLocations ?? []).map((l) => [l.id, l])),
   }
   const { trips, unplaceable, cancelled, uncountedDrives } = buildTrips(resolved, tripCtx)
   const { trips: allTrips } = buildTrips(allResolved, tripCtx)
